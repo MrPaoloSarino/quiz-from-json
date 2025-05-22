@@ -268,6 +268,14 @@ const Quiz: React.FC = () => {
     setApiError(null);
     setLoadingFeedback(true);
     try {
+      const currentQ = state.questions[state.currentQuestion];
+      const isEssay = currentQ.type === 'essay';
+      let prompt = '';
+      if (isEssay) {
+        prompt = `Based on the question, here is my answer. You are the most capable to answer the question and rate my answer from 10 ratings based on concrete evidence and benchmarking.\n\nQuestion: ${question}\nMy answer: ${userAnswer}`;
+      } else {
+        prompt = `\n          I'm doing a quiz. The question was: "${question}".\n          I chose: "${userAnswer}".\n          The correct answer is: "${correctAnswer}".\n          My answer was ${isCorrect ? 'correct' : 'incorrect'}.\n          Provide me a constructive feedback as to why my answer is correct or incorrect max 2-5 sentences.\n        `;
+      }
       if (provider === 'openrouter') {
         if (!openRouterKey || !validateApiKey(openRouterKey)) {
           throw new Error("Invalid OpenRouter API key format");
@@ -278,13 +286,6 @@ const Quiz: React.FC = () => {
         if (isRateLimited()) {
           throw new Error("Rate limit exceeded. Please wait before making more requests.");
         }
-        const prompt = `
-          I'm doing a quiz. The question was: "${question}".
-          I chose: "${userAnswer}".
-          The correct answer is: "${correctAnswer}".
-          My answer was ${isCorrect ? 'correct' : 'incorrect'}.
-          Provide me a constructive feedback as to why my answer is correct or incorrect max 2-5 sentences.
-        `;
         recordApiCall();
         const response = await fetch(OPENROUTER_API_URL, {
           method: "POST",
@@ -297,7 +298,7 @@ const Quiz: React.FC = () => {
           body: JSON.stringify({
             model: selectedModel,
             messages: [
-              { role: "system", content: "You are a helpful quiz feedback assistant." },
+              { role: "system", content: isEssay ? "You are an expert essay evaluator and grader." : "You are a helpful quiz feedback assistant." },
               { role: "user", content: prompt }
             ],
             extra_body: {},
@@ -325,13 +326,6 @@ const Quiz: React.FC = () => {
         }
         // Use only the model id (after last /)
         const modelId = selectedGeminiModel.split('/').pop();
-        const prompt = `
-          I'm doing a quiz. The question was: "${question}".
-          I chose: "${userAnswer}".
-          The correct answer is: "${correctAnswer}".
-          My answer was ${isCorrect ? 'correct' : 'incorrect'}.
-          Provide me a constructive feedback as to why my answer is correct or incorrect max 2-5 sentences.
-        `;
         const response = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${geminiKey}`,
           {
