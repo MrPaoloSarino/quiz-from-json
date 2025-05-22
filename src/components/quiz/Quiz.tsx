@@ -388,7 +388,7 @@ const Quiz: React.FC = () => {
             {models.length === 0 && <option value="">Enter a valid API key to load models</option>}
             {models.map((model) => (
               <option key={model.id} value={model.id}>
-                {model.id}{model.pricing ? ` (${model.pricing})` : ''}
+                {model.id}{model.pricing ? ` (${typeof model.pricing === 'string' ? model.pricing : JSON.stringify(model.pricing)})` : ''}
               </option>
             ))}
           </select>
@@ -408,6 +408,13 @@ const Quiz: React.FC = () => {
           className="w-full p-2 border rounded mb-4"
         />
         <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            onClick={() => setShowInput(true)}
+            className="text-sm"
+          >
+            ← Back
+          </Button>
           <Button
             onClick={startQuiz}
             className="flex-1 bg-quiz-primary hover:bg-quiz-secondary text-white"
