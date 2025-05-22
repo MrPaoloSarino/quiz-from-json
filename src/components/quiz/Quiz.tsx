@@ -64,7 +64,6 @@ const Quiz: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [modelSearch, setModelSearch] = useState<string>("");
   const [showModelDropdown, setShowModelDropdown] = useState(false);
-  const [geminiKey, setGeminiKey] = useState<string>("");
   const [geminiModels, setGeminiModels] = useState<any[]>([]);
   const [selectedGeminiModel, setSelectedGeminiModel] = useState<string>("");
   const [geminiModelSearch, setGeminiModelSearch] = useState<string>("");
@@ -272,7 +271,7 @@ const Quiz: React.FC = () => {
       const isEssay = currentQ.type === 'essay';
       let prompt = '';
       if (isEssay) {
-        prompt = `Based on the question, here is my answer. You are the most capable to answer the question and rate my answer from 0 to 10 based on concrete evidence and benchmarking.\n\nQuestion: ${question}\nMy answer: ${userAnswer}`;
+        prompt = `Based on the question, here is my answer. You are the most capable to answer the question and rate my answer from 0 to 10 based on concrete evidence and benchmarking. Please reply in plain text only, without any markdown or formatting.\n\nQuestion: ${question}\nMy answer: ${userAnswer}`;
       } else {
         prompt = `\n          I'm doing a quiz. The question was: "${question}".\n          I chose: "${userAnswer}".\n          The correct answer is: "${correctAnswer}".\n          My answer was ${isCorrect ? 'correct' : 'incorrect'}.\n          Provide me a constructive feedback as to why my answer is correct or incorrect max 2-5 sentences.\n        `;
       }

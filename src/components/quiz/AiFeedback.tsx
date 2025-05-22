@@ -1,8 +1,8 @@
-
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { AlertCircle } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 interface AiFeedbackProps {
   feedback: string | null;
@@ -55,7 +55,9 @@ const AiFeedback: React.FC<AiFeedbackProps> = ({ feedback, loading, error }) => 
           </svg>
           AI Feedback
         </h3>
-        <div className="text-sm text-gray-700">{feedback}</div>
+        <div className="text-sm text-gray-700">
+          <ReactMarkdown>{feedback}</ReactMarkdown>
+        </div>
       </CardContent>
     </Card>
   );
