@@ -2,13 +2,15 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
+import { AlertCircle } from "lucide-react";
 
 interface AiFeedbackProps {
   feedback: string | null;
   loading: boolean;
+  error?: string | null;
 }
 
-const AiFeedback: React.FC<AiFeedbackProps> = ({ feedback, loading }) => {
+const AiFeedback: React.FC<AiFeedbackProps> = ({ feedback, loading, error }) => {
   if (loading) {
     return (
       <Card className="mt-4 border-dashed border-gray-300">
@@ -16,6 +18,23 @@ const AiFeedback: React.FC<AiFeedbackProps> = ({ feedback, loading }) => {
           <div className="flex items-center justify-center p-4">
             <Spinner className="h-8 w-8 text-quiz-primary" />
             <span className="ml-2 text-sm text-gray-500">Getting AI feedback...</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="mt-4 bg-red-50 border-red-200">
+        <CardContent className="pt-4">
+          <div className="flex items-start">
+            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 mr-2" />
+            <div>
+              <h3 className="text-sm font-medium mb-1">AI Feedback Error</h3>
+              <p className="text-sm text-red-600">{error}</p>
+              <p className="text-xs text-gray-500 mt-2">Please check your API key or try again later.</p>
+            </div>
           </div>
         </CardContent>
       </Card>

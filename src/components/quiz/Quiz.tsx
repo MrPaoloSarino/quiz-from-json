@@ -27,6 +27,7 @@ const Quiz: React.FC = () => {
   const [showConfirmation, setShowConfirmation] = useState<boolean>(false);
   const [quizReadyToStart, setQuizReadyToStart] = useState<boolean>(false);
   const [loadedQuestions, setLoadedQuestions] = useState<QuizQuestion[]>([]);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const prepareQuiz = (questions: QuizQuestion[]) => {
     setLoadedQuestions(questions);
@@ -45,6 +46,8 @@ const Quiz: React.FC = () => {
     });
     setQuizReadyToStart(false);
     setShowGeminiInput(false);
+    // Reset any previous API errors
+    setApiError(null);
   };
 
   const handleAnswer = (selectedOption: string) => {
@@ -72,7 +75,7 @@ const Quiz: React.FC = () => {
     }
 
     // Get AI feedback if API key is provided
-    if (geminiKey) {
+    if (geminiKey && geminiKey.trim() !== "") {
       getFeedback(
         state.questions[state.currentQuestion].question,
         selectedOption,
@@ -95,6 +98,8 @@ const Quiz: React.FC = () => {
       setSelectedOption(null);
       setShowFeedback(false);
       setShowConfirmation(false);
+      // Reset any API errors when moving to next question
+      setApiError(null);
     } else {
       setState((prevState) => ({
         ...prevState,
@@ -109,9 +114,16 @@ const Quiz: React.FC = () => {
     correctAnswer: string, 
     isCorrect: boolean
   ) => {
+    // Reset previous API error
+    setApiError(null);
     setLoadingFeedback(true);
 
     try {
+      // Validate API key before making request
+      if (!geminiKey || geminiKey.trim() === "") {
+        throw new Error("Missing API key");
+      }
+
       const prompt = `
         I'm doing a quiz. The question was: "${question}".
         I chose: "${userAnswer}".
@@ -147,17 +159,40 @@ const Quiz: React.FC = () => {
         }
       );
 
-      const data = await response.json() as GeminiResponse;
-
-      if (data.content?.parts?.[0]?.text) {
-        setState((prevState) => ({
-          ...prevState,
-          feedback: data.content.parts[0].text,
-        }));
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`API error: ${errorData?.error?.message || response.statusText}`);
       }
+
+      const data = await response.json();
+      
+      // Debug log to help troubleshooting
+      console.log("Gemini API response:", data);
+      
+      if (data?.error) {
+        throw new Error(`API error: ${data.error.message}`);
+      }
+
+      // Check if we have valid content in the response
+      if (!data?.content?.parts || !data.content.parts.length) {
+        throw new Error("Unexpected API response format");
+      }
+
+      const feedbackText = data.content.parts[0]?.text;
+      
+      if (!feedbackText) {
+        throw new Error("No feedback text in response");
+      }
+
+      setState((prevState) => ({
+        ...prevState,
+        feedback: feedbackText,
+      }));
     } catch (error) {
       console.error("Error getting AI feedback:", error);
-      toast.error("Failed to get AI feedback");
+      const errorMessage = error instanceof Error ? error.message : "Failed to get AI feedback";
+      setApiError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoadingFeedback(false);
     }
@@ -175,6 +210,7 @@ const Quiz: React.FC = () => {
     setSelectedOption(null);
     setShowFeedback(false);
     setShowConfirmation(false);
+    setApiError(null);
   };
 
   const newQuiz = () => {
@@ -190,6 +226,7 @@ const Quiz: React.FC = () => {
     setShowConfirmation(false);
     setQuizReadyToStart(false);
     setLoadedQuestions([]);
+    setApiError(null);
   };
 
   if (showInput) {
@@ -269,6 +306,7 @@ const Quiz: React.FC = () => {
       <AiFeedback 
         feedback={state.feedback} 
         loading={loadingFeedback} 
+        error={apiError}
       />
 
       {showConfirmation && (

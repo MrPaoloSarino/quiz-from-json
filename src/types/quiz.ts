@@ -20,4 +20,9 @@ export interface GeminiResponse {
       text: string;
     }[];
   };
+  error?: {
+    code: number;
+    message: string;
+    status: string;
+  };
 }
