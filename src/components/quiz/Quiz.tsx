@@ -397,7 +397,16 @@ const Quiz: React.FC = () => {
             {models
               .filter(model => model.id.toLowerCase().includes(modelSearch.toLowerCase()))
               .map((model) => (
-                <option key={model.id} value={model.id}>
+                <option
+                  key={model.id}
+                  value={model.id}
+                  style={{
+                    textOverflow: 'ellipsis',
+                    overflow: 'hidden',
+                    whiteSpace: 'nowrap',
+                    maxWidth: '100%',
+                  }}
+                >
                   {model.id}
                 </option>
               ))}
