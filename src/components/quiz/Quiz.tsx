@@ -62,6 +62,7 @@ const Quiz: React.FC = () => {
   const [models, setModels] = useState<any[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [modelSearch, setModelSearch] = useState<string>("");
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
 
   // Enhanced API key validation for OpenRouter keys (usually sk-or-...)
   const validateApiKey = (key: string): boolean => {
@@ -386,31 +387,47 @@ const Quiz: React.FC = () => {
             placeholder="Search models..."
             value={modelSearch}
             onChange={e => setModelSearch(e.target.value)}
+            onFocus={() => setShowModelDropdown(true)}
           />
-          <select
-            className="w-full p-2 border rounded"
-            value={selectedModel}
-            onChange={e => setSelectedModel(e.target.value)}
-            disabled={models.length === 0}
+          {/* Custom dropdown for model selection with autowrap */}
+          <div
+            className="w-full border rounded bg-white relative"
+            style={{ maxHeight: 180, overflowY: 'auto', zIndex: 10, position: 'relative' }}
+            tabIndex={0}
+            onBlur={() => setShowModelDropdown(false)}
           >
-            {models.length === 0 && <option value="">Enter a valid API key to load models</option>}
-            {models
-              .filter(model => model.id.toLowerCase().includes(modelSearch.toLowerCase()))
-              .map((model) => (
-                <option
-                  key={model.id}
-                  value={model.id}
-                  style={{
-                    textOverflow: 'ellipsis',
-                    overflow: 'hidden',
-                    whiteSpace: 'nowrap',
-                    maxWidth: '100%',
-                  }}
-                >
-                  {model.id}
-                </option>
-              ))}
-          </select>
+            {showModelDropdown && models.length > 0 && (
+              <div>
+                {models
+                  .filter(model => model.id.toLowerCase().includes(modelSearch.toLowerCase()))
+                  .map((model) => (
+                    <div
+                      key={model.id}
+                      className={`p-2 cursor-pointer hover:bg-gray-100 ${selectedModel === model.id ? 'bg-gray-200' : ''}`}
+                      style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}
+                      onMouseDown={() => {
+                        setSelectedModel(model.id);
+                        setShowModelDropdown(false);
+                      }}
+                    >
+                      {model.id}
+                    </div>
+                  ))}
+                {models.filter(model => model.id.toLowerCase().includes(modelSearch.toLowerCase())).length === 0 && (
+                  <div className="p-2 text-gray-400">No models found</div>
+                )}
+              </div>
+            )}
+            {!showModelDropdown && (
+              <div
+                className="p-2 text-gray-700 cursor-pointer"
+                style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}
+                onClick={() => setShowModelDropdown(true)}
+              >
+                {selectedModel || 'Select a model'}
+              </div>
+            )}
+          </div>
         </div>
         <input
           type="text"
