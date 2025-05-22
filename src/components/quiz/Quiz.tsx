@@ -388,7 +388,7 @@ const Quiz: React.FC = () => {
             {models.length === 0 && <option value="">Enter a valid API key to load models</option>}
             {models.map((model) => (
               <option key={model.id} value={model.id}>
-                {model.id}{model.pricing ? ` (${typeof model.pricing === 'string' ? model.pricing : JSON.stringify(model.pricing)})` : ''}
+                {model.id}
               </option>
             ))}
           </select>
