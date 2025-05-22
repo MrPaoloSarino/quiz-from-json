@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,15 +27,20 @@ const JsonInput: React.FC<JsonInputProps> = ({ onQuizStart }) => {
 
   const validateQuestions = (questions: any[]): questions is QuizQuestion[] => {
     if (!Array.isArray(questions)) return false;
-    
-    return questions.every(q => 
-      typeof q === "object" && 
-      typeof q.question === "string" && 
-      Array.isArray(q.options) && 
-      q.options.every(opt => typeof opt === "string") &&
-      typeof q.answer === "string" &&
-      q.options.includes(q.answer)
-    );
+    return questions.every(q => {
+      if (q.type === 'essay') {
+        return typeof q === 'object' && typeof q.question === 'string' && (!q.options || Array.isArray(q.options)) && (!q.answer || typeof q.answer === 'string');
+      }
+      // Default to multiple choice
+      return (
+        typeof q === 'object' &&
+        typeof q.question === 'string' &&
+        Array.isArray(q.options) &&
+        q.options.every((opt: any) => typeof opt === 'string') &&
+        typeof q.answer === 'string' &&
+        q.options.includes(q.answer)
+      );
+    });
   };
 
   const handleStartQuiz = () => {
