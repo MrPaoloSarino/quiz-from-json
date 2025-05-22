@@ -9,6 +9,7 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
   },
+  base: '/quiz-from-json/',
   plugins: [
     react(),
     mode === 'development' &&
