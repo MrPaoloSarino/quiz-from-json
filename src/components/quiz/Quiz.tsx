@@ -367,7 +367,10 @@ const Quiz: React.FC = () => {
           );
         }
         const data = await response.json();
-        if (!data?.contents?.[0]?.parts?.[0]?.text) {
+        const geminiText =
+          data?.contents?.[0]?.parts?.[0]?.text ||
+          data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!geminiText) {
           let debugMsg = '';
           if (data?.error?.message) {
             debugMsg = `Gemini API error: ${data.error.message}`;
@@ -382,7 +385,7 @@ const Quiz: React.FC = () => {
         }
         setState((prevState) => ({
           ...prevState,
-          feedback: data.contents[0].parts[0].text,
+          feedback: geminiText,
         }));
         setRetryCount(0);
       }
