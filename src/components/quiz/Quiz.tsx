@@ -3,7 +3,8 @@ import React, { useState, useEffect } from "react";
 import JsonInput from "./JsonInput";
 import QuizCard from "./QuizCard";
 import QuizResults from "./QuizResults";
-import { QuizQuestion, QuizState } from "@/types/quiz";
+import AiFeedback from "./AiFeedback";
+import { QuizQuestion, QuizState, GeminiResponse } from "@/types/quiz";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -15,10 +16,15 @@ const Quiz: React.FC = () => {
     score: 0,
     showResults: false,
     userAnswers: [],
+    feedback: null,
   });
   const [showInput, setShowInput] = useState<boolean>(true);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState<boolean>(false);
+  const [geminiKey, setGeminiKey] = useState<string>("");
+  const [showGeminiInput, setShowGeminiInput] = useState<boolean>(false);
+  const [loadingFeedback, setLoadingFeedback] = useState<boolean>(false);
+  const [showConfirmation, setShowConfirmation] = useState<boolean>(false);
 
   const startQuiz = (questions: QuizQuestion[]) => {
     setState({
@@ -27,8 +33,10 @@ const Quiz: React.FC = () => {
       score: 0,
       showResults: false,
       userAnswers: Array(questions.length).fill(""),
+      feedback: null,
     });
     setShowInput(false);
+    setShowGeminiInput(!geminiKey);
   };
 
   const handleAnswer = (selectedOption: string) => {
@@ -45,6 +53,7 @@ const Quiz: React.FC = () => {
       ...state,
       score: isCorrect ? state.score + 1 : state.score,
       userAnswers: updatedUserAnswers,
+      feedback: null,
     });
     
     // Show toast for feedback
@@ -53,23 +62,97 @@ const Quiz: React.FC = () => {
     } else {
       toast.error("Incorrect answer!");
     }
-    
-    // Move to next question after a short delay
-    setTimeout(() => {
-      if (state.currentQuestion < state.questions.length - 1) {
+
+    // Get AI feedback if API key is provided
+    if (geminiKey) {
+      getFeedback(
+        state.questions[state.currentQuestion].question,
+        selectedOption,
+        state.questions[state.currentQuestion].answer,
+        isCorrect
+      );
+    }
+
+    // Show confirmation button instead of automatically moving to the next question
+    setShowConfirmation(true);
+  };
+
+  const moveToNextQuestion = () => {
+    if (state.currentQuestion < state.questions.length - 1) {
+      setState((prevState) => ({
+        ...prevState,
+        currentQuestion: prevState.currentQuestion + 1,
+        feedback: null,
+      }));
+      setSelectedOption(null);
+      setShowFeedback(false);
+      setShowConfirmation(false);
+    } else {
+      setState((prevState) => ({
+        ...prevState,
+        showResults: true,
+      }));
+    }
+  };
+
+  const getFeedback = async (
+    question: string, 
+    userAnswer: string, 
+    correctAnswer: string, 
+    isCorrect: boolean
+  ) => {
+    setLoadingFeedback(true);
+
+    try {
+      const prompt = `
+        I'm doing a quiz. The question was: "${question}".
+        I chose: "${userAnswer}".
+        The correct answer is: "${correctAnswer}".
+        My answer was ${isCorrect ? 'correct' : 'incorrect'}.
+        
+        Please provide a brief, conversational feedback with a helpful explanation about this answer (2-3 sentences max).
+        Focus on clarifying why the answer is correct or what the correct answer means.
+      `;
+
+      const response = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent?key=" + geminiKey,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: prompt
+                  }
+                ]
+              }
+            ],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 200,
+            }
+          }),
+        }
+      );
+
+      const data = await response.json() as GeminiResponse;
+
+      if (data.content?.parts?.[0]?.text) {
         setState((prevState) => ({
           ...prevState,
-          currentQuestion: prevState.currentQuestion + 1,
-        }));
-        setSelectedOption(null);
-        setShowFeedback(false);
-      } else {
-        setState((prevState) => ({
-          ...prevState,
-          showResults: true,
+          feedback: data.content.parts[0].text,
         }));
       }
-    }, 1500);
+    } catch (error) {
+      console.error("Error getting AI feedback:", error);
+      toast.error("Failed to get AI feedback");
+    } finally {
+      setLoadingFeedback(false);
+    }
   };
 
   const restartQuiz = () => {
@@ -79,9 +162,11 @@ const Quiz: React.FC = () => {
       score: 0,
       showResults: false,
       userAnswers: Array(state.questions.length).fill(""),
+      feedback: null,
     });
     setSelectedOption(null);
     setShowFeedback(false);
+    setShowConfirmation(false);
   };
 
   const newQuiz = () => {
@@ -92,8 +177,47 @@ const Quiz: React.FC = () => {
       score: 0,
       showResults: false,
       userAnswers: [],
+      feedback: null,
     });
+    setShowConfirmation(false);
   };
+
+  if (showGeminiInput) {
+    return (
+      <Card className="w-full max-w-xl mx-auto p-6">
+        <h2 className="text-xl font-semibold mb-4">Enter Google Gemini API Key</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          To get AI feedback on your answers, please enter your Gemini API key.
+          You can skip this step if you don't want AI feedback.
+        </p>
+        <input
+          type="password"
+          value={geminiKey}
+          onChange={(e) => setGeminiKey(e.target.value)}
+          placeholder="Paste your Gemini API key here"
+          className="w-full p-2 border rounded mb-4"
+        />
+        <div className="flex gap-2">
+          <Button
+            onClick={() => setShowGeminiInput(false)}
+            className="flex-1"
+          >
+            Submit
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setShowGeminiInput(false);
+              setGeminiKey("");
+            }}
+            className="flex-1"
+          >
+            Skip
+          </Button>
+        </div>
+      </Card>
+    );
+  }
 
   if (showInput) {
     return <JsonInput onQuizStart={startQuiz} />;
@@ -141,6 +265,22 @@ const Quiz: React.FC = () => {
         selectedOption={selectedOption}
         isCorrect={selectedOption === state.questions[state.currentQuestion].answer}
       />
+
+      <AiFeedback 
+        feedback={state.feedback} 
+        loading={loadingFeedback} 
+      />
+
+      {showConfirmation && (
+        <div className="mt-4 flex justify-end">
+          <Button 
+            onClick={moveToNextQuestion}
+            className="bg-quiz-primary hover:bg-quiz-secondary text-white"
+          >
+            {state.currentQuestion < state.questions.length - 1 ? "Next Question" : "View Results"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

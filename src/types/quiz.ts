@@ -11,4 +11,13 @@ export interface QuizState {
   score: number;
   showResults: boolean;
   userAnswers: string[];
+  feedback: string | null;
+}
+
+export interface GeminiResponse {
+  content: {
+    parts: {
+      text: string;
+    }[];
+  };
 }
