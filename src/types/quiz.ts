@@ -1,8 +1,8 @@
-
 export interface QuizQuestion {
   question: string;
-  options: string[];
-  answer: string;
+  options?: string[];
+  answer?: string;
+  type?: 'multiple' | 'essay';
 }
 
 export interface QuizState {
