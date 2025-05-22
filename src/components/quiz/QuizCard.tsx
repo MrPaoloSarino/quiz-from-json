@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,7 +58,9 @@ const QuizCard: React.FC<QuizCardProps> = ({
               disabled={showFeedback}
             >
               <div className="flex justify-between items-center w-full">
-                <span>{option}</span>
+                <span
+                  style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}
+                >{option}</span>
                 {showFeedback && option === question.answer && (
                   <CheckCircle className="h-5 w-5 text-white" />
                 )}
