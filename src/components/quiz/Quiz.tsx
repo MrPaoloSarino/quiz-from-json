@@ -55,7 +55,7 @@ const Quiz: React.FC = () => {
   const MAX_RETRIES = 3;
   const RETRY_DELAY = 1000; // 1 second
 
-  const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
+  const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent";
 
   // Enhanced API key validation for Gemini API keys
   const validateApiKey = (key: string): boolean => {
