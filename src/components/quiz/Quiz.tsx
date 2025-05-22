@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
 
-const STORAGE_KEY = "quiz-gemini-api-key";
+const STORAGE_KEY = "quiz-openrouter-api-key";
 const RATE_LIMIT_TIME = 60000; // 1 minute in milliseconds
 const MAX_CALLS_PER_MINUTE = 10;
 
@@ -30,6 +30,9 @@ const decryptData = (encryptedData: string, salt: string = 'quiz-app'): string =
   }
 };
 
+const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+const OPENROUTER_MODEL = "deepseek/deepseek-chat-v3-0324:free";
+
 const Quiz: React.FC = () => {
   const [state, setState] = useState<QuizState>({
     questions: [],
@@ -42,7 +45,9 @@ const Quiz: React.FC = () => {
   const [showInput, setShowInput] = useState<boolean>(true);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState<boolean>(false);
-  const [geminiKey, setGeminiKey] = useState<string>("");
+  const [openRouterKey, setOpenRouterKey] = useState<string>("");
+  const [siteUrl, setSiteUrl] = useState<string>("");
+  const [siteName, setSiteName] = useState<string>("");
   const [showGeminiInput, setShowGeminiInput] = useState<boolean>(false);
   const [loadingFeedback, setLoadingFeedback] = useState<boolean>(false);
   const [showConfirmation, setShowConfirmation] = useState<boolean>(false);
@@ -55,15 +60,9 @@ const Quiz: React.FC = () => {
   const MAX_RETRIES = 3;
   const RETRY_DELAY = 1000; // 1 second
 
-  const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent";
-
-  // Enhanced API key validation for Gemini API keys
+  // Enhanced API key validation for OpenRouter keys (usually sk-or-...)
   const validateApiKey = (key: string): boolean => {
-    // Common API key requirements:
-    // - At least 20 chars long
-    // - Contains only alphanumeric chars, hyphens, or underscores
-    // - No spaces
-    return key.trim().length >= 20 && /^[A-Za-z0-9\-_]+$/.test(key) && !key.includes(' ');
+    return key.trim().length > 20 && key.startsWith("sk-");
   };
 
   // Rate limiting check
@@ -91,14 +90,14 @@ const Quiz: React.FC = () => {
     if (savedKey) {
       const decryptedKey = decryptData(savedKey);
       if (decryptedKey) {
-        setGeminiKey(decryptedKey);
+        setOpenRouterKey(decryptedKey);
       }
     }
   }, []);
 
   const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newKey = e.target.value;
-    setGeminiKey(newKey);
+    setOpenRouterKey(newKey);
     
     // Save to localStorage if not empty
     if (newKey.trim()) {
@@ -154,7 +153,7 @@ const Quiz: React.FC = () => {
     }
 
     // Get AI feedback if API key is provided
-    if (geminiKey && geminiKey.trim() !== "") {
+    if (openRouterKey && openRouterKey.trim() !== "") {
       getFeedback(
         state.questions[state.currentQuestion].question,
         selectedOption,
@@ -193,101 +192,72 @@ const Quiz: React.FC = () => {
     correctAnswer: string, 
     isCorrect: boolean
   ) => {
-    // Reset previous API error
     setApiError(null);
     setLoadingFeedback(true);
-
     try {
-      // Validate API key before making request
-      if (!geminiKey || !validateApiKey(geminiKey)) {
-        throw new Error("Invalid API key format");
+      if (!openRouterKey || !validateApiKey(openRouterKey)) {
+        throw new Error("Invalid OpenRouter API key format");
       }
-
-      // Check rate limiting
       if (isRateLimited()) {
         throw new Error("Rate limit exceeded. Please wait before making more requests.");
       }
-
       const prompt = `
         I'm doing a quiz. The question was: "${question}".
         I chose: "${userAnswer}".
         The correct answer is: "${correctAnswer}".
         My answer was ${isCorrect ? 'correct' : 'incorrect'}.
-        
-        Please provide a brief, conversational feedback with a helpful explanation about this answer (2-3 sentences max).
-        Focus on clarifying why the answer is correct or what the correct answer means.
+        Please provide a brief, conversational feedback with a helpful explanation about this answer (2-3 sentences max). Focus on clarifying why the answer is correct or what the correct answer means.
       `;
-
-      const makeRequest = async (): Promise<GeminiResponse> => {
-        // Record this API call for rate limiting
+      const makeRequest = async (): Promise<string> => {
         recordApiCall();
-
-        const response = await fetch(
-          `${GEMINI_API_URL}?key=${geminiKey}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [
-                    {
-                      text: prompt
-                    }
-                  ]
-                }
-              ],
-              generationConfig: {
-                temperature: 0.7,
-                maxOutputTokens: 200,
-              }
-            }),
-          }
-        );
-
+        const response = await fetch(OPENROUTER_API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${openRouterKey}`,
+            ...(siteUrl ? { "HTTP-Referer": siteUrl } : {}),
+            ...(siteName ? { "X-Title": siteName } : {}),
+          },
+          body: JSON.stringify({
+            model: OPENROUTER_MODEL,
+            messages: [
+              { role: "system", content: "You are a helpful quiz feedback assistant." },
+              { role: "user", content: prompt }
+            ],
+            extra_body: {},
+          }),
+        });
         if (!response.ok) {
-          const errorData = await response.json();
+          const errorData = await response.json().catch(() => ({}));
           throw new Error(`API error: ${errorData?.error?.message || response.statusText}`);
         }
-
         const data = await response.json();
-        
-        // Validate response structure
-        if (!data?.contents?.[0]?.parts?.[0]?.text) {
+        if (!data?.choices?.[0]?.message?.content) {
           throw new Error("Invalid API response format");
         }
-
-        return data;
+        return data.choices[0].message.content;
       };
-
-      let response: GeminiResponse;
+      let feedbackText: string = "";
       let currentRetry = 0;
-
       while (currentRetry < MAX_RETRIES) {
         try {
-          response = await makeRequest();
+          feedbackText = await makeRequest();
           break;
         } catch (error) {
           currentRetry++;
           if (currentRetry === MAX_RETRIES) {
             throw error;
           }
-          await sleep(RETRY_DELAY * currentRetry); // Exponential backoff
+          await sleep(RETRY_DELAY * currentRetry);
         }
       }
-
-      if (!response) {
+      if (!feedbackText) {
         throw new Error("Failed to get response after retries");
       }
-
       setState((prevState) => ({
         ...prevState,
-        feedback: response.contents[0].parts[0].text,
+        feedback: feedbackText,
       }));
-
-      // Reset retry count on success
       setRetryCount(0);
     } catch (error) {
       console.error("Error getting AI feedback:", error);
@@ -338,18 +308,19 @@ const Quiz: React.FC = () => {
   if (showGeminiInput) {
     return (
       <Card className="w-full max-w-xl mx-auto p-6">
-        <h2 className="text-xl font-semibold mb-4">Enter Google Gemini API Key</h2>
+        <h2 className="text-xl font-semibold mb-4">Enter OpenRouter API Key</h2>
         <p className="text-sm text-gray-500 mb-4">
-          To get AI feedback on your answers, please enter your Gemini API key.
-          You can skip this step if you don't want AI feedback.
+          To get AI feedback on your answers, please enter your OpenRouter API key.<br />
+          You can get a free key at <a href="https://openrouter.ai/" target="_blank" rel="noopener noreferrer" className="underline">openrouter.ai</a>.<br />
+          <b>Optional:</b> For better ranking, enter your site URL and site name.
         </p>
-        <div className="flex relative">
+        <div className="flex relative mb-2">
           <input
             type={showPassword ? "text" : "password"}
-            value={geminiKey}
+            value={openRouterKey}
             onChange={handleApiKeyChange}
-            placeholder="Paste your Gemini API key here"
-            className="w-full p-2 border rounded mb-4 pr-10"
+            placeholder="Paste your OpenRouter API key here"
+            className="w-full p-2 border rounded pr-10"
           />
           <button 
             type="button"
@@ -360,18 +331,32 @@ const Quiz: React.FC = () => {
             {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
         </div>
-        {geminiKey && !validateApiKey(geminiKey) && (
+        {openRouterKey && !validateApiKey(openRouterKey) && (
           <p className="text-sm text-red-500 mb-2">
-            API key seems invalid. It should be at least 20 characters and contain only letters, numbers, hyphens, or underscores.
+            API key seems invalid. It should start with <code>sk-</code> and be at least 20 characters.
           </p>
         )}
+        <input
+          type="text"
+          value={siteUrl}
+          onChange={e => setSiteUrl(e.target.value)}
+          placeholder="Your site URL (optional)"
+          className="w-full p-2 border rounded mb-2"
+        />
+        <input
+          type="text"
+          value={siteName}
+          onChange={e => setSiteName(e.target.value)}
+          placeholder="Your site name (optional)"
+          className="w-full p-2 border rounded mb-4"
+        />
         <div className="flex gap-2">
           <Button
             onClick={startQuiz}
             className="flex-1 bg-quiz-primary hover:bg-quiz-secondary text-white"
-            disabled={geminiKey.trim() !== "" && !validateApiKey(geminiKey)}
+            disabled={openRouterKey.trim() !== "" && !validateApiKey(openRouterKey)}
           >
-            {geminiKey ? "Start Quiz with AI Feedback" : "Start Quiz without AI Feedback"}
+            {openRouterKey ? "Start Quiz with AI Feedback" : "Start Quiz without AI Feedback"}
           </Button>
         </div>
       </Card>
