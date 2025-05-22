@@ -59,6 +59,8 @@ const Quiz: React.FC = () => {
   const [apiCalls, setApiCalls] = useState<number[]>([]);
   const MAX_RETRIES = 3;
   const RETRY_DELAY = 1000; // 1 second
+  const [models, setModels] = useState<any[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string>("");
 
   // Enhanced API key validation for OpenRouter keys (usually sk-or-...)
   const validateApiKey = (key: string): boolean => {
@@ -186,6 +188,34 @@ const Quiz: React.FC = () => {
     }
   };
 
+  // Fetch available models from OpenRouter when API key is entered
+  useEffect(() => {
+    const fetchModels = async () => {
+      if (!openRouterKey || !validateApiKey(openRouterKey)) {
+        setModels([]);
+        setSelectedModel("");
+        return;
+      }
+      try {
+        const res = await fetch("https://openrouter.ai/api/v1/models", {
+          headers: {
+            "Authorization": `Bearer ${openRouterKey}`,
+          },
+        });
+        if (!res.ok) throw new Error("Failed to fetch models");
+        const data = await res.json();
+        setModels(data.data || []);
+        if (data.data && data.data.length > 0) {
+          setSelectedModel(data.data[0].id);
+        }
+      } catch (e) {
+        setModels([]);
+        setSelectedModel("");
+      }
+    };
+    fetchModels();
+  }, [openRouterKey]);
+
   const getFeedback = async (
     question: string, 
     userAnswer: string, 
@@ -197,6 +227,9 @@ const Quiz: React.FC = () => {
     try {
       if (!openRouterKey || !validateApiKey(openRouterKey)) {
         throw new Error("Invalid OpenRouter API key format");
+      }
+      if (!selectedModel) {
+        throw new Error("No model selected");
       }
       if (isRateLimited()) {
         throw new Error("Rate limit exceeded. Please wait before making more requests.");
@@ -219,7 +252,7 @@ const Quiz: React.FC = () => {
             ...(siteName ? { "X-Title": siteName } : {}),
           },
           body: JSON.stringify({
-            model: OPENROUTER_MODEL,
+            model: selectedModel,
             messages: [
               { role: "system", content: "You are a helpful quiz feedback assistant." },
               { role: "user", content: prompt }
@@ -344,6 +377,22 @@ const Quiz: React.FC = () => {
             API key seems invalid. It should start with <code>sk-</code> and be at least 20 characters.
           </p>
         )}
+        <div className="mb-2">
+          <label className="block text-sm font-medium mb-1">Choose a model</label>
+          <select
+            className="w-full p-2 border rounded"
+            value={selectedModel}
+            onChange={e => setSelectedModel(e.target.value)}
+            disabled={models.length === 0}
+          >
+            {models.length === 0 && <option value="">Enter a valid API key to load models</option>}
+            {models.map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.id} {model.description ? `- ${model.description}` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
         <input
           type="text"
           value={siteUrl}
