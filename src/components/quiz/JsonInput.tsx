@@ -15,22 +15,12 @@ const JsonInput: React.FC<JsonInputProps> = ({ onQuizStart }) => {
   {
     "question": "What is 2 + 2?",
     "options": ["3", "4", "5"],
-    "answer": "4",
-    "type": "multiple"
+    "answer": "4"
   },
   {
     "question": "Capital of France?",
     "options": ["Paris", "Rome", "Berlin"],
-    "answer": "Paris",
-    "type": "multiple"
-  },
-  {
-    "question": "Explain the theory of relativity.",
-    "type": "essay"
-  },
-  {
-    "question": "Describe your most meaningful learning experience and why it was impactful.",
-    "type": "essay"
+    "answer": "Paris"
   }
 ]`);
   const [error, setError] = useState<string | null>(null);
