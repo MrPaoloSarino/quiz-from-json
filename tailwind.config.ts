@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -64,8 +63,8 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				},
 				quiz: {
-					primary: '#6366f1',
-					secondary: '#8b5cf6',
+					primary: '#10b981',
+					secondary: '#059669',
 					success: '#10b981',
 					error: '#ef4444',
 					neutral: '#f3f4f6',
