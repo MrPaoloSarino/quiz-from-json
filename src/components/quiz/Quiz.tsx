@@ -25,18 +25,26 @@ const Quiz: React.FC = () => {
   const [showGeminiInput, setShowGeminiInput] = useState<boolean>(false);
   const [loadingFeedback, setLoadingFeedback] = useState<boolean>(false);
   const [showConfirmation, setShowConfirmation] = useState<boolean>(false);
+  const [quizReadyToStart, setQuizReadyToStart] = useState<boolean>(false);
+  const [loadedQuestions, setLoadedQuestions] = useState<QuizQuestion[]>([]);
 
-  const startQuiz = (questions: QuizQuestion[]) => {
+  const prepareQuiz = (questions: QuizQuestion[]) => {
+    setLoadedQuestions(questions);
+    setShowInput(false);
+    setShowGeminiInput(true);
+  };
+  
+  const startQuiz = () => {
     setState({
-      questions,
+      questions: loadedQuestions,
       currentQuestion: 0,
       score: 0,
       showResults: false,
-      userAnswers: Array(questions.length).fill(""),
+      userAnswers: Array(loadedQuestions.length).fill(""),
       feedback: null,
     });
-    setShowInput(false);
-    setShowGeminiInput(!geminiKey);
+    setQuizReadyToStart(false);
+    setShowGeminiInput(false);
   };
 
   const handleAnswer = (selectedOption: string) => {
@@ -180,7 +188,13 @@ const Quiz: React.FC = () => {
       feedback: null,
     });
     setShowConfirmation(false);
+    setQuizReadyToStart(false);
+    setLoadedQuestions([]);
   };
+
+  if (showInput) {
+    return <JsonInput onQuizStart={prepareQuiz} />;
+  }
 
   if (showGeminiInput) {
     return (
@@ -199,28 +213,14 @@ const Quiz: React.FC = () => {
         />
         <div className="flex gap-2">
           <Button
-            onClick={() => setShowGeminiInput(false)}
-            className="flex-1"
+            onClick={startQuiz}
+            className="flex-1 bg-quiz-primary hover:bg-quiz-secondary text-white"
           >
-            Submit
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => {
-              setShowGeminiInput(false);
-              setGeminiKey("");
-            }}
-            className="flex-1"
-          >
-            Skip
+            {geminiKey ? "Start Quiz with AI Feedback" : "Start Quiz without AI Feedback"}
           </Button>
         </div>
       </Card>
     );
-  }
-
-  if (showInput) {
-    return <JsonInput onQuizStart={startQuiz} />;
   }
 
   if (state.showResults) {
