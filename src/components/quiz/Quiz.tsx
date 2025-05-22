@@ -64,7 +64,6 @@ const Quiz: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [modelSearch, setModelSearch] = useState<string>("");
   const [showModelDropdown, setShowModelDropdown] = useState(false);
-  const [geminiKey, setGeminiKey] = useState<string>("");
   const [geminiModels, setGeminiModels] = useState<any[]>([]);
   const [selectedGeminiModel, setSelectedGeminiModel] = useState<string>("");
   const [geminiModelSearch, setGeminiModelSearch] = useState<string>("");
