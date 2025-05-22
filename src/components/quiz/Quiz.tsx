@@ -348,11 +348,7 @@ const Quiz: React.FC = () => {
                     }
                   ]
                 }
-              ],
-              generationConfig: {
-                temperature: 0.7,
-                maxOutputTokens: 200,
-              }
+              ]
             }),
           }
         );
