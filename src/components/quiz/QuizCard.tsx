@@ -38,42 +38,70 @@ const QuizCard: React.FC<QuizCardProps> = ({
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {question.options.map((option, index) => (
-            <Button
-              key={index}
-              className={`w-full justify-start h-auto py-3 px-4 text-left font-normal ${
-                selectedOption === option
-                  ? showFeedback
-                    ? option === question.answer
-                      ? "bg-quiz-success text-white hover:bg-quiz-success"
-                      : "bg-quiz-error text-white hover:bg-quiz-error"
-                    : "bg-quiz-primary text-white hover:bg-quiz-primary/90"
-                  : option === question.answer && showFeedback
-                  ? "bg-quiz-success text-white hover:bg-quiz-success"
-                  : "bg-quiz-neutral text-gray-800 hover:bg-gray-200"
-              }`}
-              onClick={() => {
-                if (!showFeedback) onAnswer(option);
-              }}
-              disabled={showFeedback}
-            >
-              <div className="flex justify-between items-center w-full">
-                <span
-                  style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}
-                >{option}</span>
-                {showFeedback && option === question.answer && (
-                  <CheckCircle className="h-5 w-5 text-white" />
-                )}
-                {showFeedback && selectedOption === option && option !== question.answer && (
-                  <XCircle className="h-5 w-5 text-white" />
-                )}
-              </div>
-            </Button>
-          ))}
+          {question.type === 'essay' ? (
+            <EssayInput onSubmit={onAnswer} disabled={showFeedback} initialValue={selectedOption || ''} />
+          ) : (
+            question.options?.map((option, index) => (
+              <Button
+                key={index}
+                className={`w-full justify-start h-auto py-3 px-4 text-left font-normal ${
+                  selectedOption === option
+                    ? showFeedback
+                      ? option === question.answer
+                        ? "bg-quiz-success text-white hover:bg-quiz-success"
+                        : "bg-quiz-error text-white hover:bg-quiz-error"
+                      : "bg-quiz-primary text-white hover:bg-quiz-primary/90"
+                    : option === question.answer && showFeedback
+                    ? "bg-quiz-success text-white hover:bg-quiz-success"
+                    : "bg-quiz-neutral text-gray-800 hover:bg-gray-200"
+                }`}
+                onClick={() => {
+                  if (!showFeedback) onAnswer(option);
+                }}
+                disabled={showFeedback}
+              >
+                <div className="flex justify-between items-center w-full">
+                  <span
+                    style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}
+                  >{option}</span>
+                  {showFeedback && option === question.answer && (
+                    <CheckCircle className="h-5 w-5 text-white" />
+                  )}
+                  {showFeedback && selectedOption === option && option !== question.answer && (
+                    <XCircle className="h-5 w-5 text-white" />
+                  )}
+                </div>
+              </Button>
+            ))
+          )}
         </div>
       </CardContent>
     </Card>
   );
 };
+
+function EssayInput({ onSubmit, disabled, initialValue }: { onSubmit: (text: string) => void, disabled: boolean, initialValue: string }) {
+  const [value, setValue] = useState(initialValue);
+  return (
+    <form
+      onSubmit={e => {
+        e.preventDefault();
+        if (!disabled && value.trim()) onSubmit(value.trim());
+      }}
+      className="space-y-2"
+    >
+      <textarea
+        className="w-full p-2 border rounded min-h-[100px]"
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        disabled={disabled}
+        placeholder="Type your answer here..."
+      />
+      <Button type="submit" className="bg-quiz-primary text-white" disabled={disabled || !value.trim()}>
+        Submit Answer
+      </Button>
+    </form>
+  );
+}
 
 export default QuizCard;
