@@ -45,6 +45,7 @@ const Quiz: React.FC = () => {
   const [showInput, setShowInput] = useState<boolean>(true);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState<boolean>(false);
+  const [provider, setProvider] = useState<'openrouter' | 'gemini'>('openrouter');
   const [openRouterKey, setOpenRouterKey] = useState<string>("");
   const [siteUrl, setSiteUrl] = useState<string>("");
   const [siteName, setSiteName] = useState<string>("");
@@ -63,6 +64,11 @@ const Quiz: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [modelSearch, setModelSearch] = useState<string>("");
   const [showModelDropdown, setShowModelDropdown] = useState(false);
+  const [geminiKey, setGeminiKey] = useState<string>("");
+  const [geminiModels, setGeminiModels] = useState<any[]>([]);
+  const [selectedGeminiModel, setSelectedGeminiModel] = useState<string>("");
+  const [geminiModelSearch, setGeminiModelSearch] = useState<string>("");
+  const [showGeminiModelDropdown, setShowGeminiModelDropdown] = useState(false);
 
   // Enhanced API key validation for OpenRouter keys (usually sk-or-...)
   const validateApiKey = (key: string): boolean => {
@@ -157,7 +163,14 @@ const Quiz: React.FC = () => {
     }
 
     // Get AI feedback if API key is provided
-    if (openRouterKey && openRouterKey.trim() !== "") {
+    if (provider === 'openrouter' && openRouterKey && openRouterKey.trim() !== "") {
+      getFeedback(
+        state.questions[state.currentQuestion].question,
+        selectedOption,
+        state.questions[state.currentQuestion].answer,
+        isCorrect
+      );
+    } else if (provider === 'gemini' && geminiKey && geminiKey.trim() !== "") {
       getFeedback(
         state.questions[state.currentQuestion].question,
         selectedOption,
@@ -190,8 +203,9 @@ const Quiz: React.FC = () => {
     }
   };
 
-  // Fetch available models from OpenRouter when API key is entered
+  // Fetch OpenRouter models
   useEffect(() => {
+    if (provider !== 'openrouter') return;
     const fetchModels = async () => {
       if (!openRouterKey || !validateApiKey(openRouterKey)) {
         setModels([]);
@@ -216,7 +230,32 @@ const Quiz: React.FC = () => {
       }
     };
     fetchModels();
-  }, [openRouterKey]);
+  }, [openRouterKey, provider]);
+
+  // Fetch Gemini models
+  useEffect(() => {
+    if (provider !== 'gemini') return;
+    const fetchGeminiModels = async () => {
+      if (!geminiKey || geminiKey.trim().length < 20) {
+        setGeminiModels([]);
+        setSelectedGeminiModel("");
+        return;
+      }
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey}`);
+        if (!res.ok) throw new Error("Failed to fetch Gemini models");
+        const data = await res.json();
+        setGeminiModels(data.models || []);
+        if (data.models && data.models.length > 0) {
+          setSelectedGeminiModel(data.models[0].name);
+        }
+      } catch (e) {
+        setGeminiModels([]);
+        setSelectedGeminiModel("");
+      }
+    };
+    fetchGeminiModels();
+  }, [geminiKey, provider]);
 
   const getFeedback = async (
     question: string, 
@@ -227,53 +266,106 @@ const Quiz: React.FC = () => {
     setApiError(null);
     setLoadingFeedback(true);
     try {
-      if (!openRouterKey || !validateApiKey(openRouterKey)) {
-        throw new Error("Invalid OpenRouter API key format");
+      if (provider === 'openrouter') {
+        if (!openRouterKey || !validateApiKey(openRouterKey)) {
+          throw new Error("Invalid OpenRouter API key format");
+        }
+        if (!selectedModel) {
+          throw new Error("No model selected");
+        }
+        if (isRateLimited()) {
+          throw new Error("Rate limit exceeded. Please wait before making more requests.");
+        }
+        const prompt = `
+          I'm doing a quiz. The question was: "${question}".
+          I chose: "${userAnswer}".
+          The correct answer is: "${correctAnswer}".
+          My answer was ${isCorrect ? 'correct' : 'incorrect'}.
+          Provide me a constructive feedback as to why my answer is correct or incorrect max 2-5 sentences.
+        `;
+        recordApiCall();
+        const response = await fetch(OPENROUTER_API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${openRouterKey}`,
+            ...(siteUrl ? { "HTTP-Referer": siteUrl } : {}),
+            ...(siteName ? { "X-Title": siteName } : {}),
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+            messages: [
+              { role: "system", content: "You are a helpful quiz feedback assistant." },
+              { role: "user", content: prompt }
+            ],
+            extra_body: {},
+          }),
+        });
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(`API error: ${errorData?.error?.message || response.statusText}`);
+        }
+        const data = await response.json();
+        if (!data?.choices?.[0]?.message?.content) {
+          throw new Error("Invalid API response format");
+        }
+        setState((prevState) => ({
+          ...prevState,
+          feedback: data.choices[0].message.content,
+        }));
+        setRetryCount(0);
+      } else if (provider === 'gemini') {
+        if (!geminiKey || geminiKey.trim().length < 20) {
+          throw new Error("Invalid Gemini API key format");
+        }
+        if (!selectedGeminiModel) {
+          throw new Error("No Gemini model selected");
+        }
+        const prompt = `
+          I'm doing a quiz. The question was: "${question}".
+          I chose: "${userAnswer}".
+          The correct answer is: "${correctAnswer}".
+          My answer was ${isCorrect ? 'correct' : 'incorrect'}.
+          Provide me a constructive feedback as to why my answer is correct or incorrect max 2-5 sentences.
+        `;
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/${selectedGeminiModel}:generateContent?key=${geminiKey}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    {
+                      text: prompt
+                    }
+                  ]
+                }
+              ],
+              generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 200,
+              }
+            }),
+          }
+        );
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(`API error: ${errorData?.error?.message || response.statusText}`);
+        }
+        const data = await response.json();
+        if (!data?.contents?.[0]?.parts?.[0]?.text) {
+          throw new Error("Invalid Gemini API response format");
+        }
+        setState((prevState) => ({
+          ...prevState,
+          feedback: data.contents[0].parts[0].text,
+        }));
+        setRetryCount(0);
       }
-      if (!selectedModel) {
-        throw new Error("No model selected");
-      }
-      if (isRateLimited()) {
-        throw new Error("Rate limit exceeded. Please wait before making more requests.");
-      }
-      const prompt = `
-        I'm doing a quiz. The question was: "${question}".
-        I chose: "${userAnswer}".
-        The correct answer is: "${correctAnswer}".
-        My answer was ${isCorrect ? 'correct' : 'incorrect'}.
-        Provide me a constructive feedback as to why my answer is correct or incorrect max 2-5 sentences.
-      `;
-      recordApiCall();
-      const response = await fetch(OPENROUTER_API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${openRouterKey}`,
-          ...(siteUrl ? { "HTTP-Referer": siteUrl } : {}),
-          ...(siteName ? { "X-Title": siteName } : {}),
-        },
-        body: JSON.stringify({
-          model: selectedModel,
-          messages: [
-            { role: "system", content: "You are a helpful quiz feedback assistant." },
-            { role: "user", content: prompt }
-          ],
-          extra_body: {},
-        }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`API error: ${errorData?.error?.message || response.statusText}`);
-      }
-      const data = await response.json();
-      if (!data?.choices?.[0]?.message?.content) {
-        throw new Error("Invalid API response format");
-      }
-      setState((prevState) => ({
-        ...prevState,
-        feedback: data.choices[0].message.content,
-      }));
-      setRetryCount(0);
     } catch (error) {
       console.error("Error getting AI feedback:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to get AI feedback";
@@ -331,99 +423,189 @@ const Quiz: React.FC = () => {
   if (showGeminiInput) {
     return (
       <Card className="w-full max-w-xl mx-auto p-6">
-        <h2 className="text-xl font-semibold mb-4">Enter OpenRouter API Key</h2>
-        <p className="text-sm text-gray-500 mb-4">
-          To get AI feedback on your answers, please enter your OpenRouter API key.<br />
-          You can get a free key at <a href="https://openrouter.ai/" target="_blank" rel="noopener noreferrer" className="underline">openrouter.ai</a>.<br />
-          <b>Optional:</b> For better ranking, enter your site URL and site name.
-        </p>
-        <div className="flex relative mb-2">
-          <input
-            type={showPassword ? "text" : "password"}
-            value={openRouterKey}
-            onChange={handleApiKeyChange}
-            placeholder="Paste your OpenRouter API key here"
-            className="w-full p-2 border rounded pr-10"
-          />
-          <button 
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-2 top-2 text-gray-500"
-            aria-label={showPassword ? "Hide API key" : "Show API key"}
+        <h2 className="text-xl font-semibold mb-4">Enter API Key & Choose Provider</h2>
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-1">Provider</label>
+          <select
+            className="w-full p-2 border rounded"
+            value={provider}
+            onChange={e => setProvider(e.target.value as 'openrouter' | 'gemini')}
           >
-            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-          </button>
+            <option value="openrouter">OpenRouter</option>
+            <option value="gemini">Gemini</option>
+          </select>
         </div>
-        {openRouterKey && !validateApiKey(openRouterKey) && (
-          <p className="text-sm text-red-500 mb-2">
-            API key seems invalid. It should start with <code>sk-</code> and be at least 20 characters.
-          </p>
-        )}
-        <div className="mb-2">
-          <label className="block text-sm font-medium mb-1">Choose a model</label>
-          <input
-            type="text"
-            className="w-full p-2 border rounded mb-2"
-            placeholder="Search models..."
-            value={modelSearch}
-            onChange={e => setModelSearch(e.target.value)}
-            onFocus={() => setShowModelDropdown(true)}
-          />
-          {/* Custom dropdown for model selection with autowrap */}
-          <div
-            className="w-full border rounded bg-white relative"
-            style={{ maxHeight: 180, overflowY: 'auto', zIndex: 10, position: 'relative' }}
-            tabIndex={0}
-            onBlur={() => setShowModelDropdown(false)}
-          >
-            {showModelDropdown && models.length > 0 && (
-              <div>
-                {models
-                  .filter(model => model.id.toLowerCase().includes(modelSearch.toLowerCase()))
-                  .map((model) => (
-                    <div
-                      key={model.id}
-                      className={`p-2 cursor-pointer hover:bg-gray-100 ${selectedModel === model.id ? 'bg-gray-200' : ''}`}
-                      style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}
-                      onMouseDown={() => {
-                        setSelectedModel(model.id);
-                        setShowModelDropdown(false);
-                      }}
-                    >
-                      {model.id}
-                    </div>
-                  ))}
-                {models.filter(model => model.id.toLowerCase().includes(modelSearch.toLowerCase())).length === 0 && (
-                  <div className="p-2 text-gray-400">No models found</div>
-                )}
-              </div>
-            )}
-            {!showModelDropdown && (
-              <div
-                className="p-2 text-gray-700 cursor-pointer"
-                style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}
-                onClick={() => setShowModelDropdown(true)}
+        {provider === 'openrouter' && (
+          <>
+            <p className="text-sm text-gray-500 mb-4">
+              To get AI feedback on your answers, please enter your OpenRouter API key.<br />
+              You can get a free key at <a href="https://openrouter.ai/" target="_blank" rel="noopener noreferrer" className="underline">openrouter.ai</a>.<br />
+              <b>Optional:</b> For better ranking, enter your site URL and site name.
+            </p>
+            <div className="flex relative mb-2">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={openRouterKey}
+                onChange={handleApiKeyChange}
+                placeholder="Paste your OpenRouter API key here"
+                className="w-full p-2 border rounded pr-10"
+              />
+              <button 
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-2 top-2 text-gray-500"
+                aria-label={showPassword ? "Hide API key" : "Show API key"}
               >
-                {selectedModel || 'Select a model'}
-              </div>
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {openRouterKey && !validateApiKey(openRouterKey) && (
+              <p className="text-sm text-red-500 mb-2">
+                API key seems invalid. It should start with <code>sk-</code> and be at least 20 characters.
+              </p>
             )}
-          </div>
-        </div>
-        <input
-          type="text"
-          value={siteUrl}
-          onChange={e => setSiteUrl(e.target.value)}
-          placeholder="Your site URL (optional)"
-          className="w-full p-2 border rounded mb-2"
-        />
-        <input
-          type="text"
-          value={siteName}
-          onChange={e => setSiteName(e.target.value)}
-          placeholder="Your site name (optional)"
-          className="w-full p-2 border rounded mb-4"
-        />
-        <div className="flex gap-2">
+            <label className="block text-sm font-medium mb-1">Choose a model</label>
+            <input
+              type="text"
+              className="w-full p-2 border rounded mb-2"
+              placeholder="Search models..."
+              value={modelSearch}
+              onChange={e => setModelSearch(e.target.value)}
+              onFocus={() => setShowModelDropdown(true)}
+            />
+            {/* Custom dropdown for model selection with autowrap */}
+            <div
+              className="w-full border rounded bg-white relative"
+              style={{ maxHeight: 180, overflowY: 'auto', zIndex: 10, position: 'relative' }}
+              tabIndex={0}
+              onBlur={() => setShowModelDropdown(false)}
+            >
+              {showModelDropdown && models.length > 0 && (
+                <div>
+                  {models
+                    .filter(model => model.id.toLowerCase().includes(modelSearch.toLowerCase()))
+                    .map((model) => (
+                      <div
+                        key={model.id}
+                        className={`p-2 cursor-pointer hover:bg-gray-100 ${selectedModel === model.id ? 'bg-gray-200' : ''}`}
+                        style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}
+                        onMouseDown={() => {
+                          setSelectedModel(model.id);
+                          setShowModelDropdown(false);
+                        }}
+                      >
+                        {model.id}
+                      </div>
+                    ))}
+                  {models.filter(model => model.id.toLowerCase().includes(modelSearch.toLowerCase())).length === 0 && (
+                    <div className="p-2 text-gray-400">No models found</div>
+                  )}
+                </div>
+              )}
+              {!showModelDropdown && (
+                <div
+                  className="p-2 text-gray-700 cursor-pointer"
+                  style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}
+                  onClick={() => setShowModelDropdown(true)}
+                >
+                  {selectedModel || 'Select a model'}
+                </div>
+              )}
+            </div>
+            <input
+              type="text"
+              value={siteUrl}
+              onChange={e => setSiteUrl(e.target.value)}
+              placeholder="Your site URL (optional)"
+              className="w-full p-2 border rounded mb-2"
+            />
+            <input
+              type="text"
+              value={siteName}
+              onChange={e => setSiteName(e.target.value)}
+              placeholder="Your site name (optional)"
+              className="w-full p-2 border rounded mb-4"
+            />
+          </>
+        )}
+        {provider === 'gemini' && (
+          <>
+            <p className="text-sm text-gray-500 mb-4">
+              To get AI feedback on your answers, please enter your Gemini API key.<br />
+              You can get a key at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="underline">Google AI Studio</a>.<br />
+            </p>
+            <div className="flex relative mb-2">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={geminiKey}
+                onChange={e => setGeminiKey(e.target.value)}
+                placeholder="Paste your Gemini API key here"
+                className="w-full p-2 border rounded pr-10"
+              />
+              <button 
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-2 top-2 text-gray-500"
+                aria-label={showPassword ? "Hide API key" : "Show API key"}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {geminiKey && geminiKey.trim().length < 20 && (
+              <p className="text-sm text-red-500 mb-2">
+                API key seems invalid. It should be at least 20 characters.
+              </p>
+            )}
+            <label className="block text-sm font-medium mb-1">Choose a Gemini model</label>
+            <input
+              type="text"
+              className="w-full p-2 border rounded mb-2"
+              placeholder="Search Gemini models..."
+              value={geminiModelSearch}
+              onChange={e => setGeminiModelSearch(e.target.value)}
+              onFocus={() => setShowGeminiModelDropdown(true)}
+            />
+            <div
+              className="w-full border rounded bg-white relative"
+              style={{ maxHeight: 180, overflowY: 'auto', zIndex: 10, position: 'relative' }}
+              tabIndex={0}
+              onBlur={() => setShowGeminiModelDropdown(false)}
+            >
+              {showGeminiModelDropdown && geminiModels.length > 0 && (
+                <div>
+                  {geminiModels
+                    .filter(model => model.name.toLowerCase().includes(geminiModelSearch.toLowerCase()))
+                    .map((model) => (
+                      <div
+                        key={model.name}
+                        className={`p-2 cursor-pointer hover:bg-gray-100 ${selectedGeminiModel === model.name ? 'bg-gray-200' : ''}`}
+                        style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}
+                        onMouseDown={() => {
+                          setSelectedGeminiModel(model.name);
+                          setShowGeminiModelDropdown(false);
+                        }}
+                      >
+                        {model.name}
+                      </div>
+                    ))}
+                  {geminiModels.filter(model => model.name.toLowerCase().includes(geminiModelSearch.toLowerCase())).length === 0 && (
+                    <div className="p-2 text-gray-400">No Gemini models found</div>
+                  )}
+                </div>
+              )}
+              {!showGeminiModelDropdown && (
+                <div
+                  className="p-2 text-gray-700 cursor-pointer"
+                  style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}
+                  onClick={() => setShowGeminiModelDropdown(true)}
+                >
+                  {selectedGeminiModel || 'Select a Gemini model'}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+        <div className="flex gap-2 mt-4">
           <Button
             variant="ghost"
             onClick={() => setShowInput(true)}
@@ -434,9 +616,14 @@ const Quiz: React.FC = () => {
           <Button
             onClick={startQuiz}
             className="flex-1 bg-quiz-primary hover:bg-quiz-secondary text-white"
-            disabled={openRouterKey.trim() !== "" && !validateApiKey(openRouterKey)}
+            disabled={
+              (provider === 'openrouter' && (openRouterKey.trim() !== "" && !validateApiKey(openRouterKey))) ||
+              (provider === 'gemini' && (geminiKey.trim().length > 0 && geminiKey.trim().length < 20))
+            }
           >
-            {openRouterKey ? "Start Quiz with AI Feedback" : "Start Quiz without AI Feedback"}
+            {provider === 'openrouter'
+              ? (openRouterKey ? "Start Quiz with AI Feedback" : "Start Quiz without AI Feedback")
+              : (geminiKey ? "Start Quiz with AI Feedback" : "Start Quiz without AI Feedback")}
           </Button>
         </div>
       </Card>
