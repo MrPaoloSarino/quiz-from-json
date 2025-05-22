@@ -245,9 +245,11 @@ const Quiz: React.FC = () => {
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey}`);
         if (!res.ok) throw new Error("Failed to fetch Gemini models");
         const data = await res.json();
-        setGeminiModels(data.models || []);
-        if (data.models && data.models.length > 0) {
-          setSelectedGeminiModel(data.models[0].name);
+        // Only include models that support generateContent
+        const filtered = (data.models || []).filter((m: any) => (m.supportedGenerationMethods || []).includes('generateContent'));
+        setGeminiModels(filtered);
+        if (filtered.length > 0) {
+          setSelectedGeminiModel(filtered[0].name);
         }
       } catch (e) {
         setGeminiModels([]);
@@ -321,6 +323,8 @@ const Quiz: React.FC = () => {
         if (!selectedGeminiModel) {
           throw new Error("No Gemini model selected");
         }
+        // Use only the model id (after last /)
+        const modelId = selectedGeminiModel.split('/').pop();
         const prompt = `
           I'm doing a quiz. The question was: "${question}".
           I chose: "${userAnswer}".
@@ -329,7 +333,7 @@ const Quiz: React.FC = () => {
           Provide me a constructive feedback as to why my answer is correct or incorrect max 2-5 sentences.
         `;
         const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/${selectedGeminiModel}:generateContent?key=${geminiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${geminiKey}`,
           {
             method: "POST",
             headers: {
@@ -585,7 +589,7 @@ const Quiz: React.FC = () => {
                           setShowGeminiModelDropdown(false);
                         }}
                       >
-                        {model.name}
+                        {model.name.split('/').pop()}
                       </div>
                     ))}
                   {geminiModels.filter(model => model.name.toLowerCase().includes(geminiModelSearch.toLowerCase())).length === 0 && (
@@ -599,7 +603,7 @@ const Quiz: React.FC = () => {
                   style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}
                   onClick={() => setShowGeminiModelDropdown(true)}
                 >
-                  {selectedGeminiModel || 'Select a Gemini model'}
+                  {selectedGeminiModel ? selectedGeminiModel.split('/').pop() : 'Select a Gemini model'}
                 </div>
               )}
             </div>
