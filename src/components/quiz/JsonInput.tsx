@@ -46,22 +46,25 @@ const JsonInput: React.FC<JsonInputProps> = ({ onQuizStart }) => {
   const handleStartQuiz = () => {
     try {
       setError(null);
-      const parsedQuestions = JSON.parse(jsonInput);
-      
-      if (!validateQuestions(parsedQuestions)) {
-        setError("Invalid format. Each question must have a 'question' string, 'options' array of strings, and an 'answer' string that is included in the options.");
+      let parsedQuestions;
+      try {
+        parsedQuestions = JSON.parse(jsonInput);
+      } catch (err) {
+        setError("Invalid JSON format. Please check your input for syntax errors (e.g., missing commas, brackets, or quotes).");
         return;
       }
-      
+      if (!validateQuestions(parsedQuestions)) {
+        setError("Invalid format. Each multiple choice question must have a 'question' string, 'options' array of strings, and an 'answer' string that is included in the options. Essay questions must have a 'question' string and 'type': 'essay'.");
+        return;
+      }
       if (parsedQuestions.length === 0) {
         setError("Quiz must contain at least one question.");
         return;
       }
-
       onQuizStart(parsedQuestions);
       toast.success("Quiz loaded successfully!");
     } catch (err) {
-      setError("Invalid JSON. Please check your input.");
+      setError("Unexpected error. Please check your input.");
     }
   };
 
