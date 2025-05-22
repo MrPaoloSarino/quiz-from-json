@@ -239,7 +239,7 @@ const Quiz: React.FC = () => {
         I chose: "${userAnswer}".
         The correct answer is: "${correctAnswer}".
         My answer was ${isCorrect ? 'correct' : 'incorrect'}.
-        Please provide a brief, conversational feedback with a helpful explanation about this answer (2-3 sentences max). Focus on clarifying why the answer is correct or what the correct answer means.
+        Provide me a constructive feedback as to why my answer is correct or incorrect max 2-5 sentences.
       `;
       const makeRequest = async (): Promise<string> => {
         recordApiCall();
@@ -388,7 +388,7 @@ const Quiz: React.FC = () => {
             {models.length === 0 && <option value="">Enter a valid API key to load models</option>}
             {models.map((model) => (
               <option key={model.id} value={model.id}>
-                {model.id}
+                {model.id}{model.pricing ? ` (${model.pricing})` : ''}
               </option>
             ))}
           </select>
