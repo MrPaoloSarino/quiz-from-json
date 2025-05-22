@@ -61,6 +61,7 @@ const Quiz: React.FC = () => {
   const RETRY_DELAY = 1000; // 1 second
   const [models, setModels] = useState<any[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>("");
+  const [modelSearch, setModelSearch] = useState<string>("");
 
   // Enhanced API key validation for OpenRouter keys (usually sk-or-...)
   const validateApiKey = (key: string): boolean => {
@@ -379,6 +380,13 @@ const Quiz: React.FC = () => {
         )}
         <div className="mb-2">
           <label className="block text-sm font-medium mb-1">Choose a model</label>
+          <input
+            type="text"
+            className="w-full p-2 border rounded mb-2"
+            placeholder="Search models..."
+            value={modelSearch}
+            onChange={e => setModelSearch(e.target.value)}
+          />
           <select
             className="w-full p-2 border rounded"
             value={selectedModel}
@@ -386,11 +394,13 @@ const Quiz: React.FC = () => {
             disabled={models.length === 0}
           >
             {models.length === 0 && <option value="">Enter a valid API key to load models</option>}
-            {models.map((model) => (
-              <option key={model.id} value={model.id}>
-                {model.id}
-              </option>
-            ))}
+            {models
+              .filter(model => model.id.toLowerCase().includes(modelSearch.toLowerCase()))
+              .map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.id}
+                </option>
+              ))}
           </select>
         </div>
         <input
