@@ -243,55 +243,35 @@ const Quiz: React.FC = () => {
         My answer was ${isCorrect ? 'correct' : 'incorrect'}.
         Provide me a constructive feedback as to why my answer is correct or incorrect max 2-5 sentences.
       `;
-      const makeRequest = async (): Promise<string> => {
-        recordApiCall();
-        const response = await fetch(OPENROUTER_API_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${openRouterKey}`,
-            ...(siteUrl ? { "HTTP-Referer": siteUrl } : {}),
-            ...(siteName ? { "X-Title": siteName } : {}),
-          },
-          body: JSON.stringify({
-            model: selectedModel,
-            messages: [
-              { role: "system", content: "You are a helpful quiz feedback assistant." },
-              { role: "user", content: prompt }
-            ],
-            extra_body: {},
-          }),
-        });
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(`API error: ${errorData?.error?.message || response.statusText}`);
-        }
-        const data = await response.json();
-        if (!data?.choices?.[0]?.message?.content) {
-          throw new Error("Invalid API response format");
-        }
-        return data.choices[0].message.content;
-      };
-      let feedbackText: string = "";
-      let currentRetry = 0;
-      while (currentRetry < MAX_RETRIES) {
-        try {
-          feedbackText = await makeRequest();
-          break;
-        } catch (error) {
-          currentRetry++;
-          if (currentRetry === MAX_RETRIES) {
-            throw error;
-          }
-          await sleep(RETRY_DELAY * currentRetry);
-        }
+      recordApiCall();
+      const response = await fetch(OPENROUTER_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${openRouterKey}`,
+          ...(siteUrl ? { "HTTP-Referer": siteUrl } : {}),
+          ...(siteName ? { "X-Title": siteName } : {}),
+        },
+        body: JSON.stringify({
+          model: selectedModel,
+          messages: [
+            { role: "system", content: "You are a helpful quiz feedback assistant." },
+            { role: "user", content: prompt }
+          ],
+          extra_body: {},
+        }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`API error: ${errorData?.error?.message || response.statusText}`);
       }
-      if (!feedbackText) {
-        throw new Error("Failed to get response after retries");
+      const data = await response.json();
+      if (!data?.choices?.[0]?.message?.content) {
+        throw new Error("Invalid API response format");
       }
       setState((prevState) => ({
         ...prevState,
-        feedback: feedbackText,
+        feedback: data.choices[0].message.content,
       }));
       setRetryCount(0);
     } catch (error) {
