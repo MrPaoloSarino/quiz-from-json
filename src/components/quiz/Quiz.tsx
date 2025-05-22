@@ -272,7 +272,7 @@ const Quiz: React.FC = () => {
 
   const restartQuiz = () => {
     setState({
-      ...state,
+      questions: state.questions,
       currentQuestion: 0,
       score: 0,
       showResults: false,
@@ -283,6 +283,10 @@ const Quiz: React.FC = () => {
     setShowFeedback(false);
     setShowConfirmation(false);
     setApiError(null);
+    setRetryCount(0);
+    setApiCalls([]);
+    setQuizReadyToStart(false);
+    setLoadedQuestions(state.questions);
   };
 
   const newQuiz = () => {
@@ -299,6 +303,10 @@ const Quiz: React.FC = () => {
     setQuizReadyToStart(false);
     setLoadedQuestions([]);
     setApiError(null);
+    setRetryCount(0);
+    setApiCalls([]);
+    setSelectedOption(null);
+    setShowFeedback(false);
   };
 
   if (showInput) {
