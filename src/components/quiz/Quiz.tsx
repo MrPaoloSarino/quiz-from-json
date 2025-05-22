@@ -354,11 +354,31 @@ const Quiz: React.FC = () => {
         );
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(`API error: ${errorData?.error?.message || response.statusText}`);
+          let debugMsg = '';
+          if (errorData?.error?.message) {
+            debugMsg = `Gemini API error: ${errorData.error.message}`;
+          } else if (errorData?.error) {
+            debugMsg = `Gemini API error: ${JSON.stringify(errorData.error)}`;
+          } else {
+            debugMsg = `Raw response: ${JSON.stringify(errorData)}`;
+          }
+          throw new Error(
+            `API error: ${errorData?.error?.message || response.statusText}\n\nPossible causes:\n- Invalid API key\n- Invalid or unsupported model\n- Quota exceeded or billing issue\n- Network or server error\n\n${debugMsg}`
+          );
         }
         const data = await response.json();
         if (!data?.contents?.[0]?.parts?.[0]?.text) {
-          throw new Error("Invalid Gemini API response format");
+          let debugMsg = '';
+          if (data?.error?.message) {
+            debugMsg = `Gemini API error: ${data.error.message}`;
+          } else if (data?.error) {
+            debugMsg = `Gemini API error: ${JSON.stringify(data.error)}`;
+          } else {
+            debugMsg = `Raw response: ${JSON.stringify(data)}`;
+          }
+          throw new Error(
+            `Invalid Gemini API response format.\n\nPossible causes:\n- Invalid API key\n- Invalid or unsupported model\n- Quota exceeded or billing issue\n- Network or server error\n\n${debugMsg}`
+          );
         }
         setState((prevState) => ({
           ...prevState,
