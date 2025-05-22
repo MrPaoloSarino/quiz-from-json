@@ -15,11 +15,11 @@ export interface QuizState {
 }
 
 export interface GeminiResponse {
-  content: {
+  contents: {
     parts: {
       text: string;
     }[];
-  };
+  }[];
   error?: {
     code: number;
     message: string;

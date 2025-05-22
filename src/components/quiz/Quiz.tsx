@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import JsonInput from "./JsonInput";
 import QuizCard from "./QuizCard";
@@ -135,7 +134,7 @@ const Quiz: React.FC = () => {
       `;
 
       const response = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent?key=" + geminiKey,
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + geminiKey,
         {
           method: "POST",
           headers: {
@@ -174,11 +173,11 @@ const Quiz: React.FC = () => {
       }
 
       // Check if we have valid content in the response
-      if (!data?.content?.parts || !data.content.parts.length) {
+      if (!data?.contents || !data.contents[0]?.parts || !data.contents[0].parts.length) {
         throw new Error("Unexpected API response format");
       }
 
-      const feedbackText = data.content.parts[0]?.text;
+      const feedbackText = data.contents[0].parts[0]?.text;
       
       if (!feedbackText) {
         throw new Error("No feedback text in response");
