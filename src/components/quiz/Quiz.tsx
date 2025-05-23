@@ -41,6 +41,7 @@ const Quiz: React.FC = () => {
     showResults: false,
     userAnswers: [],
     feedback: null,
+    essayRatings: [],
   });
   const [showInput, setShowInput] = useState<boolean>(true);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
@@ -132,6 +133,7 @@ const Quiz: React.FC = () => {
       showResults: false,
       userAnswers: Array(loadedQuestions.length).fill(""),
       feedback: null,
+      essayRatings: Array(loadedQuestions.length).fill(null),
     });
     setQuizReadyToStart(false);
     setShowGeminiInput(false);
@@ -156,6 +158,7 @@ const Quiz: React.FC = () => {
       score: isEssay ? state.score : (isCorrect ? state.score + 1 : state.score),
       userAnswers: updatedUserAnswers,
       feedback: null,
+      essayRatings: [...state.essayRatings],
     });
     
     // Show toast for feedback - only for multiple choice questions
@@ -377,12 +380,28 @@ My answer: ${userAnswer}`;
           // Update score for this essay question
           setState((prevState) => {
             const newUserAnswers = [...prevState.userAnswers];
+            const newEssayRatings = [...prevState.essayRatings];
             newUserAnswers[prevState.currentQuestion] = userAnswer;
-            // Score is the rating for this question
+            newEssayRatings[prevState.currentQuestion] = rating;
+            
+            // Calculate new total score
+            let newScore = 0;
+            for (let i = 0; i < prevState.questions.length; i++) {
+              if (prevState.questions[i].type === 'essay') {
+                newScore += newEssayRatings[i] || 0;
+              } else {
+                // Multiple choice: 1 point if correct answer matches
+                if (i < newUserAnswers.length && newUserAnswers[i] === prevState.questions[i].answer) {
+                  newScore += 1;
+                }
+              }
+            }
+            
             return {
               ...prevState,
-              score: prevState.score - (prevState.userAnswers[prevState.currentQuestion] ? Number(prevState.userAnswers[prevState.currentQuestion]) : 0) + rating,
+              score: newScore,
               userAnswers: newUserAnswers,
+              essayRatings: newEssayRatings,
             };
           });
         }
@@ -492,12 +511,28 @@ My answer: ${userAnswer}`;
           // Update score for this essay question
           setState((prevState) => {
             const newUserAnswers = [...prevState.userAnswers];
+            const newEssayRatings = [...prevState.essayRatings];
             newUserAnswers[prevState.currentQuestion] = userAnswer;
-            // Score is the rating for this question
+            newEssayRatings[prevState.currentQuestion] = rating;
+            
+            // Calculate new total score
+            let newScore = 0;
+            for (let i = 0; i < prevState.questions.length; i++) {
+              if (prevState.questions[i].type === 'essay') {
+                newScore += newEssayRatings[i] || 0;
+              } else {
+                // Multiple choice: 1 point if correct answer matches
+                if (i < newUserAnswers.length && newUserAnswers[i] === prevState.questions[i].answer) {
+                  newScore += 1;
+                }
+              }
+            }
+            
             return {
               ...prevState,
-              score: prevState.score - (prevState.userAnswers[prevState.currentQuestion] ? Number(prevState.userAnswers[prevState.currentQuestion]) : 0) + rating,
+              score: newScore,
               userAnswers: newUserAnswers,
+              essayRatings: newEssayRatings,
             };
           });
         }
@@ -577,12 +612,28 @@ My answer: ${userAnswer}`;
           // Update score for this essay question
           setState((prevState) => {
             const newUserAnswers = [...prevState.userAnswers];
+            const newEssayRatings = [...prevState.essayRatings];
             newUserAnswers[prevState.currentQuestion] = userAnswer;
-            // Score is the rating for this question
+            newEssayRatings[prevState.currentQuestion] = rating;
+            
+            // Calculate new total score
+            let newScore = 0;
+            for (let i = 0; i < prevState.questions.length; i++) {
+              if (prevState.questions[i].type === 'essay') {
+                newScore += newEssayRatings[i] || 0;
+              } else {
+                // Multiple choice: 1 point if correct answer matches
+                if (i < newUserAnswers.length && newUserAnswers[i] === prevState.questions[i].answer) {
+                  newScore += 1;
+                }
+              }
+            }
+            
             return {
               ...prevState,
-              score: prevState.score - (prevState.userAnswers[prevState.currentQuestion] ? Number(prevState.userAnswers[prevState.currentQuestion]) : 0) + rating,
+              score: newScore,
               userAnswers: newUserAnswers,
+              essayRatings: newEssayRatings,
             };
           });
         }
@@ -606,6 +657,7 @@ My answer: ${userAnswer}`;
       showResults: false,
       userAnswers: Array(state.questions.length).fill(""),
       feedback: null,
+      essayRatings: Array(state.questions.length).fill(null),
     });
     setSelectedOption(null);
     setShowFeedback(false);
@@ -626,6 +678,7 @@ My answer: ${userAnswer}`;
       showResults: false,
       userAnswers: [],
       feedback: null,
+      essayRatings: [],
     });
     setShowConfirmation(false);
     setQuizReadyToStart(false);
@@ -890,6 +943,7 @@ My answer: ${userAnswer}`;
         score={state.score}
         onRestart={restartQuiz}
         onNewQuiz={newQuiz}
+        essayRatings={state.essayRatings}
       />
     );
   }

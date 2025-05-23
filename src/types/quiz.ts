@@ -12,17 +12,15 @@ export interface QuizState {
   showResults: boolean;
   userAnswers: string[];
   feedback: string | null;
+  essayRatings: number[];
 }
 
 export interface GeminiResponse {
-  contents: {
-    parts: {
-      text: string;
-    }[];
-  }[];
-  error?: {
-    code: number;
-    message: string;
-    status: string;
-  };
+  candidates: Array<{
+    content: {
+      parts: Array<{
+        text: string;
+      }>;
+    };
+  }>;
 }
