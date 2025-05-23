@@ -13,11 +13,11 @@ interface AiFeedbackProps {
 const AiFeedback: React.FC<AiFeedbackProps> = ({ feedback, loading, error }) => {
   if (loading) {
     return (
-      <Card className="mt-4 border-dashed border-gray-300">
+      <Card className="mt-4 border-dashed border-green-300">
         <CardContent className="pt-4">
           <div className="flex items-center justify-center p-4">
             <Spinner className="h-8 w-8 text-quiz-primary" />
-            <span className="ml-2 text-sm text-gray-500">Getting AI feedback...</span>
+            <span className="ml-2 text-sm text-green-500">Getting AI feedback...</span>
           </div>
         </CardContent>
       </Card>
@@ -33,7 +33,7 @@ const AiFeedback: React.FC<AiFeedbackProps> = ({ feedback, loading, error }) => 
             <div>
               <h3 className="text-sm font-medium mb-1">AI Feedback Error</h3>
               <p className="text-sm text-red-600">{error}</p>
-              <p className="text-xs text-gray-500 mt-2">Please check your API key or try again later.</p>
+              <p className="text-xs text-green-500 mt-2">Please check your API key or try again later.</p>
             </div>
           </div>
         </CardContent>
@@ -44,7 +44,7 @@ const AiFeedback: React.FC<AiFeedbackProps> = ({ feedback, loading, error }) => 
   if (!feedback) return null;
 
   return (
-    <Card className="mt-4 bg-blue-50 border-blue-200">
+    <Card className="mt-4 bg-green-50 border-green-200">
       <CardContent className="pt-4">
         <h3 className="text-sm font-medium mb-2 flex items-center">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
@@ -55,7 +55,7 @@ const AiFeedback: React.FC<AiFeedbackProps> = ({ feedback, loading, error }) => 
           </svg>
           AI Feedback
         </h3>
-        <div className="text-sm text-gray-700">
+        <div className="text-sm text-green-700">
           <ReactMarkdown>{feedback}</ReactMarkdown>
         </div>
       </CardContent>

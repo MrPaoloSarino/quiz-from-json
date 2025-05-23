@@ -504,7 +504,7 @@ const Quiz: React.FC = () => {
         </div>
         {provider === 'openrouter' && (
           <>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-green-500 mb-4">
               To get AI feedback on your answers, please enter your OpenRouter API key.<br />
               You can get a free key at <a href="https://openrouter.ai/" target="_blank" rel="noopener noreferrer" className="underline">openrouter.ai</a>.<br />
               <b>Optional:</b> For better ranking, enter your site URL and site name.
@@ -520,7 +520,7 @@ const Quiz: React.FC = () => {
               <button 
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-2 text-gray-500"
+                className="absolute right-2 top-2 text-green-500"
                 aria-label={showPassword ? "Hide API key" : "Show API key"}
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -597,7 +597,7 @@ const Quiz: React.FC = () => {
         )}
         {provider === 'gemini' && (
           <>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-green-500 mb-4">
               To get AI feedback on your answers, please enter your Gemini API key.<br />
               You can get a key at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="underline">Google AI Studio</a>.<br />
             </p>
@@ -612,7 +612,7 @@ const Quiz: React.FC = () => {
               <button 
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-2 text-gray-500"
+                className="absolute right-2 top-2 text-green-500"
                 aria-label={showPassword ? "Hide API key" : "Show API key"}
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -662,7 +662,7 @@ const Quiz: React.FC = () => {
               )}
               {!showGeminiModelDropdown && (
                 <div
-                  className="p-2 text-gray-700 cursor-pointer"
+                  className="p-2 text-green-700 cursor-pointer"
                   style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}
                   onClick={() => setShowGeminiModelDropdown(true)}
                 >
@@ -722,7 +722,7 @@ const Quiz: React.FC = () => {
       </div>
       
       <div className="mb-6">
-        <div className="w-full bg-gray-200 h-2 rounded-full">
+        <div className="w-full bg-green-200 h-2 rounded-full">
           <div 
             className="bg-quiz-primary h-2 rounded-full transition-all duration-300" 
             style={{ width: `${((state.currentQuestion + 1) / state.questions.length) * 100}%` }}
