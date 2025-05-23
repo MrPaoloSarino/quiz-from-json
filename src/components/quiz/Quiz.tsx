@@ -69,6 +69,7 @@ const Quiz: React.FC = () => {
   const [geminiModelSearch, setGeminiModelSearch] = useState<string>("");
   const [showGeminiModelDropdown, setShowGeminiModelDropdown] = useState(false);
   const [openAIKey, setOpenAIKey] = useState<string>("");
+  const [geminiKey, setGeminiKey] = useState<string>("");
 
   // Enhanced API key validation for OpenRouter keys (usually sk-or-...)
   const validateApiKey = (key: string): boolean => {
