@@ -439,47 +439,40 @@ const Quiz: React.FC = () => {
             };
           });
         }
-      } catch (error) {
-        console.error("Error getting AI feedback:", error);
-        const errorMessage = error instanceof Error ? error.message : "Failed to get AI feedback";
-        setApiError(errorMessage);
-        toast.error(errorMessage);
-        setRetryCount((prev) => prev + 1);
+      } else if (provider === 'openai') {
+        if (!openAIKey || openAIKey.trim().length < 20) {
+          throw new Error("Invalid OpenAI API key format");
+        }
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${openAIKey}`,
+          },
+          body: JSON.stringify({
+            model: "gpt-3.5-turbo",
+            messages: [
+              { role: "system", content: isEssay ? "You are an expert essay evaluator and grader." : "You are a helpful quiz feedback assistant." },
+              { role: "user", content: prompt }
+            ],
+            max_tokens: 256,
+            temperature: 0.7
+          }),
+        });
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(`OpenAI API error: ${errorData?.error?.message || response.statusText}`);
+        }
+        const data = await response.json();
+        if (!data?.choices?.[0]?.message?.content) {
+          throw new Error("Invalid OpenAI API response format");
+        }
+        setState((prevState) => ({
+          ...prevState,
+          feedback: data.choices[0].message.content,
+        }));
+        setRetryCount(0);
       }
-    } else if (provider === 'openai') {
-      if (!openAIKey || openAIKey.trim().length < 20) {
-        throw new Error("Invalid OpenAI API key format");
-      }
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${openAIKey}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-3.5-turbo",
-          messages: [
-            { role: "system", content: isEssay ? "You are an expert essay evaluator and grader." : "You are a helpful quiz feedback assistant." },
-            { role: "user", content: prompt }
-          ],
-          max_tokens: 256,
-          temperature: 0.7
-        }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`OpenAI API error: ${errorData?.error?.message || response.statusText}`);
-      }
-      const data = await response.json();
-      if (!data?.choices?.[0]?.message?.content) {
-        throw new Error("Invalid OpenAI API response format");
-      }
-      setState((prevState) => ({
-        ...prevState,
-        feedback: data.choices[0].message.content,
-      }));
-      setRetryCount(0);
-    }
     } catch (error) {
       console.error("Error getting AI feedback:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to get AI feedback";
