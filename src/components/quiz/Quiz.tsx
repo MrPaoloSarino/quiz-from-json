@@ -143,7 +143,9 @@ const Quiz: React.FC = () => {
     setSelectedOption(selectedOption);
     setShowFeedback(true);
     
-    const isCorrect = selectedOption === state.questions[state.currentQuestion].answer;
+    const currentQ = state.questions[state.currentQuestion];
+    const isEssay = currentQ.type === 'essay';
+    const isCorrect = selectedOption === currentQ.answer;
     
     // Update the userAnswers array
     const updatedUserAnswers = [...state.userAnswers];
@@ -151,16 +153,20 @@ const Quiz: React.FC = () => {
     
     setState({
       ...state,
-      score: isCorrect ? state.score + 1 : state.score,
+      score: isEssay ? state.score : (isCorrect ? state.score + 1 : state.score),
       userAnswers: updatedUserAnswers,
       feedback: null,
     });
     
-    // Show toast for feedback
-    if (isCorrect) {
-      toast.success("Correct answer!");
+    // Show toast for feedback - only for multiple choice questions
+    if (!isEssay) {
+      if (isCorrect) {
+        toast.success("Correct answer!");
+      } else {
+        toast.error("Incorrect answer!");
+      }
     } else {
-      toast.error("Incorrect answer!");
+      toast.success("Answer submitted for AI evaluation!");
     }
 
     // Get AI feedback if API key is provided
@@ -280,7 +286,10 @@ const Quiz: React.FC = () => {
       const isEssay = currentQ.type === 'essay';
       let prompt = '';
       if (isEssay) {
-        prompt = `Based on the question, here is my answer. You are the most capable to answer the question and rate my answer from 0 to 10 based on concrete evidence and benchmarking. Please reply in plain text only, without any markdown or formatting.\n\nQuestion: ${question}\nMy answer: ${userAnswer}`;
+        prompt = `Based on the question, here is my answer. You are the most capable to answer the question and rate my answer from 0 to 10 based on concrete evidence and benchmarking. Please reply in plain text only, without any markdown or formatting. Also give me a list of needs to improve each, must be specific.
+
+Question: ${question}
+My answer: ${userAnswer}`;
       } else {
         prompt = `\n          I'm doing a quiz. The question was: "${question}".\n          I chose: "${userAnswer}".\n          The correct answer is: "${correctAnswer}".\n          My answer was ${isCorrect ? 'correct' : 'incorrect'}.\n          Provide me a constructive feedback as to why my answer is correct or incorrect max 2-5 sentences.\n        `;
       }
@@ -325,6 +334,58 @@ const Quiz: React.FC = () => {
           feedback: data.choices[0].message.content,
         }));
         setRetryCount(0);
+        
+        // Essay scoring: extract rating and update score
+        if (isEssay) {
+          const openRouterText = data.choices[0].message.content;
+          // Try to extract a rating robustly
+          let rating = null;
+          // Prefer patterns like 'score: 7/10', 'rating: 8/10', '8 out of 10'
+          const patterns = [
+            /score\s*[:=]?\s*(10|[0-9])\s*\/\s*10/i,
+            /rating\s*[:=]?\s*(10|[0-9])\s*\/\s*10/i,
+            /(10|[0-9])\s*out of\s*10/i,
+            /score\s*[:=]?\s*(10|[0-9])/i,
+            /rating\s*[:=]?\s*(10|[0-9])/i
+          ];
+          for (const pattern of patterns) {
+            const match = openRouterText.match(pattern);
+            if (match) {
+              rating = parseInt(match[1], 10);
+              break;
+            }
+          }
+          // Fallback: look for the first number 0-10 after 'rating', 'score', or 'out of 10'
+          if (rating === null) {
+            const fallbackPattern = /(rating|score|out of 10)[^\d]*(10|[0-9])/i;
+            const fallbackMatch = openRouterText.match(fallbackPattern);
+            if (fallbackMatch) {
+              rating = parseInt(fallbackMatch[2], 10);
+            }
+          }
+          // Last fallback: any number 0-10 in the text
+          if (rating === null) {
+            const anyNum = openRouterText.match(/\b(10|[0-9])\b/);
+            if (anyNum) {
+              rating = parseInt(anyNum[1], 10);
+            }
+          }
+          if (rating === null || isNaN(rating) || rating < 0 || rating > 10) {
+            setApiError('AI did not return a valid rating from 0 to 10. Please try again or rephrase your answer.');
+            return;
+          }
+          // Update score for this essay question
+          setState((prevState) => {
+            const newUserAnswers = [...prevState.userAnswers];
+            newUserAnswers[prevState.currentQuestion] = userAnswer;
+            // Score is the rating for this question
+            return {
+              ...prevState,
+              score: prevState.score - (prevState.userAnswers[prevState.currentQuestion] ? Number(prevState.userAnswers[prevState.currentQuestion]) : 0) + rating,
+              userAnswers: newUserAnswers,
+            };
+          });
+        }
       } else if (provider === 'gemini') {
         if (!geminiKey || geminiKey.trim().length < 20) {
           throw new Error("Invalid Gemini API key format");
@@ -473,6 +534,58 @@ const Quiz: React.FC = () => {
           feedback: data.choices[0].message.content,
         }));
         setRetryCount(0);
+        
+        // Essay scoring: extract rating and update score
+        if (isEssay) {
+          const openAIText = data.choices[0].message.content;
+          // Try to extract a rating robustly
+          let rating = null;
+          // Prefer patterns like 'score: 7/10', 'rating: 8/10', '8 out of 10'
+          const patterns = [
+            /score\s*[:=]?\s*(10|[0-9])\s*\/\s*10/i,
+            /rating\s*[:=]?\s*(10|[0-9])\s*\/\s*10/i,
+            /(10|[0-9])\s*out of\s*10/i,
+            /score\s*[:=]?\s*(10|[0-9])/i,
+            /rating\s*[:=]?\s*(10|[0-9])/i
+          ];
+          for (const pattern of patterns) {
+            const match = openAIText.match(pattern);
+            if (match) {
+              rating = parseInt(match[1], 10);
+              break;
+            }
+          }
+          // Fallback: look for the first number 0-10 after 'rating', 'score', or 'out of 10'
+          if (rating === null) {
+            const fallbackPattern = /(rating|score|out of 10)[^\d]*(10|[0-9])/i;
+            const fallbackMatch = openAIText.match(fallbackPattern);
+            if (fallbackMatch) {
+              rating = parseInt(fallbackMatch[2], 10);
+            }
+          }
+          // Last fallback: any number 0-10 in the text
+          if (rating === null) {
+            const anyNum = openAIText.match(/\b(10|[0-9])\b/);
+            if (anyNum) {
+              rating = parseInt(anyNum[1], 10);
+            }
+          }
+          if (rating === null || isNaN(rating) || rating < 0 || rating > 10) {
+            setApiError('AI did not return a valid rating from 0 to 10. Please try again or rephrase your answer.');
+            return;
+          }
+          // Update score for this essay question
+          setState((prevState) => {
+            const newUserAnswers = [...prevState.userAnswers];
+            newUserAnswers[prevState.currentQuestion] = userAnswer;
+            // Score is the rating for this question
+            return {
+              ...prevState,
+              score: prevState.score - (prevState.userAnswers[prevState.currentQuestion] ? Number(prevState.userAnswers[prevState.currentQuestion]) : 0) + rating,
+              userAnswers: newUserAnswers,
+            };
+          });
+        }
       }
     } catch (error) {
       console.error("Error getting AI feedback:", error);
