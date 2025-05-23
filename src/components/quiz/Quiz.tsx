@@ -445,8 +445,6 @@ const Quiz: React.FC = () => {
         setApiError(errorMessage);
         toast.error(errorMessage);
         setRetryCount((prev) => prev + 1);
-      } finally {
-        setLoadingFeedback(false);
       }
     } else if (provider === 'openai') {
       if (!openAIKey || openAIKey.trim().length < 20) {
@@ -481,6 +479,15 @@ const Quiz: React.FC = () => {
         feedback: data.choices[0].message.content,
       }));
       setRetryCount(0);
+    }
+    } catch (error) {
+      console.error("Error getting AI feedback:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to get AI feedback";
+      setApiError(errorMessage);
+      toast.error(errorMessage);
+      setRetryCount((prev) => prev + 1);
+    } finally {
+      setLoadingFeedback(false);
     }
   };
 
