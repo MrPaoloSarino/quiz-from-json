@@ -9,7 +9,8 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
   },
-  base: '/quiz-from-json/',
+  // Use GitHub Pages base path only for production builds, root path for development/Lovable
+  base: process.env.GITHUB_ACTIONS ? '/quiz-from-json/' : '/',
   plugins: [
     react(),
     mode === 'development' &&
