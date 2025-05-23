@@ -45,7 +45,7 @@ const Quiz: React.FC = () => {
   const [showInput, setShowInput] = useState<boolean>(true);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState<boolean>(false);
-  const [provider, setProvider] = useState<'openrouter' | 'gemini'>('openrouter');
+  const [provider, setProvider] = useState<'openrouter' | 'gemini' | 'openai'>('openrouter');
   const [openRouterKey, setOpenRouterKey] = useState<string>("");
   const [siteUrl, setSiteUrl] = useState<string>("");
   const [siteName, setSiteName] = useState<string>("");
@@ -68,6 +68,7 @@ const Quiz: React.FC = () => {
   const [selectedGeminiModel, setSelectedGeminiModel] = useState<string>("");
   const [geminiModelSearch, setGeminiModelSearch] = useState<string>("");
   const [showGeminiModelDropdown, setShowGeminiModelDropdown] = useState(false);
+  const [openAIKey, setOpenAIKey] = useState<string>("");
 
   // Enhanced API key validation for OpenRouter keys (usually sk-or-...)
   const validateApiKey = (key: string): boolean => {
@@ -170,6 +171,13 @@ const Quiz: React.FC = () => {
         isCorrect
       );
     } else if (provider === 'gemini' && geminiKey && geminiKey.trim() !== "") {
+      getFeedback(
+        state.questions[state.currentQuestion].question,
+        selectedOption,
+        state.questions[state.currentQuestion].answer,
+        isCorrect
+      );
+    } else if (provider === 'openai' && openAIKey && openAIKey.trim() !== "") {
       getFeedback(
         state.questions[state.currentQuestion].question,
         selectedOption,
@@ -440,9 +448,41 @@ const Quiz: React.FC = () => {
       } finally {
         setLoadingFeedback(false);
       }
-    };
-    fetchGeminiModels();
-  }, [geminiKey, provider]);
+    } else if (provider === 'openai') {
+      if (!openAIKey || openAIKey.trim().length < 20) {
+        throw new Error("Invalid OpenAI API key format");
+      }
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${openAIKey}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: isEssay ? "You are an expert essay evaluator and grader." : "You are a helpful quiz feedback assistant." },
+            { role: "user", content: prompt }
+          ],
+          max_tokens: 256,
+          temperature: 0.7
+        }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`OpenAI API error: ${errorData?.error?.message || response.statusText}`);
+      }
+      const data = await response.json();
+      if (!data?.choices?.[0]?.message?.content) {
+        throw new Error("Invalid OpenAI API response format");
+      }
+      setState((prevState) => ({
+        ...prevState,
+        feedback: data.choices[0].message.content,
+      }));
+      setRetryCount(0);
+    }
+  };
 
   const restartQuiz = () => {
     setState({
@@ -496,10 +536,11 @@ const Quiz: React.FC = () => {
           <select
             className="w-full p-2 border rounded"
             value={provider}
-            onChange={e => setProvider(e.target.value as 'openrouter' | 'gemini')}
+            onChange={e => setProvider(e.target.value as 'openrouter' | 'gemini' | 'openai')}
           >
             <option value="openrouter">OpenRouter</option>
             <option value="gemini">Gemini</option>
+            <option value="openai">OpenAI</option>
           </select>
         </div>
         {provider === 'openrouter' && (
@@ -670,6 +711,36 @@ const Quiz: React.FC = () => {
                 </div>
               )}
             </div>
+          </>
+        )}
+        {provider === 'openai' && (
+          <>
+            <p className="text-sm text-green-500 mb-4">
+              To get AI feedback on your answers, please enter your OpenAI API key.<br />
+              You can get a key at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="underline">OpenAI Platform</a>.<br />
+            </p>
+            <div className="flex relative mb-2">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={openAIKey}
+                onChange={e => setOpenAIKey(e.target.value)}
+                placeholder="Paste your OpenAI API key here"
+                className="w-full p-2 border rounded pr-10"
+              />
+              <button 
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-2 top-2 text-green-500"
+                aria-label={showPassword ? "Hide API key" : "Show API key"}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {openAIKey && openAIKey.trim().length < 20 && (
+              <p className="text-sm text-red-500 mb-2">
+                API key seems invalid. It should be at least 20 characters.
+              </p>
+            )}
           </>
         )}
         <div className="flex gap-2 mt-4">
