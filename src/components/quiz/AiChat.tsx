@@ -158,7 +158,7 @@ const AiChat: React.FC<AiChatProps> = ({ initialFeedback, onSendMessage, isLoadi
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Challenge the AI's reasoning..."
+            placeholder="Respond to the AI's suggestion or ask for clarification..."
             className="flex-1 p-2 border rounded-lg resize-none text-sm"
             rows={2}
             disabled={isSending}

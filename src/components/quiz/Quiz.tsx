@@ -301,10 +301,24 @@ const Quiz: React.FC = () => {
       const isEssay = currentQ.type === 'essay';
       let prompt = '';
       if (isEssay) {
-        prompt = `Based on the question, here is my answer. You are the most capable to answer the question and rate my answer from 0 to 10 based on concrete evidence and benchmarking. Please reply in plain text only, without any markdown or formatting. Also give me a list of needs to improve each, must be specific.
+        prompt = `You are an expert evaluator. Here's what I need:
+
+1. First, provide a PERFECT 10/10 benchmark answer for this question
+2. Rate my answer (0-10) by comparing it to your perfect answer
+3. Give me ONLY ONE specific thing to improve (not a list)
+4. Be encouraging but direct
 
 Question: ${question}
-My answer: ${userAnswer}`;
+My answer: ${userAnswer}
+
+Format:
+**Perfect Answer (10/10):**
+[Your perfect answer here]
+
+**Your Score: X/10**
+
+**One Thing to Improve:**
+[Single specific improvement]`;
       } else {
         prompt = `\n          I'm doing a quiz. The question was: "${question}".\n          I chose: "${userAnswer}".\n          The correct answer is: "${correctAnswer}".\n          My answer was ${isCorrect ? 'correct' : 'incorrect'}.\n          Provide me a constructive feedback as to why my answer is correct or incorrect max 2-5 sentences.\n        `;
       }
@@ -330,7 +344,7 @@ My answer: ${userAnswer}`;
           body: JSON.stringify({
             model: selectedModel,
             messages: [
-              { role: "system", content: isEssay ? "You are an expert essay evaluator and grader." : "You are a helpful quiz feedback assistant." },
+              { role: "system", content: isEssay ? "You are a patient, encouraging essay tutor who gives one improvement at a time. Keep responses short and focused." : "You are a helpful educational assistant. Provide clear and concise answers to help students learn." },
               { role: "user", content: prompt }
             ],
             extra_body: {},
@@ -561,7 +575,7 @@ My answer: ${userAnswer}`;
           body: JSON.stringify({
             model: "gpt-3.5-turbo",
             messages: [
-              { role: "system", content: isEssay ? "You are an expert essay evaluator and grader." : "You are a helpful quiz feedback assistant." },
+              { role: "system", content: isEssay ? "You are a patient, encouraging essay tutor who gives one improvement at a time. Keep responses short and focused." : "You are a helpful educational assistant. Provide clear and concise answers to help students learn." },
               { role: "user", content: prompt }
             ],
             max_tokens: 256,
@@ -664,14 +678,37 @@ My answer: ${userAnswer}`;
   const handleChatMessage = async (message: string): Promise<string> => {
     try {
       const currentQ = state.questions[state.currentQuestion];
-      const contextPrompt = `Context: The user is taking a quiz. 
+      const isEssay = currentQ.type === 'essay';
+      
+      let contextPrompt = '';
+      
+      if (isEssay) {
+        contextPrompt = `You are continuing to help improve an essay answer. 
+
+Original Question: ${currentQ.question}
+User's Original Answer: ${state.userAnswers[state.currentQuestion]}
+
+The user just said: "${message}"
+
+Your role:
+- If they've addressed your previous suggestion well, acknowledge it and give the NEXT single improvement
+- If they need clarification or haven't fully addressed it, guide them further
+- Always give only ONE specific thing to improve at a time
+- Be encouraging and supportive
+- Keep responses short and focused
+- Rate their progress when giving new suggestions (e.g., "Great! Now you're at 7/10...")
+
+Respond conversationally and helpfully.`;
+      } else {
+        contextPrompt = `Context: The user is taking a quiz. 
 Question: ${currentQ.question}
 User's answer: ${state.userAnswers[state.currentQuestion]}
-${currentQ.type === 'essay' ? '' : `Correct answer: ${currentQ.answer}`}
+Correct answer: ${currentQ.answer}
 
 User's follow-up question: ${message}
 
 Please provide a helpful response related to this quiz question and topic.`;
+      }
 
       if (provider === 'openrouter' && openRouterKey && validateApiKey(openRouterKey) && selectedModel) {
         if (isRateLimited()) {
@@ -690,7 +727,7 @@ Please provide a helpful response related to this quiz question and topic.`;
           body: JSON.stringify({
             model: selectedModel,
             messages: [
-              { role: "system", content: "You are a helpful educational assistant. Provide clear and concise answers to help students learn." },
+              { role: "system", content: isEssay ? "You are a patient, encouraging essay tutor who gives one improvement at a time. Keep responses short and focused." : "You are a helpful educational assistant. Provide clear and concise answers to help students learn." },
               { role: "user", content: contextPrompt }
             ],
             extra_body: {},
@@ -754,7 +791,7 @@ Please provide a helpful response related to this quiz question and topic.`;
           body: JSON.stringify({
             model: "gpt-3.5-turbo",
             messages: [
-              { role: "system", content: "You are a helpful educational assistant. Provide clear and concise answers to help students learn." },
+              { role: "system", content: isEssay ? "You are a patient, encouraging essay tutor who gives one improvement at a time. Keep responses short and focused." : "You are a helpful educational assistant. Provide clear and concise answers to help students learn." },
               { role: "user", content: contextPrompt }
             ],
             max_tokens: 256,

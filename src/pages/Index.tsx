@@ -2,10 +2,12 @@ import React, { useState } from "react";
 import Quiz from "@/components/quiz/Quiz";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Sparkles, Brain, Zap, ArrowRight, CheckCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Sparkles, Brain, Zap, ArrowRight, CheckCircle, MessageSquare, Shuffle, BookOpen, X } from "lucide-react";
 
 const Index = () => {
   const [showQuiz, setShowQuiz] = useState(false);
+  const [showWhatsNew, setShowWhatsNew] = useState(false);
 
   if (showQuiz) {
     return (
@@ -56,15 +58,22 @@ const Index = () => {
         <div className="relative container mx-auto px-4 py-20 lg:py-32">
           <div className="text-center max-w-4xl mx-auto">
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 bg-white/90 text-green-700 px-4 py-2 rounded-full text-sm font-medium mb-6 backdrop-blur-sm border border-white/20">
+            <div className="inline-flex items-center gap-2 bg-white/90 text-green-700 px-4 py-2 rounded-full text-sm font-medium mb-4 backdrop-blur-sm border border-white/20">
               <Sparkles className="w-4 h-4" />
               AI-Powered Quiz Platform
             </div>
 
-            {/* What's New Badge */}
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-500/90 to-pink-500/90 text-white px-4 py-2 rounded-full text-sm font-medium mb-4 backdrop-blur-sm border border-white/20 animate-pulse">
-              <span className="w-2 h-2 bg-yellow-300 rounded-full"></span>
-              What's New: AI Arguments & Study Prescriptions!
+            {/* What's New Badge - Centered and Clickable */}
+            <div className="flex justify-center mb-6">
+              <button
+                onClick={() => setShowWhatsNew(true)}
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-500/90 to-pink-500/90 text-white px-6 py-3 rounded-full text-sm font-medium backdrop-blur-sm border border-white/20 hover:from-purple-600/90 hover:to-pink-600/90 transition-all duration-300 transform hover:scale-105 cursor-pointer shadow-lg hover:shadow-xl"
+              >
+                <span className="w-2 h-2 bg-yellow-300 rounded-full animate-ping"></span>
+                <span className="w-2 h-2 bg-yellow-300 rounded-full absolute"></span>
+                <span className="ml-2">What's New: AI Arguments & Study Prescriptions!</span>
+                <ArrowRight className="w-4 h-4 ml-1" />
+              </button>
             </div>
 
             {/* Main Heading */}
@@ -83,8 +92,8 @@ const Index = () => {
               Perfect for education, training, and assessment.
             </p>
 
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+            {/* CTA Button - Single Button Now */}
+            <div className="flex justify-center mb-12">
               <Button
                 onClick={() => setShowQuiz(true)}
                 className="bg-gradient-to-r from-yellow-400 to-orange-400 hover:from-yellow-500 hover:to-orange-500 text-gray-900 px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
@@ -92,13 +101,6 @@ const Index = () => {
               >
                 Start Creating Quiz
                 <ArrowRight className="ml-2 w-5 h-5" />
-              </Button>
-              <Button
-                variant="outline"
-                className="border-white/30 text-white hover:bg-white/10 bg-white/5 backdrop-blur-sm px-8 py-4 text-lg font-semibold rounded-xl"
-                size="lg"
-              >
-                View Demo
               </Button>
             </div>
 
@@ -137,6 +139,117 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* What's New Modal */}
+      <Dialog open={showWhatsNew} onOpenChange={setShowWhatsNew}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent flex items-center gap-2">
+              <Sparkles className="w-6 h-6 text-purple-600" />
+              What's New - Latest Updates!
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Discover the exciting new features we've added to enhance your quiz experience.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 mt-4">
+            {/* AI Arguments Feature */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
+                  <MessageSquare className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-blue-900 mb-2">🗣️ Argue with AI</h3>
+                  <p className="text-blue-800 text-sm mb-2">
+                    Challenge the AI's reasoning and engage in meaningful debates about quiz answers.
+                  </p>
+                  <ul className="text-blue-700 text-xs space-y-1">
+                    <li>• Interactive chat interface for questioning AI responses</li>
+                    <li>• Develop critical thinking through AI arguments</li>
+                    <li>• Real-time contextual discussions about quiz topics</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Question Randomization */}
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-200">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
+                  <Shuffle className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-green-900 mb-2">🎲 Question Randomization</h3>
+                  <p className="text-green-800 text-sm mb-2">
+                    Shuffle your quiz questions with one click for varied practice sessions.
+                  </p>
+                  <ul className="text-green-700 text-xs space-y-1">
+                    <li>• Prevent memorization of question order</li>
+                    <li>• Enhanced learning through varied practice</li>
+                    <li>• One-click randomization before starting</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Study Prescriptions */}
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg border border-purple-200">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                  <BookOpen className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-purple-900 mb-2">📋 AI Study Prescriptions</h3>
+                  <p className="text-purple-800 text-sm mb-2">
+                    Get personalized study recommendations based on your quiz performance.
+                  </p>
+                  <ul className="text-purple-700 text-xs space-y-1">
+                    <li>• Comprehensive performance analysis</li>
+                    <li>• Tailored study plans with specific timelines</li>
+                    <li>• Priority focus areas and practice recommendations</li>
+                    <li>• Success metrics for tracking improvement</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Enhanced Experience */}
+            <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-4 rounded-lg border border-orange-200">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-yellow-500 rounded-lg flex items-center justify-center">
+                  <Zap className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-orange-900 mb-2">⚡ Enhanced Experience</h3>
+                  <p className="text-orange-800 text-sm mb-2">
+                    Improved state management and user interface for smoother interactions.
+                  </p>
+                  <ul className="text-orange-700 text-xs space-y-1">
+                    <li>• Better handling of essay answers and AI responses</li>
+                    <li>• Cleaner transitions between questions</li>
+                    <li>• Modern messaging-style chat interface</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-center">
+            <Button
+              onClick={() => {
+                setShowWhatsNew(false);
+                setShowQuiz(true);
+              }}
+              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-6 py-3 rounded-lg"
+            >
+              Try These Features Now!
+              <ArrowRight className="ml-2 w-4 h-4" />
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Footer */}
       <footer className="bg-gradient-to-r from-green-500/5 to-emerald-500/5 border-t border-green-200 py-8">
