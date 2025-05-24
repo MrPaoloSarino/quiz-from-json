@@ -61,6 +61,12 @@ const Index = () => {
               AI-Powered Quiz Platform
             </div>
 
+            {/* What's New Badge */}
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-500/90 to-pink-500/90 text-white px-4 py-2 rounded-full text-sm font-medium mb-4 backdrop-blur-sm border border-white/20 animate-pulse">
+              <span className="w-2 h-2 bg-yellow-300 rounded-full"></span>
+              What's New: AI Arguments & Study Prescriptions!
+            </div>
+
             {/* Main Heading */}
             <h1 className="text-5xl lg:text-7xl font-bold text-white mb-6 leading-tight drop-shadow-lg">
               Create{" "}

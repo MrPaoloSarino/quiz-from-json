@@ -124,6 +124,16 @@ const Quiz: React.FC = () => {
     setShowInput(false);
     setShowGeminiInput(true);
   };
+
+  const randomizeQuestions = () => {
+    const shuffled = [...loadedQuestions];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    setLoadedQuestions(shuffled);
+    toast.success("Questions randomized!");
+  };
   
   const startQuiz = () => {
     setState({
@@ -212,6 +222,8 @@ const Quiz: React.FC = () => {
       setShowConfirmation(false);
       // Reset any API errors when moving to next question
       setApiError(null);
+      // Reset loading feedback state to prevent AI thinking from carrying over
+      setLoadingFeedback(false);
     } else {
       setState((prevState) => ({
         ...prevState,
@@ -770,6 +782,175 @@ Please provide a helpful response related to this quiz question and topic.`;
     }
   };
 
+  const generatePrescription = async (): Promise<string> => {
+    try {
+      // Create a detailed analysis of the quiz performance
+      const wrongAnswers = state.questions
+        .map((q, index) => {
+          if (q.type === 'essay') {
+            const rating = state.essayRatings[index];
+            return rating !== null && rating < 7 
+              ? `Essay Question ${index + 1}: "${q.question}" - Your answer received ${rating}/10. Answer: "${state.userAnswers[index] || 'No answer'}"`
+              : null;
+          } else {
+            return state.userAnswers[index] !== q.answer 
+              ? `Question ${index + 1}: "${q.question}" - You answered "${state.userAnswers[index]}", correct answer: "${q.answer}"`
+              : null;
+          }
+        })
+        .filter(Boolean);
+
+      const correctAnswers = state.questions
+        .map((q, index) => {
+          if (q.type === 'essay') {
+            const rating = state.essayRatings[index];
+            return rating !== null && rating >= 7 
+              ? `Essay Question ${index + 1}: "${q.question}" - Scored ${rating}/10`
+              : null;
+          } else {
+            return state.userAnswers[index] === q.answer 
+              ? `Question ${index + 1}: "${q.question}" - Correct!`
+              : null;
+          }
+        })
+        .filter(Boolean);
+
+      const totalPossible = state.questions.reduce((total, question) => {
+        return total + (question.type === 'essay' ? 10 : 1);
+      }, 0);
+      
+      const percentage = Math.round((state.score / totalPossible) * 100);
+
+      const prescriptionPrompt = `Based on the results of all the tests, make a prescription drill tailored to the person. Follow this specific format:
+
+## Performance Analysis
+Overall Score: ${state.score}/${totalPossible} (${percentage}%)
+
+## Strengths
+${correctAnswers.length > 0 ? correctAnswers.join('\n') : 'None identified in this quiz.'}
+
+## Areas for Improvement
+${wrongAnswers.length > 0 ? wrongAnswers.join('\n') : 'Great job! All answers were correct.'}
+
+## Prescription Drill
+Based on the analysis above, provide:
+1. **Priority Focus Areas**: List 2-3 specific topics that need immediate attention
+2. **Study Plan**: A 3-step actionable study plan with specific tasks
+3. **Practice Recommendations**: Specific exercises or question types to practice
+4. **Timeline**: Suggested timeline for improvement (e.g., "Focus on X for 2 weeks, then Y")
+5. **Success Metrics**: How to measure improvement
+
+Format your response exactly as shown above with proper markdown headers and structure.`;
+
+      if (provider === 'openrouter' && openRouterKey && validateApiKey(openRouterKey) && selectedModel) {
+        if (isRateLimited()) {
+          throw new Error("Rate limit exceeded. Please wait before making more requests.");
+        }
+        recordApiCall();
+        
+        const response = await fetch(OPENROUTER_API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${openRouterKey}`,
+            ...(siteUrl ? { "HTTP-Referer": siteUrl } : {}),
+            ...(siteName ? { "X-Title": siteName } : {}),
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+            messages: [
+              { role: "system", content: "You are an expert educational consultant and learning specialist. Analyze quiz performance and create detailed, actionable study prescriptions." },
+              { role: "user", content: prescriptionPrompt }
+            ],
+            extra_body: {},
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(`API error: ${errorData?.error?.message || response.statusText}`);
+        }
+
+        const data = await response.json();
+        if (!data?.choices?.[0]?.message?.content) {
+          throw new Error("Invalid API response format");
+        }
+
+        return data.choices[0].message.content;
+      } else if (provider === 'gemini' && geminiKey && geminiKey.trim().length >= 20 && selectedGeminiModel) {
+        const modelId = selectedGeminiModel.split('/').pop();
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${geminiKey}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    {
+                      text: prescriptionPrompt
+                    }
+                  ]
+                }
+              ]
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(`API error: ${errorData?.error?.message || response.statusText}`);
+        }
+
+        const data = await response.json();
+        const geminiText = data?.contents?.[0]?.parts?.[0]?.text || data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        if (!geminiText) {
+          throw new Error("Invalid Gemini API response format");
+        }
+
+        return geminiText;
+      } else if (provider === 'openai' && openAIKey && openAIKey.trim().length >= 20) {
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${openAIKey}`,
+          },
+          body: JSON.stringify({
+            model: "gpt-3.5-turbo",
+            messages: [
+              { role: "system", content: "You are an expert educational consultant and learning specialist. Analyze quiz performance and create detailed, actionable study prescriptions." },
+              { role: "user", content: prescriptionPrompt }
+            ],
+            max_tokens: 1000,
+            temperature: 0.7
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(`OpenAI API error: ${errorData?.error?.message || response.statusText}`);
+        }
+
+        const data = await response.json();
+        if (!data?.choices?.[0]?.message?.content) {
+          throw new Error("Invalid OpenAI API response format");
+        }
+
+        return data.choices[0].message.content;
+      } else {
+        throw new Error("No valid API configuration found");
+      }
+    } catch (error) {
+      console.error("Error generating prescription:", error);
+      throw new Error(error instanceof Error ? error.message : "Failed to generate prescription");
+    }
+  };
+
   const restartQuiz = () => {
     setState({
       questions: state.questions,
@@ -1040,6 +1221,14 @@ Please provide a helpful response related to this quiz question and topic.`;
             ← Back
           </Button>
           <Button
+            variant="outline"
+            onClick={randomizeQuestions}
+            disabled={loadedQuestions.length === 0}
+            className="text-sm"
+          >
+            🎲 Randomize
+          </Button>
+          <Button
             onClick={startQuiz}
             className="flex-1 bg-quiz-primary hover:bg-quiz-secondary text-white"
             disabled={
@@ -1049,7 +1238,9 @@ Please provide a helpful response related to this quiz question and topic.`;
           >
             {provider === 'openrouter'
               ? (openRouterKey ? "Start Quiz with AI Feedback" : "Start Quiz without AI Feedback")
-              : (geminiKey ? "Start Quiz with AI Feedback" : "Start Quiz without AI Feedback")}
+              : provider === 'gemini'
+              ? (geminiKey ? "Start Quiz with AI Feedback" : "Start Quiz without AI Feedback")
+              : (openAIKey ? "Start Quiz with AI Feedback" : "Start Quiz without AI Feedback")}
           </Button>
         </div>
       </Card>
@@ -1065,6 +1256,13 @@ Please provide a helpful response related to this quiz question and topic.`;
         onRestart={restartQuiz}
         onNewQuiz={newQuiz}
         essayRatings={state.essayRatings}
+        onGeneratePrescription={
+          (provider === 'openrouter' && openRouterKey && validateApiKey(openRouterKey) && selectedModel) ||
+          (provider === 'gemini' && geminiKey && geminiKey.trim().length >= 20 && selectedGeminiModel) ||
+          (provider === 'openai' && openAIKey && openAIKey.trim().length >= 20)
+            ? generatePrescription
+            : undefined
+        }
       />
     );
   }

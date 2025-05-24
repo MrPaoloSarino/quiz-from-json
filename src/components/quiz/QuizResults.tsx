@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { QuizQuestion } from "@/types/quiz";
-import { CheckCircle, XCircle } from "lucide-react";
+import { CheckCircle, XCircle, Brain } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 interface QuizResultsProps {
   questions: QuizQuestion[];
@@ -11,6 +13,7 @@ interface QuizResultsProps {
   onRestart: () => void;
   onNewQuiz: () => void;
   essayRatings: number[];
+  onGeneratePrescription?: () => Promise<string>;
 }
 
 const QuizResults: React.FC<QuizResultsProps> = ({
@@ -20,13 +23,34 @@ const QuizResults: React.FC<QuizResultsProps> = ({
   onRestart,
   onNewQuiz,
   essayRatings,
+  onGeneratePrescription,
 }) => {
+  const [prescription, setPrescription] = useState<string | null>(null);
+  const [loadingPrescription, setLoadingPrescription] = useState(false);
+  const [prescriptionError, setPrescriptionError] = useState<string | null>(null);
+
   // Calculate total possible score
   const totalPossible = questions.reduce((total, question) => {
     return total + (question.type === 'essay' ? 10 : 1);
   }, 0);
   
   const percentage = totalPossible > 0 ? Math.round((score / totalPossible) * 100) : 0;
+
+  const handleGeneratePrescription = async () => {
+    if (!onGeneratePrescription) return;
+    
+    setLoadingPrescription(true);
+    setPrescriptionError(null);
+    
+    try {
+      const result = await onGeneratePrescription();
+      setPrescription(result);
+    } catch (error) {
+      setPrescriptionError(error instanceof Error ? error.message : "Failed to generate prescription");
+    } finally {
+      setLoadingPrescription(false);
+    }
+  };
 
   return (
     <Card className="w-full max-w-xl mx-auto animate-fade-in">
@@ -107,6 +131,58 @@ const QuizResults: React.FC<QuizResultsProps> = ({
             );
           })}
         </div>
+
+        {onGeneratePrescription && (
+          <div className="mt-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium">Personalized Study Prescription</h3>
+              {!prescription && !loadingPrescription && (
+                <Button
+                  onClick={handleGeneratePrescription}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <Brain className="h-4 w-4" />
+                  Generate Prescription
+                </Button>
+              )}
+            </div>
+            
+            {loadingPrescription && (
+              <Card className="bg-purple-50 border-purple-200">
+                <CardContent className="pt-4">
+                  <div className="flex items-center justify-center p-4">
+                    <Spinner className="h-8 w-8 text-purple-500" />
+                    <span className="ml-2 text-sm text-purple-600">Analyzing your performance...</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {prescriptionError && (
+              <Card className="bg-red-50 border-red-200">
+                <CardContent className="pt-4">
+                  <p className="text-sm text-red-600">{prescriptionError}</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {prescription && (
+              <Card className="bg-purple-50 border-purple-200">
+                <CardContent className="pt-4">
+                  <div className="flex items-center mb-3">
+                    <Brain className="h-5 w-5 text-purple-600 mr-2" />
+                    <h4 className="text-sm font-medium text-purple-800">AI Study Prescription</h4>
+                  </div>
+                  <div className="text-sm text-purple-700">
+                    <ReactMarkdown>{prescription}</ReactMarkdown>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
       </CardContent>
       <CardFooter className="flex flex-col gap-2 sm:flex-row">
         <Button

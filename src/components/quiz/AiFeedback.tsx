@@ -75,7 +75,7 @@ const AiFeedback: React.FC<AiFeedbackProps> = ({
                 className="text-xs"
               >
                 <MessageCircle className="h-3 w-3 mr-1" />
-                {showChat ? 'Hide Chat' : 'Chat with AI'}
+                {showChat ? 'Hide Argument' : 'Argue with AI'}
               </Button>
             )}
           </div>

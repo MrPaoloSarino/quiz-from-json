@@ -88,7 +88,7 @@ const AiChat: React.FC<AiChatProps> = ({ initialFeedback, onSendMessage, isLoadi
       <CardContent className="pt-4">
         <div className="flex items-center mb-3">
           <Bot className="h-5 w-5 text-blue-600 mr-2" />
-          <h3 className="text-sm font-medium text-blue-800">Chat with AI</h3>
+          <h3 className="text-sm font-medium text-blue-800">Argue with AI</h3>
         </div>
         
         <div className="max-h-96 overflow-y-auto mb-4 space-y-3">
@@ -113,9 +113,11 @@ const AiChat: React.FC<AiChatProps> = ({ initialFeedback, onSendMessage, isLoadi
                   )}
                   <div className="flex-1">
                     {message.sender === 'ai' ? (
-                      <ReactMarkdown className="text-sm leading-relaxed">
-                        {message.content}
-                      </ReactMarkdown>
+                      <div className="text-sm leading-relaxed">
+                        <ReactMarkdown>
+                          {message.content}
+                        </ReactMarkdown>
+                      </div>
                     ) : (
                       <p className="text-sm leading-relaxed">{message.content}</p>
                     )}
@@ -156,7 +158,7 @@ const AiChat: React.FC<AiChatProps> = ({ initialFeedback, onSendMessage, isLoadi
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Ask AI anything about this topic..."
+            placeholder="Challenge the AI's reasoning..."
             className="flex-1 p-2 border rounded-lg resize-none text-sm"
             rows={2}
             disabled={isSending}
