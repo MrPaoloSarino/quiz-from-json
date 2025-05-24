@@ -649,6 +649,127 @@ My answer: ${userAnswer}`;
     }
   };
 
+  const handleChatMessage = async (message: string): Promise<string> => {
+    try {
+      const currentQ = state.questions[state.currentQuestion];
+      const contextPrompt = `Context: The user is taking a quiz. 
+Question: ${currentQ.question}
+User's answer: ${state.userAnswers[state.currentQuestion]}
+${currentQ.type === 'essay' ? '' : `Correct answer: ${currentQ.answer}`}
+
+User's follow-up question: ${message}
+
+Please provide a helpful response related to this quiz question and topic.`;
+
+      if (provider === 'openrouter' && openRouterKey && validateApiKey(openRouterKey) && selectedModel) {
+        if (isRateLimited()) {
+          throw new Error("Rate limit exceeded. Please wait before making more requests.");
+        }
+        recordApiCall();
+        
+        const response = await fetch(OPENROUTER_API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${openRouterKey}`,
+            ...(siteUrl ? { "HTTP-Referer": siteUrl } : {}),
+            ...(siteName ? { "X-Title": siteName } : {}),
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+            messages: [
+              { role: "system", content: "You are a helpful educational assistant. Provide clear and concise answers to help students learn." },
+              { role: "user", content: contextPrompt }
+            ],
+            extra_body: {},
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(`API error: ${errorData?.error?.message || response.statusText}`);
+        }
+
+        const data = await response.json();
+        if (!data?.choices?.[0]?.message?.content) {
+          throw new Error("Invalid API response format");
+        }
+
+        return data.choices[0].message.content;
+      } else if (provider === 'gemini' && geminiKey && geminiKey.trim().length >= 20 && selectedGeminiModel) {
+        const modelId = selectedGeminiModel.split('/').pop();
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${geminiKey}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    {
+                      text: contextPrompt
+                    }
+                  ]
+                }
+              ]
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(`API error: ${errorData?.error?.message || response.statusText}`);
+        }
+
+        const data = await response.json();
+        const geminiText = data?.contents?.[0]?.parts?.[0]?.text || data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        if (!geminiText) {
+          throw new Error("Invalid Gemini API response format");
+        }
+
+        return geminiText;
+      } else if (provider === 'openai' && openAIKey && openAIKey.trim().length >= 20) {
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${openAIKey}`,
+          },
+          body: JSON.stringify({
+            model: "gpt-3.5-turbo",
+            messages: [
+              { role: "system", content: "You are a helpful educational assistant. Provide clear and concise answers to help students learn." },
+              { role: "user", content: contextPrompt }
+            ],
+            max_tokens: 256,
+            temperature: 0.7
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(`OpenAI API error: ${errorData?.error?.message || response.statusText}`);
+        }
+
+        const data = await response.json();
+        if (!data?.choices?.[0]?.message?.content) {
+          throw new Error("Invalid OpenAI API response format");
+        }
+
+        return data.choices[0].message.content;
+      } else {
+        throw new Error("No valid API configuration found");
+      }
+    } catch (error) {
+      console.error("Error in chat:", error);
+      throw new Error(error instanceof Error ? error.message : "Failed to send chat message");
+    }
+  };
+
   const restartQuiz = () => {
     setState({
       questions: state.questions,
@@ -983,6 +1104,13 @@ My answer: ${userAnswer}`;
         feedback={state.feedback} 
         loading={loadingFeedback} 
         error={apiError}
+        onSendChatMessage={
+          (provider === 'openrouter' && openRouterKey && validateApiKey(openRouterKey) && selectedModel) ||
+          (provider === 'gemini' && geminiKey && geminiKey.trim().length >= 20 && selectedGeminiModel) ||
+          (provider === 'openai' && openAIKey && openAIKey.trim().length >= 20)
+            ? handleChatMessage
+            : undefined
+        }
       />
 
       {showConfirmation && (
