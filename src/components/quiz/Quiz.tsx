@@ -217,23 +217,35 @@ const Quiz: React.FC = () => {
     setShowConfirmation(true);
   };
 
-  const moveToNextQuestion = () => {
-    if (state.currentQuestion < state.questions.length - 1) {
-      setState((prevState) => ({
-        ...prevState,
-        currentQuestion: prevState.currentQuestion + 1,
-        feedback: null,
+  const handleBack = () => {
+    if (state.currentQuestion > 0) {
+      setState(prev => ({
+        ...prev,
+        currentQuestion: prev.currentQuestion - 1,
+        feedback: null
       }));
       setSelectedOption(null);
       setShowFeedback(false);
       setShowConfirmation(false);
-      setApiError(null);
-      setLoadingFeedback(false);
+      playSound('next');
+    }
+  };
+
+  const handleNext = () => {
+    if (state.currentQuestion < state.questions.length - 1) {
+      setState(prev => ({
+        ...prev,
+        currentQuestion: prev.currentQuestion + 1,
+        feedback: null
+      }));
+      setSelectedOption(null);
+      setShowFeedback(false);
+      setShowConfirmation(false);
       playSound('next');
     } else {
-      setState((prevState) => ({
-        ...prevState,
-        showResults: true,
+      setState(prev => ({
+        ...prev,
+        showResults: true
       }));
       playSound('complete');
     }
@@ -1317,57 +1329,79 @@ Format your response exactly as shown above with proper markdown headers and str
         <SoundControls />
       </div>
       <div className="w-full max-w-2xl mx-auto">
-        <div className="mb-6">
-          <Button 
-            variant="ghost" 
-            onClick={newQuiz}
-            className="text-sm"
-          >
-            ← Back to Input
-          </Button>
-        </div>
-        
-        <div className="mb-6">
-          <div className="w-full bg-green-200 h-2 rounded-full">
-            <div 
-              className="bg-quiz-primary h-2 rounded-full transition-all duration-300" 
-              style={{ width: `${((state.currentQuestion + 1) / state.questions.length) * 100}%` }}
-            ></div>
-          </div>
-        </div>
-        
-        <QuizCard
-          question={state.questions[state.currentQuestion]}
-          questionNumber={state.currentQuestion + 1}
-          totalQuestions={state.questions.length}
-          onAnswer={handleAnswer}
-          showFeedback={showFeedback}
-          selectedOption={selectedOption}
-          isCorrect={selectedOption === state.questions[state.currentQuestion].answer}
-        />
+        {!state.showResults ? (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <Button
+                onClick={handleBack}
+                disabled={state.currentQuestion === 0}
+                variant="outline"
+                className="flex-1 mr-2"
+              >
+                Previous
+              </Button>
+              <Button
+                onClick={handleNext}
+                disabled={state.currentQuestion === state.questions.length - 1}
+                variant="outline"
+                className="flex-1 ml-2"
+              >
+                Next
+              </Button>
+            </div>
+            <div className="mb-6">
+              <div className="w-full bg-green-200 h-2 rounded-full">
+                <div 
+                  className="bg-quiz-primary h-2 rounded-full transition-all duration-300" 
+                  style={{ width: `${((state.currentQuestion + 1) / state.questions.length) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+            
+            <QuizCard
+              question={state.questions[state.currentQuestion]}
+              questionNumber={state.currentQuestion + 1}
+              totalQuestions={state.questions.length}
+              onAnswer={handleAnswer}
+              showFeedback={showFeedback}
+              selectedOption={selectedOption}
+              isCorrect={selectedOption === state.questions[state.currentQuestion].answer}
+            />
 
-        <AiFeedback 
-          feedback={state.feedback} 
-          loading={loadingFeedback} 
-          error={apiError}
-          onSendChatMessage={
-            (provider === 'openrouter' && openRouterKey && validateApiKey(openRouterKey) && selectedModel) ||
-            (provider === 'gemini' && geminiKey && geminiKey.trim().length >= 20 && selectedGeminiModel) ||
-            (provider === 'openai' && openAIKey && openAIKey.trim().length >= 20)
-              ? handleChatMessage
-              : undefined
-          }
-        />
+            <AiFeedback 
+              feedback={state.feedback} 
+              loading={loadingFeedback} 
+              error={apiError}
+              onSendChatMessage={
+                (provider === 'openrouter' && openRouterKey && validateApiKey(openRouterKey) && selectedModel) ||
+                (provider === 'gemini' && geminiKey && geminiKey.trim().length >= 20 && selectedGeminiModel) ||
+                (provider === 'openai' && openAIKey && openAIKey.trim().length >= 20)
+                  ? handleChatMessage
+                  : undefined
+              }
+            />
 
-        {showConfirmation && (
-          <div className="mt-4 flex justify-end">
-            <Button 
-              onClick={moveToNextQuestion}
-              className="bg-quiz-primary hover:bg-quiz-secondary text-white"
-            >
-              {state.currentQuestion < state.questions.length - 1 ? "Next Question" : "View Results"}
-            </Button>
+            {showConfirmation && (
+              <div className="mt-4 flex justify-end">
+                <Button 
+                  onClick={handleNext}
+                  className="bg-quiz-primary hover:bg-quiz-secondary text-white"
+                >
+                  {state.currentQuestion < state.questions.length - 1 ? "Next Question" : "View Results"}
+                </Button>
+              </div>
+            )}
           </div>
+        ) : (
+          <QuizResults
+            questions={state.questions}
+            userAnswers={state.userAnswers}
+            score={state.score}
+            onRestart={restartQuiz}
+            onNewQuiz={newQuiz}
+            essayRatings={state.essayRatings}
+            onGeneratePrescription={generatePrescription}
+          />
         )}
       </div>
     </div>

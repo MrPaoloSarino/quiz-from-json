@@ -1,15 +1,14 @@
-// Sound effect URLs - using free sound effects from a CDN
+// Sound effect URLs - using more reliable sound effects
 const SOUNDS = {
-  correct: 'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3',
-  incorrect: 'https://assets.mixkit.co/active_storage/sfx/2001/2001-preview.mp3',
-  start: 'https://assets.mixkit.co/active_storage/sfx/2002/2002-preview.mp3',
-  complete: 'https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3',
-  next: 'https://assets.mixkit.co/active_storage/sfx/2004/2004-preview.mp3',
-  button: 'https://assets.mixkit.co/active_storage/sfx/2005/2005-preview.mp3',
-  error: 'https://assets.mixkit.co/active_storage/sfx/2006/2006-preview.mp3',
-  success: 'https://assets.mixkit.co/active_storage/sfx/2007/2007-preview.mp3',
-  shuffle: 'https://assets.mixkit.co/active_storage/sfx/2008/2008-preview.mp3',
-  reset: 'https://assets.mixkit.co/active_storage/sfx/2009/2009-preview.mp3'
+  correct: 'https://cdn.freesound.org/previews/131/131142_2337290-lq.mp3',
+  incorrect: 'https://cdn.freesound.org/previews/131/131143_2337290-lq.mp3',
+  start: 'https://cdn.freesound.org/previews/270/270402_5123851-lq.mp3',
+  complete: 'https://cdn.freesound.org/previews/270/270404_5123851-lq.mp3',
+  next: 'https://cdn.freesound.org/previews/270/270403_5123851-lq.mp3',
+  error: 'https://cdn.freesound.org/previews/270/270405_5123851-lq.mp3',
+  success: 'https://cdn.freesound.org/previews/270/270406_5123851-lq.mp3',
+  shuffle: 'https://cdn.freesound.org/previews/270/270407_5123851-lq.mp3',
+  reset: 'https://cdn.freesound.org/previews/270/270408_5123851-lq.mp3'
 };
 
 // Cache for audio elements
@@ -18,6 +17,19 @@ const audioCache: { [key: string]: HTMLAudioElement } = {};
 // Sound settings
 let isMuted = false;
 let volume = 0.5; // Default volume 50%
+
+// Preload sounds
+const preloadSounds = () => {
+  Object.entries(SOUNDS).forEach(([key, url]) => {
+    const audio = new Audio();
+    audio.src = url;
+    audio.preload = 'auto';
+    audioCache[key] = audio;
+  });
+};
+
+// Initialize sounds
+preloadSounds();
 
 export const setVolume = (newVolume: number) => {
   volume = Math.max(0, Math.min(1, newVolume)); // Clamp between 0 and 1
@@ -40,20 +52,27 @@ export const isSoundMuted = () => isMuted;
 
 export const getVolume = () => volume;
 
-export const playSound = (type: 'correct' | 'incorrect' | 'start' | 'complete' | 'next' | 'button' | 'error' | 'success' | 'shuffle' | 'reset') => {
+export const playSound = (type: 'correct' | 'incorrect' | 'start' | 'complete' | 'next' | 'error' | 'success' | 'shuffle' | 'reset') => {
   if (isMuted) return;
 
-  // Create audio element if not cached
-  if (!audioCache[type]) {
-    audioCache[type] = new Audio(SOUNDS[type]);
-    audioCache[type].volume = volume;
-  }
+  try {
+    const audio = audioCache[type];
+    if (!audio) {
+      console.warn(`Sound ${type} not found in cache`);
+      return;
+    }
 
-  // Reset the audio to start
-  audioCache[type].currentTime = 0;
-  
-  // Play the sound
-  audioCache[type].play().catch(error => {
-    console.warn('Error playing sound:', error);
-  });
+    // Reset the audio to start
+    audio.currentTime = 0;
+    
+    // Play the sound
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(error => {
+        console.warn('Error playing sound:', error);
+      });
+    }
+  } catch (error) {
+    console.warn('Error with sound system:', error);
+  }
 }; 
