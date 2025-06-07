@@ -1331,7 +1331,7 @@ Format your response exactly as shown above with proper markdown headers and str
       <div className="w-full max-w-2xl mx-auto">
         {!state.showResults ? (
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center mb-4">
               <Button
                 onClick={handleBack}
                 disabled={state.currentQuestion === 0}
@@ -1349,15 +1349,19 @@ Format your response exactly as shown above with proper markdown headers and str
                 Next
               </Button>
             </div>
+            
             <div className="mb-6">
-              <div className="w-full bg-green-200 h-2 rounded-full">
+              <div className="w-full bg-gray-200 h-2 rounded-full">
                 <div 
-                  className="bg-quiz-primary h-2 rounded-full transition-all duration-300" 
-                  style={{ width: `${((state.currentQuestion + 1) / state.questions.length) * 100}%` }}
-                ></div>
+                  className="bg-quiz-primary h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${(state.currentQuestion / state.questions.length) * 100}%` }}
+                />
+              </div>
+              <div className="mt-2 text-sm text-gray-600">
+                Question {state.currentQuestion + 1} of {state.questions.length}
               </div>
             </div>
-            
+
             <QuizCard
               question={state.questions[state.currentQuestion]}
               questionNumber={state.currentQuestion + 1}
@@ -1366,19 +1370,6 @@ Format your response exactly as shown above with proper markdown headers and str
               showFeedback={showFeedback}
               selectedOption={selectedOption}
               isCorrect={selectedOption === state.questions[state.currentQuestion].answer}
-            />
-
-            <AiFeedback 
-              feedback={state.feedback} 
-              loading={loadingFeedback} 
-              error={apiError}
-              onSendChatMessage={
-                (provider === 'openrouter' && openRouterKey && validateApiKey(openRouterKey) && selectedModel) ||
-                (provider === 'gemini' && geminiKey && geminiKey.trim().length >= 20 && selectedGeminiModel) ||
-                (provider === 'openai' && openAIKey && openAIKey.trim().length >= 20)
-                  ? handleChatMessage
-                  : undefined
-              }
             />
 
             {showConfirmation && (
