@@ -71,7 +71,7 @@ const Index = () => {
               >
                 <span className="w-2 h-2 bg-yellow-300 rounded-full animate-ping"></span>
                 <span className="w-2 h-2 bg-yellow-300 rounded-full absolute"></span>
-                <span className="ml-2">What's New: AI Arguments & Study Prescriptions!</span>
+                <span className="ml-2">What's New: Sound Effects & Enhanced UI!</span>
                 <ArrowRight className="w-4 h-4 ml-1" />
               </button>
             </div>
@@ -154,82 +154,85 @@ const Index = () => {
           </DialogHeader>
           
           <div className="space-y-6 mt-4">
-            {/* AI Arguments Feature */}
+            {/* Sound Effects Feature */}
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
                   <MessageSquare className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-blue-900 mb-2">🗣️ Argue with AI</h3>
+                  <h3 className="text-lg font-semibold text-blue-900 mb-2">🔊 Interactive Sound Effects</h3>
                   <p className="text-blue-800 text-sm mb-2">
-                    Challenge the AI's reasoning and engage in meaningful debates about quiz answers.
+                    Enhanced quiz experience with responsive sound feedback.
                   </p>
                   <ul className="text-blue-700 text-xs space-y-1">
-                    <li>• Interactive chat interface for questioning AI responses</li>
-                    <li>• Develop critical thinking through AI arguments</li>
-                    <li>• Real-time contextual discussions about quiz topics</li>
+                    <li>• Volume control and mute toggle</li>
+                    <li>• Sound effects for correct/incorrect answers</li>
+                    <li>• Navigation and completion sounds</li>
+                    <li>• Customizable sound settings</li>
                   </ul>
                 </div>
               </div>
             </div>
 
-            {/* Question Randomization */}
+            {/* Enhanced UI */}
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-200">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
                   <Shuffle className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-green-900 mb-2">🎲 Question Randomization</h3>
+                  <h3 className="text-lg font-semibold text-green-900 mb-2">🎨 Improved User Interface</h3>
                   <p className="text-green-800 text-sm mb-2">
-                    Shuffle your quiz questions with one click for varied practice sessions.
+                    Cleaner, more intuitive interface for better user experience.
                   </p>
                   <ul className="text-green-700 text-xs space-y-1">
-                    <li>• Prevent memorization of question order</li>
-                    <li>• Enhanced learning through varied practice</li>
-                    <li>• One-click randomization before starting</li>
+                    <li>• Streamlined navigation controls</li>
+                    <li>• Better progress tracking</li>
+                    <li>• Responsive design improvements</li>
+                    <li>• Enhanced visual feedback</li>
                   </ul>
                 </div>
               </div>
             </div>
 
-            {/* Study Prescriptions */}
+            {/* AI Features */}
             <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg border border-purple-200">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-                  <BookOpen className="w-5 h-5 text-white" />
+                  <Brain className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-purple-900 mb-2">📋 AI Study Prescriptions</h3>
+                  <h3 className="text-lg font-semibold text-purple-900 mb-2">🤖 Enhanced AI Integration</h3>
                   <p className="text-purple-800 text-sm mb-2">
-                    Get personalized study recommendations based on your quiz performance.
+                    Improved AI feedback and analysis capabilities.
                   </p>
                   <ul className="text-purple-700 text-xs space-y-1">
-                    <li>• Comprehensive performance analysis</li>
-                    <li>• Tailored study plans with specific timelines</li>
-                    <li>• Priority focus areas and practice recommendations</li>
-                    <li>• Success metrics for tracking improvement</li>
+                    <li>• Multiple AI provider support</li>
+                    <li>• Better error handling</li>
+                    <li>• Improved response quality</li>
+                    <li>• Enhanced study recommendations</li>
                   </ul>
                 </div>
               </div>
             </div>
 
-            {/* Enhanced Experience */}
+            {/* Performance Improvements */}
             <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-4 rounded-lg border border-orange-200">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-yellow-500 rounded-lg flex items-center justify-center">
                   <Zap className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-orange-900 mb-2">⚡ Enhanced Experience</h3>
+                  <h3 className="text-lg font-semibold text-orange-900 mb-2">⚡ Performance Updates</h3>
                   <p className="text-orange-800 text-sm mb-2">
-                    Improved state management and user interface for smoother interactions.
+                    Faster, more reliable quiz experience.
                   </p>
                   <ul className="text-orange-700 text-xs space-y-1">
-                    <li>• Better handling of essay answers and AI responses</li>
-                    <li>• Cleaner transitions between questions</li>
-                    <li>• Modern messaging-style chat interface</li>
+                    <li>• Optimized state management</li>
+                    <li>• Improved loading times</li>
+                    <li>• Better error recovery</li>
+                    <li>• Enhanced stability</li>
                   </ul>
                 </div>
               </div>

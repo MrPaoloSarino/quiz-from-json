@@ -10,6 +10,9 @@ import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
 import { playSound } from '@/utils/soundEffects';
 import SoundControls from './SoundControls';
+import { secureStorage } from '@/utils/secureStorage';
+import { sanitizeMarkdown, sanitizeJson, validateContentLength } from '@/utils/sanitize';
+import { loadResource, verifyResourceIntegrity } from '@/utils/secureResources';
 
 const STORAGE_KEY = "quiz-openrouter-api-key";
 const RATE_LIMIT_TIME = 60000; // 1 minute in milliseconds
@@ -109,15 +112,18 @@ const Quiz: React.FC = () => {
     }
   }, []);
 
-  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newKey = e.target.value;
-    setOpenRouterKey(newKey);
-    
-    // Save to localStorage if not empty
-    if (newKey.trim()) {
-      localStorage.setItem(STORAGE_KEY, encryptData(newKey));
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
+  // Secure API key handling
+  const handleApiKeyChange = async (key: string, provider: string) => {
+    if (!secureStorage.validateApiKey(key, provider)) {
+      toast.error('Invalid API key format');
+      return;
+    }
+
+    try {
+      await secureStorage.setApiKey(key, provider);
+      toast.success('API key stored securely');
+    } catch (error) {
+      toast.error('Failed to store API key');
     }
   };
 
@@ -1079,7 +1085,7 @@ Format your response exactly as shown above with proper markdown headers and str
               <input
                 type={showPassword ? "text" : "password"}
                 value={openRouterKey}
-                onChange={handleApiKeyChange}
+                onChange={e => setOpenRouterKey(e.target.value)}
                 placeholder="Paste your OpenRouter API key here"
                 className="w-full p-2 border rounded pr-10"
               />
