@@ -1,78 +1,54 @@
-// Sound effect URLs - using more reliable sound effects
+// Sound effect URLs
 const SOUNDS = {
   correct: 'https://cdn.freesound.org/previews/131/131142_2337290-lq.mp3',
-  incorrect: 'https://cdn.freesound.org/previews/131/131143_2337290-lq.mp3',
-  start: 'https://cdn.freesound.org/previews/270/270402_5123851-lq.mp3',
-  complete: 'https://cdn.freesound.org/previews/270/270404_5123851-lq.mp3',
-  next: 'https://cdn.freesound.org/previews/270/270403_5123851-lq.mp3',
-  error: 'https://cdn.freesound.org/previews/270/270405_5123851-lq.mp3',
-  success: 'https://cdn.freesound.org/previews/270/270406_5123851-lq.mp3',
-  shuffle: 'https://cdn.freesound.org/previews/270/270407_5123851-lq.mp3',
-  reset: 'https://cdn.freesound.org/previews/270/270408_5123851-lq.mp3'
+  incorrect: 'https://cdn.freesound.org/previews/131/131143_2337290-lq.mp3'
 };
 
 // Cache for audio elements
 const audioCache: { [key: string]: HTMLAudioElement } = {};
 
 // Sound settings
+let volume = 0.5;
 let isMuted = false;
-let volume = 0.5; // Default volume 50%
 
 // Preload sounds
-const preloadSounds = () => {
+export const preloadSounds = () => {
   Object.entries(SOUNDS).forEach(([key, url]) => {
-    const audio = new Audio();
-    audio.src = url;
-    audio.preload = 'auto';
+    const audio = new Audio(url);
+    audio.volume = volume;
     audioCache[key] = audio;
   });
 };
 
-// Initialize sounds
-preloadSounds();
-
+// Set volume
 export const setVolume = (newVolume: number) => {
-  volume = Math.max(0, Math.min(1, newVolume)); // Clamp between 0 and 1
-  // Update volume for all cached audio elements
+  volume = Math.max(0, Math.min(1, newVolume));
   Object.values(audioCache).forEach(audio => {
     audio.volume = volume;
   });
 };
 
+// Toggle mute
 export const toggleMute = () => {
   isMuted = !isMuted;
-  // Update muted state for all cached audio elements
   Object.values(audioCache).forEach(audio => {
     audio.muted = isMuted;
   });
   return isMuted;
 };
 
-export const isSoundMuted = () => isMuted;
+// Get mute state
+export const getMuteState = () => isMuted;
 
-export const getVolume = () => volume;
-
-export const playSound = (type: 'correct' | 'incorrect' | 'start' | 'complete' | 'next' | 'error' | 'success' | 'shuffle' | 'reset') => {
+// Play sound
+export const playSound = (type: 'correct' | 'incorrect') => {
   if (isMuted) return;
 
-  try {
-    const audio = audioCache[type];
-    if (!audio) {
-      console.warn(`Sound ${type} not found in cache`);
-      return;
-    }
-
-    // Reset the audio to start
+  const audio = audioCache[type];
+  if (audio) {
     audio.currentTime = 0;
-    
-    // Play the sound
-    const playPromise = audio.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(error => {
-        console.warn('Error playing sound:', error);
-      });
-    }
-  } catch (error) {
-    console.warn('Error with sound system:', error);
+    audio.play().catch(error => {
+      console.error('Error playing sound:', error);
+    });
   }
 }; 

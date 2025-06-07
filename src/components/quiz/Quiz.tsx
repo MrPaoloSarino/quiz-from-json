@@ -134,30 +134,29 @@ const Quiz: React.FC = () => {
   };
 
   const randomizeQuestions = () => {
-    const shuffled = [...loadedQuestions];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    setLoadedQuestions(shuffled);
-    toast.success("Questions randomized!");
-    playSound('shuffle');
+    const shuffled = [...state.questions].sort(() => Math.random() - 0.5);
+    setState({
+      ...state,
+      questions: shuffled,
+      currentQuestion: 0,
+      score: 0,
+      userAnswers: [],
+      showResults: false,
+      feedback: null,
+      essayRatings: []
+    });
   };
   
   const startQuiz = () => {
     setState({
-      questions: loadedQuestions,
+      ...state,
       currentQuestion: 0,
       score: 0,
+      userAnswers: [],
       showResults: false,
-      userAnswers: Array(loadedQuestions.length).fill(""),
       feedback: null,
-      essayRatings: Array(loadedQuestions.length).fill(null),
+      essayRatings: []
     });
-    setQuizReadyToStart(false);
-    setShowGeminiInput(false);
-    setApiError(null);
-    playSound('start');
   };
 
   const handleAnswer = (selectedOption: string) => {
@@ -168,6 +167,7 @@ const Quiz: React.FC = () => {
     const isEssay = currentQ.type === 'essay';
     const isCorrect = selectedOption === currentQ.answer;
     
+    // Play sound only for multiple choice questions
     if (!isEssay) {
       playSound(isCorrect ? 'correct' : 'incorrect');
     }
@@ -223,37 +223,43 @@ const Quiz: React.FC = () => {
     setShowConfirmation(true);
   };
 
-  const handleBack = () => {
-    if (state.currentQuestion > 0) {
-      setState(prev => ({
-        ...prev,
-        currentQuestion: prev.currentQuestion - 1,
+  const moveToNextQuestion = () => {
+    if (state.currentQuestion < state.questions.length - 1) {
+      setState({
+        ...state,
+        currentQuestion: state.currentQuestion + 1,
         feedback: null
-      }));
+      });
       setSelectedOption(null);
       setShowFeedback(false);
-      setShowConfirmation(false);
-      playSound('next');
+    } else {
+      setState({
+        ...state,
+        showResults: true
+      });
+    }
+  };
+
+  const handleBack = () => {
+    if (state.currentQuestion > 0) {
+      setState({
+        ...state,
+        currentQuestion: state.currentQuestion - 1,
+        feedback: null
+      });
+      setSelectedOption(null);
+      setShowFeedback(false);
     }
   };
 
   const handleNext = () => {
     if (state.currentQuestion < state.questions.length - 1) {
-      setState(prev => ({
-        ...prev,
-        currentQuestion: prev.currentQuestion + 1,
-        feedback: null
-      }));
-      setSelectedOption(null);
-      setShowFeedback(false);
-      setShowConfirmation(false);
-      playSound('next');
+      moveToNextQuestion();
     } else {
-      setState(prev => ({
-        ...prev,
+      setState({
+        ...state,
         showResults: true
-      }));
-      playSound('complete');
+      });
     }
   };
 
@@ -1052,6 +1058,17 @@ Format your response exactly as shown above with proper markdown headers and str
     setApiCalls([]);
     setSelectedOption(null);
     setShowFeedback(false);
+  };
+
+  const handleApiError = (error: any) => {
+    console.error("API Error:", error);
+    const errorMessage = error instanceof Error ? error.message : "An error occurred";
+    setApiError(errorMessage);
+    toast.error(errorMessage);
+  };
+
+  const handleSuccess = (message: string) => {
+    toast.success(message);
   };
 
   if (showInput) {
