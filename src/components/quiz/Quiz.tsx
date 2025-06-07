@@ -135,6 +135,7 @@ const Quiz: React.FC = () => {
     }
     setLoadedQuestions(shuffled);
     toast.success("Questions randomized!");
+    playSound('shuffle');
   };
   
   const startQuiz = () => {
@@ -149,9 +150,7 @@ const Quiz: React.FC = () => {
     });
     setQuizReadyToStart(false);
     setShowGeminiInput(false);
-    // Reset any previous API errors
     setApiError(null);
-    // Play start sound
     playSound('start');
   };
 
@@ -163,7 +162,6 @@ const Quiz: React.FC = () => {
     const isEssay = currentQ.type === 'essay';
     const isCorrect = selectedOption === currentQ.answer;
     
-    // Play sound effect based on answer
     if (!isEssay) {
       playSound(isCorrect ? 'correct' : 'incorrect');
     }
@@ -231,14 +229,12 @@ const Quiz: React.FC = () => {
       setShowConfirmation(false);
       setApiError(null);
       setLoadingFeedback(false);
-      // Play next question sound
       playSound('next');
     } else {
       setState((prevState) => ({
         ...prevState,
         showResults: true,
       }));
-      // Play completion sound
       playSound('complete');
     }
   };
