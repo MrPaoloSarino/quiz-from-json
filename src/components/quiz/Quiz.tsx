@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
+import { playSound } from '@/utils/soundEffects';
+import SoundControls from './SoundControls';
 
 const STORAGE_KEY = "quiz-openrouter-api-key";
 const RATE_LIMIT_TIME = 60000; // 1 minute in milliseconds
@@ -149,6 +151,8 @@ const Quiz: React.FC = () => {
     setShowGeminiInput(false);
     // Reset any previous API errors
     setApiError(null);
+    // Play start sound
+    playSound('start');
   };
 
   const handleAnswer = (selectedOption: string) => {
@@ -158,6 +162,11 @@ const Quiz: React.FC = () => {
     const currentQ = state.questions[state.currentQuestion];
     const isEssay = currentQ.type === 'essay';
     const isCorrect = selectedOption === currentQ.answer;
+    
+    // Play sound effect based on answer
+    if (!isEssay) {
+      playSound(isCorrect ? 'correct' : 'incorrect');
+    }
     
     // Update the userAnswers array
     const updatedUserAnswers = [...state.userAnswers];
@@ -220,15 +229,17 @@ const Quiz: React.FC = () => {
       setSelectedOption(null);
       setShowFeedback(false);
       setShowConfirmation(false);
-      // Reset any API errors when moving to next question
       setApiError(null);
-      // Reset loading feedback state to prevent AI thinking from carrying over
       setLoadingFeedback(false);
+      // Play next question sound
+      playSound('next');
     } else {
       setState((prevState) => ({
         ...prevState,
         showResults: true,
       }));
+      // Play completion sound
+      playSound('complete');
     }
   };
 
@@ -1305,59 +1316,64 @@ Format your response exactly as shown above with proper markdown headers and str
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
-      <div className="mb-6">
-        <Button 
-          variant="ghost" 
-          onClick={newQuiz}
-          className="text-sm"
-        >
-          ← Back to Input
-        </Button>
+    <div className="container mx-auto p-4">
+      <div className="absolute top-4 right-4">
+        <SoundControls />
       </div>
-      
-      <div className="mb-6">
-        <div className="w-full bg-green-200 h-2 rounded-full">
-          <div 
-            className="bg-quiz-primary h-2 rounded-full transition-all duration-300" 
-            style={{ width: `${((state.currentQuestion + 1) / state.questions.length) * 100}%` }}
-          ></div>
-        </div>
-      </div>
-      
-      <QuizCard
-        question={state.questions[state.currentQuestion]}
-        questionNumber={state.currentQuestion + 1}
-        totalQuestions={state.questions.length}
-        onAnswer={handleAnswer}
-        showFeedback={showFeedback}
-        selectedOption={selectedOption}
-        isCorrect={selectedOption === state.questions[state.currentQuestion].answer}
-      />
-
-      <AiFeedback 
-        feedback={state.feedback} 
-        loading={loadingFeedback} 
-        error={apiError}
-        onSendChatMessage={
-          (provider === 'openrouter' && openRouterKey && validateApiKey(openRouterKey) && selectedModel) ||
-          (provider === 'gemini' && geminiKey && geminiKey.trim().length >= 20 && selectedGeminiModel) ||
-          (provider === 'openai' && openAIKey && openAIKey.trim().length >= 20)
-            ? handleChatMessage
-            : undefined
-        }
-      />
-
-      {showConfirmation && (
-        <div className="mt-4 flex justify-end">
+      <div className="w-full max-w-2xl mx-auto">
+        <div className="mb-6">
           <Button 
-            onClick={moveToNextQuestion}
-            className="bg-quiz-primary hover:bg-quiz-secondary text-white"
+            variant="ghost" 
+            onClick={newQuiz}
+            className="text-sm"
           >
-            {state.currentQuestion < state.questions.length - 1 ? "Next Question" : "View Results"}
+            ← Back to Input
           </Button>
         </div>
-      )}
+        
+        <div className="mb-6">
+          <div className="w-full bg-green-200 h-2 rounded-full">
+            <div 
+              className="bg-quiz-primary h-2 rounded-full transition-all duration-300" 
+              style={{ width: `${((state.currentQuestion + 1) / state.questions.length) * 100}%` }}
+            ></div>
+          </div>
+        </div>
+        
+        <QuizCard
+          question={state.questions[state.currentQuestion]}
+          questionNumber={state.currentQuestion + 1}
+          totalQuestions={state.questions.length}
+          onAnswer={handleAnswer}
+          showFeedback={showFeedback}
+          selectedOption={selectedOption}
+          isCorrect={selectedOption === state.questions[state.currentQuestion].answer}
+        />
+
+        <AiFeedback 
+          feedback={state.feedback} 
+          loading={loadingFeedback} 
+          error={apiError}
+          onSendChatMessage={
+            (provider === 'openrouter' && openRouterKey && validateApiKey(openRouterKey) && selectedModel) ||
+            (provider === 'gemini' && geminiKey && geminiKey.trim().length >= 20 && selectedGeminiModel) ||
+            (provider === 'openai' && openAIKey && openAIKey.trim().length >= 20)
+              ? handleChatMessage
+              : undefined
+          }
+        />
+
+        {showConfirmation && (
+          <div className="mt-4 flex justify-end">
+            <Button 
+              onClick={moveToNextQuestion}
+              className="bg-quiz-primary hover:bg-quiz-secondary text-white"
+            >
+              {state.currentQuestion < state.questions.length - 1 ? "Next Question" : "View Results"}
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
