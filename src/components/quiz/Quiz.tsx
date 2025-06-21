@@ -1342,6 +1342,9 @@ Format your response exactly as shown above with proper markdown headers and str
             ? generatePrescription
             : undefined
         }
+        provider={provider}
+        apiKey={provider === 'openrouter' ? openRouterKey : provider === 'gemini' ? geminiKey : openAIKey}
+        selectedModel={provider === 'openrouter' ? selectedModel : provider === 'gemini' ? selectedGeminiModel : undefined}
       />
     );
   }
@@ -1415,6 +1418,9 @@ Format your response exactly as shown above with proper markdown headers and str
             onNewQuiz={newQuiz}
             essayRatings={state.essayRatings}
             onGeneratePrescription={generatePrescription}
+            provider={provider}
+            apiKey={provider === 'openrouter' ? openRouterKey : provider === 'gemini' ? geminiKey : openAIKey}
+            selectedModel={provider === 'openrouter' ? selectedModel : provider === 'gemini' ? selectedGeminiModel : undefined}
           />
         )}
       </div>
