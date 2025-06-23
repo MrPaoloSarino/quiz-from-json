@@ -382,7 +382,7 @@ Format:
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${openRouterKey}`,
-            ...(siteUrl ? { "HTTP-Referer": siteUrl } : {}),
+            ...(siteUrl ? { "HTTP-Referer": siteUrl } : { "HTTP-Referer": window.location.origin }),
             ...(siteName ? { "X-Title": siteName } : {}),
           },
           body: JSON.stringify({
@@ -765,7 +765,7 @@ Please provide a helpful response related to this quiz question and topic.`;
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${openRouterKey}`,
-            ...(siteUrl ? { "HTTP-Referer": siteUrl } : {}),
+            ...(siteUrl ? { "HTTP-Referer": siteUrl } : { "HTTP-Referer": window.location.origin }),
             ...(siteName ? { "X-Title": siteName } : {}),
           },
           body: JSON.stringify({
@@ -934,7 +934,7 @@ Format your response exactly as shown above with proper markdown headers and str
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${openRouterKey}`,
-            ...(siteUrl ? { "HTTP-Referer": siteUrl } : {}),
+            ...(siteUrl ? { "HTTP-Referer": siteUrl } : { "HTTP-Referer": window.location.origin }),
             ...(siteName ? { "X-Title": siteName } : {}),
           },
           body: JSON.stringify({
