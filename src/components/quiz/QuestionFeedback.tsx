@@ -121,7 +121,8 @@ Be clear, educational, and ${isCorrect ? 'congratulatory' : 'encouraging'}.`;
           })
         });
       } else if (provider === 'gemini') {
-        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedModel || 'gemini-pro'}:generateContent?key=${apiKey}`, {
+        const geminiModelId = (selectedModel || 'gemini-pro').split('/').pop();
+        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModelId}:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -155,7 +156,9 @@ Be clear, educational, and ${isCorrect ? 'congratulatory' : 'encouraging'}.`;
       }
 
       if (!response?.ok) {
-        throw new Error(`API request failed: ${response?.statusText}`);
+        let detail = '';
+        try { const errJson = await response.json(); detail = errJson?.error?.message ? ` – ${errJson.error.message}` : ''; } catch {}
+        throw new Error(`Gemini API request failed (${response.status}): ${response.statusText}${detail}`);
       }
 
       const data = await response.json();
@@ -231,7 +234,8 @@ Please provide a helpful, concise response that addresses their specific questio
           })
         });
       } else if (provider === 'gemini') {
-        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedModel || 'gemini-pro'}:generateContent?key=${apiKey}`, {
+        const geminiModelId = (selectedModel || 'gemini-pro').split('/').pop();
+        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModelId}:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -262,7 +266,9 @@ Please provide a helpful, concise response that addresses their specific questio
       }
 
       if (!response?.ok) {
-        throw new Error(`API request failed: ${response?.statusText}`);
+        let detail = '';
+        try { const errJson = await response.json(); detail = errJson?.error?.message ? ` – ${errJson.error.message}` : ''; } catch {}
+        throw new Error(`Gemini API request failed (${response.status}): ${response.statusText}${detail}`);
       }
 
       const data = await response.json();
@@ -446,6 +452,13 @@ Please provide a helpful, concise response that addresses their specific questio
           )}
         </CardContent>
       </Card>
+
+      {(loadingExplanation || chatLoading) && (
+        <div className="flex items-center gap-2 text-sm text-blue-700 bg-blue-50 border border-blue-200 px-3 py-2 rounded-md mb-4">
+          <Spinner className="w-4 h-4 animate-spin" />
+          AI is thinking...
+        </div>
+      )}
     </div>
   );
 };
