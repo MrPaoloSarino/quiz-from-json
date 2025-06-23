@@ -130,33 +130,41 @@ const Quiz: React.FC = () => {
   const prepareQuiz = (questions: QuizQuestion[]) => {
     setLoadedQuestions(questions);
     setShowInput(false);
-    setShowGeminiInput(true);
+    setQuizReadyToStart(true);
+    setState({
+      questions: questions,
+      currentQuestion: 0,
+      score: 0,
+      showResults: false,
+      userAnswers: Array(questions.length).fill(""),
+      feedback: null,
+      essayRatings: Array(questions.length).fill(null),
+    });
   };
 
   const randomizeQuestions = () => {
-    const shuffled = [...state.questions].sort(() => Math.random() - 0.5);
-    setState({
-      ...state,
-      questions: shuffled,
-      currentQuestion: 0,
-      score: 0,
-      userAnswers: [],
-      showResults: false,
-      feedback: null,
-      essayRatings: []
-    });
+    const shuffled = [...loadedQuestions];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    setLoadedQuestions(shuffled);
+    toast.success("Questions randomized!");
   };
   
   const startQuiz = () => {
     setState({
-      ...state,
+      questions: loadedQuestions,
       currentQuestion: 0,
       score: 0,
-      userAnswers: [],
       showResults: false,
+      userAnswers: Array(loadedQuestions.length).fill(""),
       feedback: null,
-      essayRatings: []
+      essayRatings: Array(loadedQuestions.length).fill(null),
     });
+    setQuizReadyToStart(false);
+    setShowGeminiInput(false);
+    setApiError(null);
   };
 
   const handleAnswer = (selectedOption: string) => {
@@ -1035,8 +1043,6 @@ Format your response exactly as shown above with proper markdown headers and str
     setApiError(null);
     setRetryCount(0);
     setApiCalls([]);
-    setQuizReadyToStart(false);
-    setLoadedQuestions(state.questions);
   };
 
   const newQuiz = () => {
@@ -1075,277 +1081,54 @@ Format your response exactly as shown above with proper markdown headers and str
     return <JsonInput onQuizStart={prepareQuiz} />;
   }
 
-  if (showGeminiInput) {
+  if (quizReadyToStart) {
     return (
-      <Card className="w-full max-w-xl mx-auto p-6">
-        <h2 className="text-xl font-semibold mb-4">Enter API Key & Choose Provider</h2>
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-1">Provider</label>
-          <select
-            className="w-full p-2 border rounded"
-            value={provider}
-            onChange={e => setProvider(e.target.value as 'openrouter' | 'gemini' | 'openai')}
-          >
-            <option value="openrouter">OpenRouter</option>
-            <option value="gemini">Gemini</option>
-            <option value="openai">OpenAI</option>
-          </select>
+      <div className="container mx-auto p-4">
+        <div className="absolute top-4 right-4">
+          <SoundControls />
         </div>
-        {provider === 'openrouter' && (
-          <>
-            <p className="text-sm text-green-500 mb-4">
-              To get AI feedback on your answers, please enter your OpenRouter API key.<br />
-              You can get a free key at <a href="https://openrouter.ai/" target="_blank" rel="noopener noreferrer" className="underline">openrouter.ai</a>.<br />
-              <b>Optional:</b> For better ranking, enter your site URL and site name.
-            </p>
-            <div className="flex relative mb-2">
-              <input
-                type={showPassword ? "text" : "password"}
-                value={openRouterKey}
-                onChange={e => setOpenRouterKey(e.target.value)}
-                placeholder="Paste your OpenRouter API key here"
-                className="w-full p-2 border rounded pr-10"
-              />
-              <button 
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-2 text-green-500"
-                aria-label={showPassword ? "Hide API key" : "Show API key"}
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-            {openRouterKey && !validateApiKey(openRouterKey) && (
-              <p className="text-sm text-red-500 mb-2">
-                API key seems invalid. It should start with <code>sk-</code> and be at least 20 characters.
-              </p>
-            )}
-            <label className="block text-sm font-medium mb-1">Choose a model</label>
-            <input
-              type="text"
-              className="w-full p-2 border rounded mb-2"
-              placeholder="Search models..."
-              value={modelSearch}
-              onChange={e => setModelSearch(e.target.value)}
-              onFocus={() => setShowModelDropdown(true)}
-            />
-            {/* Custom dropdown for model selection with autowrap */}
-            <div
-              className="w-full border rounded bg-white relative"
-              style={{ maxHeight: 180, overflowY: 'auto', zIndex: 10, position: 'relative' }}
-              tabIndex={0}
-              onBlur={() => setShowModelDropdown(false)}
+        <div className="w-full max-w-xl mx-auto">
+          <div className="mb-6">
+            <Button
+              variant="ghost"
+              onClick={newQuiz}
+              className="text-sm"
             >
-              {showModelDropdown && models.length > 0 && (
-                <div>
-                  {models
-                    .filter(model => model.id.toLowerCase().includes(modelSearch.toLowerCase()))
-                    .map((model) => (
-                      <div
-                        key={model.id}
-                        className={`p-2 cursor-pointer hover:bg-gray-100 ${selectedModel === model.id ? 'bg-gray-200' : ''}`}
-                        style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}
-                        onMouseDown={() => {
-                          setSelectedModel(model.id);
-                          setShowModelDropdown(false);
-                        }}
-                      >
-                        {model.id}
-                      </div>
-                    ))}
-                  {models.filter(model => model.id.toLowerCase().includes(modelSearch.toLowerCase())).length === 0 && (
-                    <div className="p-2 text-gray-400">No models found</div>
-                  )}
-                </div>
-              )}
-              {!showModelDropdown && (
-                <div
-                  className="p-2 text-gray-700 cursor-pointer"
-                  style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}
-                  onClick={() => setShowModelDropdown(true)}
-                >
-                  {selectedModel || 'Select a model'}
-                </div>
-              )}
-            </div>
-            <input
-              type="text"
-              value={siteUrl}
-              onChange={e => setSiteUrl(e.target.value)}
-              placeholder="Your site URL (optional)"
-              className="w-full p-2 border rounded mb-2"
-            />
-            <input
-              type="text"
-              value={siteName}
-              onChange={e => setSiteName(e.target.value)}
-              placeholder="Your site name (optional)"
-              className="w-full p-2 border rounded mb-4"
-            />
-          </>
-        )}
-        {provider === 'gemini' && (
-          <>
-            <p className="text-sm text-green-500 mb-4">
-              To get AI feedback on your answers, please enter your Gemini API key.<br />
-              You can get a key at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="underline">Google AI Studio</a>.<br />
-            </p>
-            <div className="flex relative mb-2">
-              <input
-                type={showPassword ? "text" : "password"}
-                value={geminiKey}
-                onChange={e => setGeminiKey(e.target.value)}
-                placeholder="Paste your Gemini API key here"
-                className="w-full p-2 border rounded pr-10"
+              ← Back to Input
+            </Button>
+          </div>
+          
+          <div className="mb-6">
+            <div className="w-full bg-gray-200 h-2 rounded-full">
+              <div 
+                className="bg-quiz-primary h-2 rounded-full transition-all duration-300"
+                style={{ width: `${(loadedQuestions.length > 0 ? 100 : 0)}%` }}
               />
-              <button 
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-2 text-green-500"
-                aria-label={showPassword ? "Hide API key" : "Show API key"}
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
             </div>
-            {geminiKey && geminiKey.trim().length < 20 && (
-              <p className="text-sm text-red-500 mb-2">
-                API key seems invalid. It should be at least 20 characters.
-              </p>
-            )}
-            <label className="block text-sm font-medium mb-1">Choose a Gemini model</label>
-            <input
-              type="text"
-              className="w-full p-2 border rounded mb-2"
-              placeholder="Search Gemini models..."
-              value={geminiModelSearch}
-              onChange={e => setGeminiModelSearch(e.target.value)}
-              onFocus={() => setShowGeminiModelDropdown(true)}
-            />
-            <div
-              className="w-full border rounded bg-white relative"
-              style={{ maxHeight: 180, overflowY: 'auto', zIndex: 10, position: 'relative' }}
-              tabIndex={0}
-              onBlur={() => setShowGeminiModelDropdown(false)}
-            >
-              {showGeminiModelDropdown && geminiModels.length > 0 && (
-                <div>
-                  {geminiModels
-                    .filter(model => model.name.toLowerCase().includes(geminiModelSearch.toLowerCase()))
-                    .map((model) => (
-                      <div
-                        key={model.name}
-                        className={`p-2 cursor-pointer hover:bg-gray-100 ${selectedGeminiModel === model.name ? 'bg-gray-200' : ''}`}
-                        style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}
-                        onMouseDown={() => {
-                          setSelectedGeminiModel(model.name);
-                          setShowGeminiModelDropdown(false);
-                        }}
-                      >
-                        {model.name.split('/').pop()}
-                      </div>
-                    ))}
-                  {geminiModels.filter(model => model.name.toLowerCase().includes(geminiModelSearch.toLowerCase())).length === 0 && (
-                    <div className="p-2 text-gray-400">No Gemini models found</div>
-                  )}
-                </div>
-              )}
-              {!showGeminiModelDropdown && (
-                <div
-                  className="p-2 text-green-700 cursor-pointer"
-                  style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}
-                  onClick={() => setShowGeminiModelDropdown(true)}
-                >
-                  {selectedGeminiModel ? selectedGeminiModel.split('/').pop() : 'Select a Gemini model'}
-                </div>
-              )}
+            <div className="mt-2 text-sm text-gray-600">
+              {loadedQuestions.length} questions loaded
             </div>
-          </>
-        )}
-        {provider === 'openai' && (
-          <>
-            <p className="text-sm text-green-500 mb-4">
-              To get AI feedback on your answers, please enter your OpenAI API key.<br />
-              You can get a key at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="underline">OpenAI Platform</a>.<br />
-            </p>
-            <div className="flex relative mb-2">
-              <input
-                type={showPassword ? "text" : "password"}
-                value={openAIKey}
-                onChange={e => setOpenAIKey(e.target.value)}
-                placeholder="Paste your OpenAI API key here"
-                className="w-full p-2 border rounded pr-10"
-              />
-              <button 
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-2 text-green-500"
-                aria-label={showPassword ? "Hide API key" : "Show API key"}
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-            {openAIKey && openAIKey.trim().length < 20 && (
-              <p className="text-sm text-red-500 mb-2">
-                API key seems invalid. It should be at least 20 characters.
-              </p>
-            )}
-          </>
-        )}
-        <div className="flex gap-2 mt-4">
-          <Button
-            variant="ghost"
-            onClick={() => setShowInput(true)}
-            className="text-sm"
-          >
-            ← Back
-          </Button>
-          <Button
-            variant="outline"
-            onClick={randomizeQuestions}
-            disabled={loadedQuestions.length === 0}
-            className="text-sm"
-          >
-            🎲 Randomize
-          </Button>
-          <Button
-            onClick={startQuiz}
-            className="flex-1 bg-quiz-primary hover:bg-quiz-secondary text-white"
-            disabled={
-              (provider === 'openrouter' && (openRouterKey.trim() !== "" && !validateApiKey(openRouterKey))) ||
-              (provider === 'gemini' && (geminiKey.trim().length > 0 && geminiKey.trim().length < 20))
-            }
-          >
-            {provider === 'openrouter'
-              ? (openRouterKey ? "Start Quiz with AI Feedback" : "Start Quiz without AI Feedback")
-              : provider === 'gemini'
-              ? (geminiKey ? "Start Quiz with AI Feedback" : "Start Quiz without AI Feedback")
-              : (openAIKey ? "Start Quiz with AI Feedback" : "Start Quiz without AI Feedback")}
-          </Button>
-        </div>
-      </Card>
-    );
-  }
+          </div>
 
-  if (state.showResults) {
-    return (
-      <QuizResults
-        questions={state.questions}
-        userAnswers={state.userAnswers}
-        score={state.score}
-        onRestart={restartQuiz}
-        onNewQuiz={newQuiz}
-        essayRatings={state.essayRatings}
-        onGeneratePrescription={
-          (provider === 'openrouter' && openRouterKey && validateApiKey(openRouterKey) && selectedModel) ||
-          (provider === 'gemini' && geminiKey && geminiKey.trim().length >= 20 && selectedGeminiModel) ||
-          (provider === 'openai' && openAIKey && openAIKey.trim().length >= 20)
-            ? generatePrescription
-            : undefined
-        }
-        provider={provider}
-        apiKey={provider === 'openrouter' ? openRouterKey : provider === 'gemini' ? geminiKey : openAIKey}
-        selectedModel={provider === 'openrouter' ? selectedModel : provider === 'gemini' ? selectedGeminiModel : undefined}
-      />
+          <div className="flex gap-2 mb-4">
+            <Button
+              onClick={randomizeQuestions}
+              variant="outline"
+              className="flex-1"
+              disabled={loadedQuestions.length === 0}
+            >
+              Randomize Questions
+            </Button>
+            <Button
+              onClick={startQuiz}
+              className="flex-1 bg-quiz-primary hover:bg-quiz-secondary text-white"
+              disabled={loadedQuestions.length === 0}
+            >
+              Start Quiz
+            </Button>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -1388,15 +1171,17 @@ Format your response exactly as shown above with proper markdown headers and str
               </div>
             </div>
 
-            <QuizCard
-              question={state.questions[state.currentQuestion]}
-              questionNumber={state.currentQuestion + 1}
-              totalQuestions={state.questions.length}
-              onAnswer={handleAnswer}
-              showFeedback={showFeedback}
-              selectedOption={selectedOption}
-              isCorrect={selectedOption === state.questions[state.currentQuestion].answer}
-            />
+            {state.questions.length > 0 && (
+              <QuizCard
+                question={state.questions[state.currentQuestion]}
+                questionNumber={state.currentQuestion + 1}
+                totalQuestions={state.questions.length}
+                onAnswer={handleAnswer}
+                showFeedback={showFeedback}
+                selectedOption={selectedOption}
+                isCorrect={selectedOption === state.questions[state.currentQuestion].answer}
+              />
+            )}
 
             {showConfirmation && (
               <div className="mt-4 flex justify-end">

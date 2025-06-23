@@ -1,9 +1,15 @@
-import DOMPurify from 'dompurify';
+// Only import DOMPurify in browser environment
+let DOMPurify: any = null;
 
-// Configure DOMPurify
-const purify = DOMPurify(window);
+if (typeof window !== 'undefined') {
+  try {
+    DOMPurify = require('dompurify');
+  } catch (error) {
+    console.warn('DOMPurify not available, using basic sanitization');
+  }
+}
 
-// Configure allowed tags and attributes
+// Configure DOMPurify if available
 const config = {
   ALLOWED_TAGS: [
     'p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
@@ -15,9 +21,25 @@ const config = {
   FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover']
 };
 
+// Basic HTML sanitization fallback
+const basicSanitize = (content: string): string => {
+  return content
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+    .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '')
+    .replace(/<embed\b[^<]*(?:(?!<\/embed>)<[^<]*)*<\/embed>/gi, '')
+    .replace(/on\w+\s*=/gi, '')
+    .replace(/javascript:/gi, '')
+    .replace(/data:/gi, '')
+    .replace(/vbscript:/gi, '');
+};
+
 // Sanitize HTML content
 export const sanitizeHtml = (content: string): string => {
-  return purify.sanitize(content, config);
+  if (DOMPurify && typeof window !== 'undefined') {
+    return DOMPurify.sanitize(content, config);
+  }
+  return basicSanitize(content);
 };
 
 // Sanitize markdown content

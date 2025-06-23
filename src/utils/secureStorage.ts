@@ -1,4 +1,19 @@
-import { Buffer } from 'buffer';
+// Browser-compatible base64 encoding
+const btoa = (str: string): string => {
+  if (typeof window !== 'undefined' && window.btoa) {
+    return window.btoa(str);
+  }
+  // Fallback for non-browser environments
+  return Buffer.from(str, 'binary').toString('base64');
+};
+
+const atob = (str: string): string => {
+  if (typeof window !== 'undefined' && window.atob) {
+    return window.atob(str);
+  }
+  // Fallback for non-browser environments
+  return Buffer.from(str, 'base64').toString('binary');
+};
 
 // Encryption key derivation
 const deriveKey = async (password: string): Promise<CryptoKey> => {
@@ -45,14 +60,25 @@ const encrypt = async (data: string, password: string): Promise<string> => {
   combined.set(iv);
   combined.set(new Uint8Array(encryptedData), iv.length);
 
-  return Buffer.from(combined).toString('base64');
+  // Convert to base64
+  const uint8Array = new Uint8Array(combined);
+  let binaryString = '';
+  for (let i = 0; i < uint8Array.length; i++) {
+    binaryString += String.fromCharCode(uint8Array[i]);
+  }
+  return btoa(binaryString);
 };
 
 // Decrypt data
 const decrypt = async (encryptedData: string, password: string): Promise<string> => {
   try {
     const key = await deriveKey(password);
-    const combined = Buffer.from(encryptedData, 'base64');
+    const binaryString = atob(encryptedData);
+    const combined = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      combined[i] = binaryString.charCodeAt(i);
+    }
+    
     const iv = combined.slice(0, 12);
     const data = combined.slice(12);
 
