@@ -2,16 +2,11 @@ import React from 'react';
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Volume2, VolumeX } from "lucide-react";
-import { setVolume, toggleMute, getMuteState, preloadSounds } from '@/utils/soundEffects';
+import { setVolume, toggleMute, isSoundMuted, getVolume } from '@/utils/soundEffects';
 
 const SoundControls: React.FC = () => {
-  const [muted, setMuted] = React.useState(getMuteState());
-  const [volume, setVolumeState] = React.useState(0.5);
-
-  React.useEffect(() => {
-    // Preload sounds when component mounts
-    preloadSounds();
-  }, []);
+  const [muted, setMuted] = React.useState(isSoundMuted());
+  const [volume, setVolumeState] = React.useState(getVolume());
 
   const handleVolumeChange = (value: number[]) => {
     const newVolume = value[0];
