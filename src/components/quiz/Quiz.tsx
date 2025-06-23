@@ -15,9 +15,23 @@ import { secureStorage } from '@/utils/secureStorage';
 import { sanitizeMarkdown, sanitizeJson, validateContentLength } from '@/utils/sanitize';
 import { loadResource, verifyResourceIntegrity } from '@/utils/secureResources';
 
-const STORAGE_KEY = "quiz-openrouter-api-key";
-const RATE_LIMIT_TIME = 60000; // 1 minute in milliseconds
-const MAX_CALLS_PER_MINUTE = 10;
+const API_URLS = {
+  OPENROUTER: "https://openrouter.ai/api/v1/chat/completions",
+  OPENROUTER_MODELS: "https://openrouter.ai/api/v1/models",
+  OPENAI: "https://api.openai.com/v1/chat/completions",
+  GEMINI_BASE: "https://generativelanguage.googleapis.com/v1beta/models"
+} as const;
+
+const DEFAULT_MODELS = {
+  OPENROUTER: "deepseek/deepseek-chat-v3-0324:free",
+  OPENAI: "gpt-3.5-turbo",
+  GEMINI: "gemini-pro"
+} as const;
+
+const RATE_LIMIT = {
+  TIME_WINDOW: 60000, // 1 minute
+  MAX_CALLS: 10
+} as const;
 
 // Simple encryption for localStorage (not for high-security applications)
 const encryptData = (data: string, salt: string = 'quiz-app'): string => {
@@ -78,39 +92,55 @@ const Quiz: React.FC = () => {
   const [openAIKey, setOpenAIKey] = useState<string>("");
   const [geminiKey, setGeminiKey] = useState<string>("");
 
-  // Enhanced API key validation for OpenRouter keys (usually sk-or-...)
+  // Enhanced API key validation with proper error handling
   const validateApiKey = (key: string): boolean => {
+    if (!key || typeof key !== 'string') return false;
     return key.trim().length > 20 && key.startsWith("sk-");
   };
 
-  // Rate limiting check
+  // Rate limiting check with error handling
   const isRateLimited = (): boolean => {
-    const now = Date.now();
-    // Filter calls made within the rate limit time window
-    const recentCalls = apiCalls.filter(timestamp => (now - timestamp) < RATE_LIMIT_TIME);
-    
-    return recentCalls.length >= MAX_CALLS_PER_MINUTE;
+    try {
+      const now = Date.now();
+      // Filter calls made within the rate limit time window
+      const recentCalls = apiCalls.filter(timestamp => (now - timestamp) < RATE_LIMIT.TIME_WINDOW);
+      
+      return recentCalls.length >= RATE_LIMIT.MAX_CALLS;
+    } catch (error) {
+      console.error('Rate limiting check failed:', error);
+      return false; // Fail open to avoid blocking legitimate requests
+    }
   };
 
-  // Record API call for rate limiting
+  // Record API call for rate limiting with error handling
   const recordApiCall = (): void => {
-    const now = Date.now();
-    // Keep only recent calls and add the new one
-    const recentCalls = apiCalls.filter(timestamp => (now - timestamp) < RATE_LIMIT_TIME);
-    setApiCalls([...recentCalls, now]);
+    try {
+      const now = Date.now();
+      // Keep only recent calls and add the new one
+      const recentCalls = apiCalls.filter(timestamp => (now - timestamp) < RATE_LIMIT.TIME_WINDOW);
+      setApiCalls([...recentCalls, now]);
+    } catch (error) {
+      console.error('Failed to record API call:', error);
+    }
   };
 
   const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
   // Load API key from localStorage on component mount
   useEffect(() => {
-    const savedKey = localStorage.getItem(STORAGE_KEY);
+    let isMounted = true;
+    
+    const savedKey = localStorage.getItem("quiz-openrouter-api-key");
     if (savedKey) {
       const decryptedKey = decryptData(savedKey);
-      if (decryptedKey) {
+      if (decryptedKey && isMounted) {
         setOpenRouterKey(decryptedKey);
       }
     }
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Secure API key handling
@@ -276,33 +306,49 @@ const Quiz: React.FC = () => {
     }
   };
 
-  // Fetch OpenRouter models
+  // Fetch OpenRouter models with proper cleanup
   useEffect(() => {
     if (provider !== 'openrouter') return;
+    
+    let isMounted = true;
+    const abortController = new AbortController();
+    
     const fetchModels = async () => {
       if (!openRouterKey || !validateApiKey(openRouterKey)) {
-        setModels([]);
-        setSelectedModel("");
+        if (isMounted) {
+          setModels([]);
+          setSelectedModel("");
+        }
         return;
       }
       try {
-        const res = await fetch("https://openrouter.ai/api/v1/models", {
+        const res = await fetch(API_URLS.OPENROUTER_MODELS, {
           headers: {
             "Authorization": `Bearer ${openRouterKey}`,
           },
+          signal: abortController.signal,
         });
         if (!res.ok) throw new Error("Failed to fetch models");
         const data = await res.json();
-        setModels(data.data || []);
-        if (data.data && data.data.length > 0) {
-          setSelectedModel(data.data[0].id);
+        if (isMounted) {
+          setModels(data.data || []);
+          if (data.data && data.data.length > 0) {
+            setSelectedModel(data.data[0].id);
+          }
         }
       } catch (e) {
-        setModels([]);
-        setSelectedModel("");
+        if (isMounted && e.name !== 'AbortError') {
+          setModels([]);
+          setSelectedModel("");
+        }
       }
     };
     fetchModels();
+    
+    return () => {
+      isMounted = false;
+      abortController.abort();
+    };
   }, [openRouterKey, provider]);
 
   // Fetch Gemini models

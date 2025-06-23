@@ -25,6 +25,8 @@ interface ChatMessage {
   timestamp: Date;
 }
 
+const safeGet = <T,>(arr: T[] | undefined, idx: number): T | undefined => (Array.isArray(arr) ? arr[idx] : undefined);
+
 const QuestionFeedback: React.FC<QuestionFeedbackProps> = ({
   question,
   userAnswer,
@@ -165,9 +167,16 @@ Be clear, educational, and ${isCorrect ? 'congratulatory' : 'encouraging'}.`;
       let explanationText = '';
 
       if (provider === 'openrouter' || provider === 'openai') {
-        explanationText = data.choices[0].message.content;
+        const choice: any = safeGet<any>(data.choices, 0);
+        explanationText = choice?.message?.content || '';
       } else if (provider === 'gemini') {
-        explanationText = data.candidates[0].content.parts[0].text;
+        const candidate: any = safeGet<any>(data.candidates, 0);
+        const part: any = candidate?.content?.parts ? safeGet<any>(candidate.content.parts, 0) : undefined;
+        explanationText = part?.text || '';
+      }
+
+      if (!explanationText) {
+        throw new Error('AI response missing expected content');
       }
 
       setExplanation(explanationText);
@@ -275,10 +284,15 @@ Please provide a helpful, concise response that addresses their specific questio
       let aiResponse = '';
 
       if (provider === 'openrouter' || provider === 'openai') {
-        aiResponse = data.choices[0].message.content;
+        const choice: any = safeGet<any>(data.choices, 0);
+        aiResponse = choice?.message?.content || '';
       } else if (provider === 'gemini') {
-        aiResponse = data.candidates[0].content.parts[0].text;
+        const candidate: any = safeGet<any>(data.candidates, 0);
+        const part: any = candidate?.content?.parts ? safeGet<any>(candidate.content.parts, 0) : undefined;
+        aiResponse = part?.text || '';
       }
+
+      if (!aiResponse) throw new Error('AI response missing expected content');
 
       const assistantMessage: ChatMessage = {
         role: 'assistant',

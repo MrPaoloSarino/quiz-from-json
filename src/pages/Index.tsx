@@ -60,122 +60,74 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
       {/* Hero Section */}
       <section className="relative overflow-hidden">
-        {/* Lightweight decorative gradient background */}
-
-        <div className="relative container mx-auto px-4 py-20 lg:py-32">
-          <div className="text-center max-w-5xl mx-auto">
-            {/* Modern badge */}
-            <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-md text-blue-700 px-6 py-3 rounded-full text-sm font-medium mb-6 shadow-lg border border-white/30">
+        <div className="relative container mx-auto px-4 py-12 lg:py-16">
+          <div className="text-center max-w-3xl mx-auto">
+            {/* Simple badge */}
+            <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-4">
               <Sparkles className="w-4 h-4" />
-              Next-Gen AI-Powered Learning
-            </div>
-
-            {/* What's New Badge */}
-            <div className="flex justify-center mb-8">
-              <button
-                onClick={() => setShowWhatsNew(true)}
-                className="group inline-flex items-center gap-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-2xl text-sm font-medium backdrop-blur-md border border-white/20 hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 cursor-pointer shadow-xl hover:shadow-2xl"
-              >
-                <div className="relative">
-                  <span className="w-3 h-3 bg-yellow-300 rounded-full animate-ping"></span>
-                  <span className="w-3 h-3 bg-yellow-300 rounded-full absolute inset-0"></span>
-                </div>
-                <span>New: Enhanced AI Explanations & Chat!</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </button>
+              AI-Powered Learning
             </div>
 
             {/* Main Heading */}
-            <h1 className="text-6xl lg:text-8xl font-bold text-slate-900 mb-8 leading-tight">
-              Learn Smarter with{" "}
-              <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                AI-Powered
-              </span>
-              <br />
-              <span className="text-5xl lg:text-7xl">Quizzes</span>
+            <h1 className="text-4xl lg:text-6xl font-bold text-slate-900 mb-6 leading-tight">
+              Smart Learning with{" "}
+              <span className="text-blue-600">AI</span>
             </h1>
 
-            {/* Modern subtitle */}
-            <p className="text-xl lg:text-2xl text-slate-600 mb-12 max-w-3xl mx-auto leading-relaxed">
-              Transform your learning experience with intelligent quizzes, instant AI feedback, 
-              and personalized explanations that adapt to your learning style.
+            {/* Simple subtitle */}
+            <p className="text-lg text-slate-600 mb-8 max-w-2xl mx-auto">
+              Get instant AI feedback and explanations for your quizzes.
             </p>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center mb-12">
               <Button
                 onClick={() => setShowQuiz(true)}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 min-w-[200px]"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 font-medium rounded-lg min-w-[180px]"
                 size="lg"
               >
                 <Play className="mr-2 w-5 h-5" />
-                Start Learning Now
+                Start Quiz
               </Button>
               <Button
-                variant="outline"
-                className="border-2 border-slate-300 text-slate-700 hover:bg-slate-50 px-8 py-4 text-lg font-semibold rounded-xl transition-all duration-300 min-w-[200px]"
-                size="lg"
+                onClick={() => setShowWhatsNew(true)}
+                className="border border-slate-300 text-slate-700 hover:bg-slate-50 px-6 py-3 font-medium rounded-lg min-w-[180px]"
               >
-                <FileText className="mr-2 w-5 h-5" />
-                View Demo
+                What's New
               </Button>
             </div>
 
             {/* Features Grid */}
-            <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-              <Card className="bg-white/90 backdrop-blur-md border-white/50 hover:border-blue-200 transition-all duration-300 hover:shadow-xl group">
-                <CardContent className="p-8 text-center">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                    <Brain className="w-8 h-8 text-white" />
+            <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto">
+              <Card className="border-slate-200 hover:border-blue-300 transition-colors">
+                <CardContent className="p-6 text-center">
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                    <Brain className="w-6 h-6 text-blue-600" />
                   </div>
-                  <h3 className="text-xl font-bold text-slate-900 mb-3">Smart AI Feedback</h3>
-                  <p className="text-slate-600 leading-relaxed">Get personalized explanations and detailed feedback powered by advanced AI models</p>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-2">AI Feedback</h3>
+                  <p className="text-sm text-slate-600">Instant explanations for every answer</p>
                 </CardContent>
               </Card>
 
-              <Card className="bg-white/90 backdrop-blur-md border-white/50 hover:border-purple-200 transition-all duration-300 hover:shadow-xl group">
-                <CardContent className="p-8 text-center">
-                  <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                    <MessageSquare className="w-8 h-8 text-white" />
+              <Card className="border-slate-200 hover:border-purple-300 transition-colors">
+                <CardContent className="p-6 text-center">
+                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                    <MessageSquare className="w-6 h-6 text-purple-600" />
                   </div>
-                  <h3 className="text-xl font-bold text-slate-900 mb-3">Interactive Chat</h3>
-                  <p className="text-slate-600 leading-relaxed">Ask follow-up questions and get instant answers from our AI tutor</p>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-2">AI Chat</h3>
+                  <p className="text-sm text-slate-600">Ask questions about any topic</p>
                 </CardContent>
               </Card>
 
-              <Card className="bg-white/90 backdrop-blur-md border-white/50 hover:border-pink-200 transition-all duration-300 hover:shadow-xl group">
-                <CardContent className="p-8 text-center">
-                  <div className="w-16 h-16 bg-gradient-to-br from-pink-500 to-pink-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                    <Zap className="w-8 h-8 text-white" />
+              <Card className="border-slate-200 hover:border-green-300 transition-colors">
+                <CardContent className="p-6 text-center">
+                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                    <Zap className="w-6 h-6 text-green-600" />
                   </div>
-                  <h3 className="text-xl font-bold text-slate-900 mb-3">Instant Setup</h3>
-                  <p className="text-slate-600 leading-relaxed">Simply paste your JSON quiz data or upload a file and start learning immediately</p>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-2">Easy Setup</h3>
+                  <p className="text-sm text-slate-600">Upload JSON and start instantly</p>
                 </CardContent>
               </Card>
-            </div>
-          </div>
-        </div>
-
-        {/* Stats Section */}
-        <div className="relative py-16 bg-white/50 backdrop-blur-md border-y border-white/30">
-          <div className="container mx-auto px-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-              <div>
-                <div className="text-4xl font-bold text-blue-600 mb-2">10k+</div>
-                <div className="text-slate-600">Questions Answered</div>
-              </div>
-              <div>
-                <div className="text-4xl font-bold text-purple-600 mb-2">95%</div>
-                <div className="text-slate-600">Learning Improvement</div>
-              </div>
-              <div>
-                <div className="text-4xl font-bold text-pink-600 mb-2">5k+</div>
-                <div className="text-slate-600">Happy Learners</div>
-              </div>
-              <div>
-                <div className="text-4xl font-bold text-indigo-600 mb-2">24/7</div>
-                <div className="text-slate-600">AI Support</div>
-              </div>
             </div>
           </div>
         </div>
