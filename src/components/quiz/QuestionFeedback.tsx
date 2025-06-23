@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -43,6 +43,14 @@ const QuestionFeedback: React.FC<QuestionFeedbackProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   const isEssay = question.type === 'essay';
+
+  // Auto-fetch detailed explanation once the component mounts and an API key exists
+  useEffect(() => {
+    if (!explanation && !loadingExplanation && apiKey) {
+      getExplanation();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const getExplanation = async () => {
     if (!apiKey) {
@@ -163,7 +171,14 @@ Be clear, educational, and ${isCorrect ? 'congratulatory' : 'encouraging'}.`;
       toast.success('Explanation generated successfully!');
     } catch (error) {
       console.error('Error getting explanation:', error);
-      const message = error instanceof Error ? error.message : 'Failed to get explanation. Please try again.';
+      let message = 'Failed to get explanation. Please try again.';
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch')) {
+          message = 'Network error: Failed to fetch – check your internet connection or CORS settings.';
+        } else {
+          message = error.message;
+        }
+      }
       setError(message);
       toast.error(message);
     } finally {
@@ -268,7 +283,14 @@ Please provide a helpful, concise response that addresses their specific questio
       setChatMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
       console.error('Error sending chat message:', error);
-      const chatErr = error instanceof Error ? error.message : 'Failed to send message';
+      let chatErr = 'Failed to send message';
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch')) {
+          chatErr = 'Network error: Failed to fetch – check your internet connection or CORS settings.';
+        } else {
+          chatErr = error.message;
+        }
+      }
       toast.error(chatErr);
     } finally {
       setChatLoading(false);
@@ -315,10 +337,10 @@ Please provide a helpful, concise response that addresses their specific questio
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {!explanation && (
+          {!explanation && !apiKey && (
             <Button
               onClick={getExplanation}
-              disabled={loadingExplanation || !apiKey}
+              disabled={loadingExplanation}
               className="w-full"
             >
               {loadingExplanation ? (
