@@ -3,11 +3,12 @@ import JsonInput from "./JsonInput";
 import QuizCard from "./QuizCard";
 import QuizResults from "./QuizResults";
 import AiFeedback from "./AiFeedback";
+import QuestionFeedback from "./QuestionFeedback";
 import { QuizQuestion, QuizState, GeminiResponse } from "@/types/quiz";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Brain } from "lucide-react";
 import { playSound } from '@/utils/soundEffects';
 import SoundControls from './SoundControls';
 import { secureStorage } from '@/utils/secureStorage';
@@ -130,7 +131,17 @@ const Quiz: React.FC = () => {
   const prepareQuiz = (questions: QuizQuestion[]) => {
     setLoadedQuestions(questions);
     setShowInput(false);
-    setShowGeminiInput(true);
+    // Skip optional AI configuration and start quiz immediately
+    setState({
+      questions,
+      currentQuestion: 0,
+      score: 0,
+      showResults: false,
+      userAnswers: Array(questions.length).fill(""),
+      feedback: null,
+      essayRatings: Array(questions.length).fill(null),
+    });
+    setShowGeminiInput(false);
   };
 
   const randomizeQuestions = () => {
@@ -157,6 +168,8 @@ const Quiz: React.FC = () => {
       feedback: null,
       essayRatings: []
     });
+    // Hide AI configuration modal if it is open
+    setShowGeminiInput(false);
   };
 
   const handleAnswer = (selectedOption: string) => {
@@ -1294,10 +1307,17 @@ Format your response exactly as shown above with proper markdown headers and str
         <div className="flex gap-2 mt-4">
           <Button
             variant="ghost"
-            onClick={() => setShowInput(true)}
+            onClick={() => {
+              // If quiz already started, just close modal; otherwise go back to input
+              if (state.questions.length > 0) {
+                setShowGeminiInput(false);
+              } else {
+                setShowInput(true);
+              }
+            }}
             className="text-sm"
           >
-            ← Back
+            ← {state.questions.length > 0 ? 'Close' : 'Back'}
           </Button>
           <Button
             variant="outline"
@@ -1351,7 +1371,16 @@ Format your response exactly as shown above with proper markdown headers and str
 
   return (
     <div className="container mx-auto p-4">
-      <div className="absolute top-4 right-4">
+      <div className="absolute top-4 right-4 flex gap-3 items-center">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setShowGeminiInput(true)}
+          title="AI Settings"
+          className="h-8 w-8 text-blue-600 hover:bg-blue-50"
+        >
+          <Brain className="h-4 w-4" />
+        </Button>
         <SoundControls />
       </div>
       <div className="w-full max-w-2xl mx-auto">
@@ -1397,6 +1426,20 @@ Format your response exactly as shown above with proper markdown headers and str
               selectedOption={selectedOption}
               isCorrect={selectedOption === state.questions[state.currentQuestion].answer}
             />
+
+            {/* AI feedback per question */}
+            {showFeedback && (
+              <QuestionFeedback
+                question={state.questions[state.currentQuestion]}
+                userAnswer={selectedOption || ""}
+                isCorrect={selectedOption === state.questions[state.currentQuestion].answer}
+                questionNumber={state.currentQuestion + 1}
+                provider={provider}
+                apiKey={provider === 'openrouter' ? openRouterKey : provider === 'gemini' ? geminiKey : openAIKey}
+                selectedModel={provider === 'openrouter' ? selectedModel : provider === 'gemini' ? selectedGeminiModel : undefined}
+                essayRating={state.questions[state.currentQuestion].type === 'essay' ? state.essayRatings[state.currentQuestion] : undefined}
+              />
+            )}
 
             {showConfirmation && (
               <div className="mt-4 flex justify-end">

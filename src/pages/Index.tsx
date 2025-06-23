@@ -31,7 +31,7 @@ const Index = () => {
         <header className="bg-gradient-to-r from-blue-600/10 to-purple-600/10 border-b py-4 backdrop-blur-sm">
           <div className="container mx-auto px-4 flex justify-between items-center">
             <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              QuizMaster AI
+              Virtuoso
             </h1>
             <Button
               variant="ghost"
@@ -49,7 +49,7 @@ const Index = () => {
         
         <footer className="bg-gradient-to-r from-blue-600/5 to-purple-600/5 border-t py-4 mt-auto">
           <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} QuizMaster AI | Intelligent learning made simple
+            &copy; {new Date().getFullYear()} Virtuoso | Intelligent learning made simple
           </div>
         </footer>
       </div>
@@ -306,13 +306,13 @@ const Index = () => {
         <div className="container mx-auto px-4">
           <div className="text-center">
             <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-4">
-              QuizMaster AI
+              Virtuoso
             </h3>
             <p className="text-slate-400 mb-6">
               Empowering learners worldwide with intelligent, AI-driven educational experiences.
             </p>
             <div className="flex justify-center space-x-6 text-slate-400">
-              <span>&copy; {new Date().getFullYear()} QuizMaster AI</span>
+              <span>&copy; {new Date().getFullYear()} Virtuoso</span>
               <span>•</span>
               <span>Made with ❤️ for learners</span>
             </div>

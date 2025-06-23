@@ -25,7 +25,7 @@ const SoundControls: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center gap-2 p-2 bg-background/50 rounded-lg">
+    <div className="flex items-center gap-3 p-2 bg-white/70 backdrop-blur-md rounded-full shadow-sm">
       <Button
         variant="ghost"
         size="icon"
@@ -39,10 +39,10 @@ const SoundControls: React.FC = () => {
         onValueChange={handleVolumeChange}
         max={100}
         step={5}
-        className="w-24"
+        className="w-28"
         disabled={muted}
       />
-      <span className="text-xs text-muted-foreground w-8">
+      <span className="text-xs text-gray-600 font-medium w-8 text-right">
         {muted ? '0%' : `${volume}%`}
       </span>
     </div>

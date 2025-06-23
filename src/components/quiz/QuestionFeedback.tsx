@@ -163,8 +163,9 @@ Be clear, educational, and ${isCorrect ? 'congratulatory' : 'encouraging'}.`;
       toast.success('Explanation generated successfully!');
     } catch (error) {
       console.error('Error getting explanation:', error);
-      setError('Failed to get explanation. Please try again.');
-      toast.error('Failed to get explanation');
+      const message = error instanceof Error ? error.message : 'Failed to get explanation. Please try again.';
+      setError(message);
+      toast.error(message);
     } finally {
       setLoadingExplanation(false);
     }
@@ -267,7 +268,8 @@ Please provide a helpful, concise response that addresses their specific questio
       setChatMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
       console.error('Error sending chat message:', error);
-      toast.error('Failed to send message');
+      const chatErr = error instanceof Error ? error.message : 'Failed to send message';
+      toast.error(chatErr);
     } finally {
       setChatLoading(false);
     }
