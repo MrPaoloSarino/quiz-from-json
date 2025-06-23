@@ -1,0 +1,37 @@
+{
+  "questions": [
+    {
+      "id": 1,
+      "question": "What is the largest planet in our solar system?",
+      "options": ["Earth", "Jupiter", "Saturn", "Mars"],
+      "answer": "Jupiter",
+      "type": "multiple-choice"
+    },
+    {
+      "id": 2,
+      "question": "Which programming language was created by Guido van Rossum?",
+      "options": ["JavaScript", "Python", "Java", "C++"],
+      "answer": "Python",
+      "type": "multiple-choice"
+    },
+    {
+      "id": 3,
+      "question": "Explain the concept of artificial intelligence and discuss its potential impact on society. Include both benefits and challenges in your response.",
+      "answer": "A comprehensive answer should discuss AI as computer systems performing tasks typically requiring human intelligence, benefits like automation and medical advances, and challenges like job displacement and ethical concerns.",
+      "type": "essay"
+    },
+    {
+      "id": 4,
+      "question": "What is 2 + 2?",
+      "options": ["3", "4", "5", "6"],
+      "answer": "4",
+      "type": "multiple-choice"
+    },
+    {
+      "id": 5,
+      "question": "Describe the water cycle and explain why it is important for life on Earth. Your answer should include at least three main stages of the cycle.",
+      "answer": "The water cycle involves evaporation, condensation, and precipitation. It's crucial for distributing fresh water, regulating climate, and supporting all life forms through continuous water circulation.",
+      "type": "essay"
+    }
+  ]
+} 

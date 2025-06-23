@@ -190,6 +190,7 @@ const QuizResults: React.FC<QuizResultsProps> = ({
                       provider={provider}
                       apiKey={apiKey}
                       selectedModel={selectedModel}
+                      essayRating={isEssay ? essayRating : undefined}
                     />
                   </div>
                 )}

@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Spinner } from '@/components/ui/spinner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { QuizQuestion } from '@/types/quiz';
-import { MessageSquare, Send, Brain } from 'lucide-react';
+import { MessageSquare, Send, Brain, CheckCircle, XCircle, Lightbulb } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface QuestionFeedbackProps {
@@ -16,6 +16,7 @@ interface QuestionFeedbackProps {
   provider: 'openrouter' | 'gemini' | 'openai';
   apiKey: string;
   selectedModel?: string;
+  essayRating?: number;
 }
 
 interface ChatMessage {
@@ -31,36 +32,64 @@ const QuestionFeedback: React.FC<QuestionFeedbackProps> = ({
   questionNumber,
   provider,
   apiKey,
-  selectedModel
+  selectedModel,
+  essayRating
 }) => {
-  const [feedback, setFeedback] = useState<string>('');
-  const [loading, setLoading] = useState(false);
+  const [explanation, setExplanation] = useState<string>('');
+  const [loadingExplanation, setLoadingExplanation] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const getFeedback = async () => {
+  const isEssay = question.type === 'essay';
+
+  const getExplanation = async () => {
     if (!apiKey) {
-      toast.error('Please provide an API key to get feedback');
+      toast.error('Please provide an API key to get explanations');
       return;
     }
 
-    setLoading(true);
+    setLoadingExplanation(true);
     setError(null);
 
     try {
-      const prompt = `Question ${questionNumber}: "${question.question}"
-User's answer: "${userAnswer}"
-Correct answer: "${question.answer}"
-User was ${isCorrect ? 'correct' : 'incorrect'}.
+      let prompt = '';
+      
+      if (isEssay) {
+        prompt = `You are an expert tutor providing detailed feedback on an essay answer.
+
+**Question:** ${question.question}
+**Student's Answer:** ${userAnswer}
+**AI Rating:** ${essayRating}/10
 
 Please provide:
-1. A brief explanation of why the answer is ${isCorrect ? 'correct' : 'incorrect'}
-2. Key concepts to remember
-3. One tip for improvement (if applicable)
 
-Keep the response concise and educational.`;
+1. **What You Did Well:** Highlight 2-3 specific strengths in the answer
+2. **Areas for Improvement:** Identify 2-3 specific areas that could be enhanced
+3. **Why This Score:** Explain why this answer received ${essayRating}/10
+4. **Perfect Answer Elements:** What would a 10/10 answer include?
+5. **Next Steps:** One specific action to improve
+
+Format your response clearly with headers and be encouraging while being constructive.`;
+      } else {
+        prompt = `You are an expert tutor explaining a quiz question.
+
+**Question:** ${question.question}
+**Options:** ${question.options?.join(', ')}
+**Correct Answer:** ${question.answer}
+**Student's Answer:** ${userAnswer}
+**Result:** ${isCorrect ? 'CORRECT ✓' : 'INCORRECT ✗'}
+
+Please provide a comprehensive explanation:
+
+1. **Why the Correct Answer is Right:** Explain why "${question.answer}" is correct
+${!isCorrect ? `2. **Why Your Answer was Wrong:** Explain specifically why "${userAnswer}" is incorrect` : ''}
+${!isCorrect ? '3. **Common Mistake:** Why students often choose this wrong answer' : '2. **Key Concept:** The main principle/concept being tested'}
+${!isCorrect ? '4. **Remember This:** One key point to remember for similar questions' : '3. **Remember This:** One key point to remember for similar questions'}
+
+Be clear, educational, and ${isCorrect ? 'congratulatory' : 'encouraging'}.`;
+      }
 
       let response;
       if (provider === 'openrouter') {
@@ -72,8 +101,14 @@ Keep the response concise and educational.`;
           },
           body: JSON.stringify({
             model: selectedModel || 'deepseek/deepseek-chat-v3-0324:free',
-            messages: [{ role: 'user', content: prompt }],
-            max_tokens: 300,
+            messages: [
+              { 
+                role: 'system', 
+                content: 'You are an expert educational tutor. Provide clear, structured explanations that help students learn effectively. Use encouraging language and focus on understanding concepts.'
+              },
+              { role: 'user', content: prompt }
+            ],
+            max_tokens: 500,
             temperature: 0.7
           })
         });
@@ -84,7 +119,7 @@ Keep the response concise and educational.`;
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
-              maxOutputTokens: 300,
+              maxOutputTokens: 500,
               temperature: 0.7
             }
           })
@@ -98,8 +133,14 @@ Keep the response concise and educational.`;
           },
           body: JSON.stringify({
             model: 'gpt-3.5-turbo',
-            messages: [{ role: 'user', content: prompt }],
-            max_tokens: 300,
+            messages: [
+              { 
+                role: 'system', 
+                content: 'You are an expert educational tutor. Provide clear, structured explanations that help students learn effectively. Use encouraging language and focus on understanding concepts.'
+              },
+              { role: 'user', content: prompt }
+            ],
+            max_tokens: 500,
             temperature: 0.7
           })
         });
@@ -110,22 +151,22 @@ Keep the response concise and educational.`;
       }
 
       const data = await response.json();
-      let feedbackText = '';
+      let explanationText = '';
 
       if (provider === 'openrouter' || provider === 'openai') {
-        feedbackText = data.choices[0].message.content;
+        explanationText = data.choices[0].message.content;
       } else if (provider === 'gemini') {
-        feedbackText = data.candidates[0].content.parts[0].text;
+        explanationText = data.candidates[0].content.parts[0].text;
       }
 
-      setFeedback(feedbackText);
-      toast.success('Feedback generated successfully!');
+      setExplanation(explanationText);
+      toast.success('Explanation generated successfully!');
     } catch (error) {
-      console.error('Error getting feedback:', error);
-      setError('Failed to get feedback. Please try again.');
-      toast.error('Failed to get feedback');
+      console.error('Error getting explanation:', error);
+      setError('Failed to get explanation. Please try again.');
+      toast.error('Failed to get explanation');
     } finally {
-      setLoading(false);
+      setLoadingExplanation(false);
     }
   };
 
@@ -143,14 +184,17 @@ Keep the response concise and educational.`;
     setChatLoading(true);
 
     try {
-      const contextPrompt = `Context: Question ${questionNumber}: "${question.question}"
-User's answer: "${userAnswer}"
-Correct answer: "${question.answer}"
-User was ${isCorrect ? 'correct' : 'incorrect'}.
+      const contextPrompt = `You are a helpful tutor answering follow-up questions about a quiz question.
 
-User's follow-up question: "${newMessage}"
+**Original Question:** ${question.question}
+**Student's Answer:** ${userAnswer}
+**Correct Answer:** ${question.answer}
+**Question Type:** ${isEssay ? 'Essay' : 'Multiple Choice'}
+${isEssay ? `**AI Rating:** ${essayRating}/10` : `**Result:** ${isCorrect ? 'Correct' : 'Incorrect'}`}
 
-Please provide a helpful response that addresses their question while staying relevant to the quiz context.`;
+**Student's Follow-up Question:** ${newMessage}
+
+Please provide a helpful, concise response that addresses their specific question while staying relevant to the quiz context. Be encouraging and educational.`;
 
       let response;
       if (provider === 'openrouter') {
@@ -162,8 +206,11 @@ Please provide a helpful response that addresses their question while staying re
           },
           body: JSON.stringify({
             model: selectedModel || 'deepseek/deepseek-chat-v3-0324:free',
-            messages: [{ role: 'user', content: contextPrompt }],
-            max_tokens: 200,
+            messages: [
+              { role: 'system', content: 'You are a helpful educational assistant. Provide concise, clear answers to student questions.' },
+              { role: 'user', content: contextPrompt }
+            ],
+            max_tokens: 300,
             temperature: 0.7
           })
         });
@@ -174,7 +221,7 @@ Please provide a helpful response that addresses their question while staying re
           body: JSON.stringify({
             contents: [{ parts: [{ text: contextPrompt }] }],
             generationConfig: {
-              maxOutputTokens: 200,
+              maxOutputTokens: 300,
               temperature: 0.7
             }
           })
@@ -188,8 +235,11 @@ Please provide a helpful response that addresses their question while staying re
           },
           body: JSON.stringify({
             model: 'gpt-3.5-turbo',
-            messages: [{ role: 'user', content: contextPrompt }],
-            max_tokens: 200,
+            messages: [
+              { role: 'system', content: 'You are a helpful educational assistant. Provide concise, clear answers to student questions.' },
+              { role: 'user', content: contextPrompt }
+            ],
+            max_tokens: 300,
             temperature: 0.7
           })
         });
@@ -224,42 +274,64 @@ Please provide a helpful response that addresses their question while staying re
   };
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Brain className="w-5 h-5" />
-          Question {questionNumber} Feedback
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Question Summary */}
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h4 className="font-semibold mb-2">Question Summary</h4>
-          <p className="text-sm text-gray-700 mb-2">{question.question}</p>
-          <div className="flex gap-4 text-sm">
-            <span className={`font-medium ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
-              Your Answer: {userAnswer}
-            </span>
-            <span className="text-gray-600">
-              Correct Answer: {question.answer}
-            </span>
+    <div className="space-y-6">
+      {/* Question Summary */}
+      <Card className="border-l-4 border-l-blue-500">
+        <CardContent className="pt-4">
+          <div className="flex items-start gap-3">
+            <div className={`p-2 rounded-full ${isEssay ? 'bg-purple-100' : isCorrect ? 'bg-green-100' : 'bg-red-100'}`}>
+              {isEssay ? (
+                <Brain className={`w-5 h-5 ${essayRating && essayRating >= 7 ? 'text-green-600' : 'text-orange-600'}`} />
+              ) : isCorrect ? (
+                <CheckCircle className="w-5 h-5 text-green-600" />
+              ) : (
+                <XCircle className="w-5 h-5 text-red-600" />
+              )}
+            </div>
+            <div className="flex-1">
+              <h4 className="font-semibold text-gray-900">{question.question}</h4>
+              <div className="mt-2 space-y-1 text-sm">
+                <p><span className="font-medium">Your answer:</span> {userAnswer || 'No answer provided'}</p>
+                {!isEssay && (
+                  <p><span className="font-medium">Correct answer:</span> <span className="text-green-600">{question.answer}</span></p>
+                )}
+                {isEssay && essayRating !== undefined && (
+                  <p><span className="font-medium">Score:</span> <span className={essayRating >= 7 ? 'text-green-600' : 'text-orange-600'}>{essayRating}/10</span></p>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
+        </CardContent>
+      </Card>
 
-        {/* AI Feedback Section */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="font-semibold">AI Feedback</h4>
+      {/* AI Explanation Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Lightbulb className="w-5 h-5 text-yellow-500" />
+            AI Explanation
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!explanation && (
             <Button
-              onClick={getFeedback}
-              disabled={loading || !apiKey}
-              size="sm"
-              className="flex items-center gap-2"
+              onClick={getExplanation}
+              disabled={loadingExplanation || !apiKey}
+              className="w-full"
             >
-              {loading ? <Spinner className="w-4 h-4" /> : <Brain className="w-4 h-4" />}
-              Get Feedback
+              {loadingExplanation ? (
+                <>
+                  <Spinner className="w-4 h-4 mr-2" />
+                  Generating explanation...
+                </>
+              ) : (
+                <>
+                  <Brain className="w-4 h-4 mr-2" />
+                  Get Detailed Explanation
+                </>
+              )}
             </Button>
-          </div>
+          )}
 
           {error && (
             <Alert variant="destructive">
@@ -267,57 +339,63 @@ Please provide a helpful response that addresses their question while staying re
             </Alert>
           )}
 
-          {feedback && (
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <h5 className="font-medium text-blue-900 mb-2">Feedback:</h5>
-              <p className="text-blue-800 text-sm whitespace-pre-wrap">{feedback}</p>
+          {explanation && (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+              <div className="prose prose-sm max-w-none">
+                <div className="whitespace-pre-wrap text-sm text-blue-900">{explanation}</div>
+              </div>
             </div>
           )}
-        </div>
+        </CardContent>
+      </Card>
 
-        {/* AI Chat Section */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="w-5 h-5" />
-            <h4 className="font-semibold">Ask AI About This Question</h4>
-          </div>
-
+      {/* Chat Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-blue-500" />
+            Ask Questions
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
           {/* Chat Messages */}
-          <div className="max-h-60 overflow-y-auto space-y-3">
-            {chatMessages.map((message, index) => (
-              <div
-                key={index}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
+          {chatMessages.length > 0 && (
+            <div className="max-h-80 overflow-y-auto space-y-3 p-3 bg-gray-50 rounded-lg">
+              {chatMessages.map((message, index) => (
                 <div
-                  className={`max-w-xs p-3 rounded-lg ${
-                    message.role === 'user'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}
+                  key={index}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <p className="text-sm">{message.content}</p>
-                  <p className="text-xs opacity-70 mt-1">
-                    {message.timestamp.toLocaleTimeString()}
-                  </p>
+                  <div
+                    className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                      message.role === 'user'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-white text-gray-800 shadow-sm'
+                    }`}
+                  >
+                    <p className="text-sm">{message.content}</p>
+                    <p className={`text-xs mt-1 ${message.role === 'user' ? 'text-blue-100' : 'text-gray-500'}`}>
+                      {message.timestamp.toLocaleTimeString()}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
-            {chatLoading && (
-              <div className="flex justify-start">
-                <div className="bg-gray-100 p-3 rounded-lg">
-                  <Spinner className="w-4 h-4" />
+              ))}
+              {chatLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-white p-3 rounded-lg shadow-sm">
+                    <Spinner className="w-4 h-4" />
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
           {/* Chat Input */}
           <div className="flex gap-2">
             <Textarea
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Ask a question about this problem..."
+              placeholder="Ask a question about this problem... (e.g., 'Can you explain this concept differently?', 'What's a good way to remember this?')"
               className="flex-1"
               rows={2}
               onKeyPress={(e) => {
@@ -331,14 +409,20 @@ Please provide a helpful response that addresses their question while staying re
               onClick={sendChatMessage}
               disabled={!newMessage.trim() || chatLoading || !apiKey}
               size="sm"
-              className="flex items-center gap-2"
+              className="self-end"
             >
               <Send className="w-4 h-4" />
             </Button>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+          
+          {!apiKey && (
+            <p className="text-sm text-gray-500 text-center">
+              Add an API key to enable AI explanations and chat
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
