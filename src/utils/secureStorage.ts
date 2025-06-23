@@ -1,4 +1,4 @@
-import { Buffer } from 'buffer';
+// Browser-compatible secure storage using Web Crypto API
 
 // Encryption key derivation
 const deriveKey = async (password: string): Promise<CryptoKey> => {
@@ -14,104 +14,136 @@ const deriveKey = async (password: string): Promise<CryptoKey> => {
   return crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt: encoder.encode('quiz-platform-salt'),
+      salt: encoder.encode('quiz-app-salt'), // Use a fixed salt for simplicity
       iterations: 100000,
-      hash: 'SHA-256'
+      hash: 'SHA-256',
     },
     keyMaterial,
     { name: 'AES-GCM', length: 256 },
-    false,
+    true,
     ['encrypt', 'decrypt']
   );
 };
 
-// Encrypt data
-const encrypt = async (data: string, password: string): Promise<string> => {
-  const key = await deriveKey(password);
-  const encoder = new TextEncoder();
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  
-  const encryptedData = await crypto.subtle.encrypt(
-    {
-      name: 'AES-GCM',
-      iv
-    },
-    key,
-    encoder.encode(data)
-  );
+// Encrypt data using AES-GCM
+const encryptData = async (data: string, password: string): Promise<string> => {
+  try {
+    const encoder = new TextEncoder();
+    const key = await deriveKey(password);
+    const iv = crypto.getRandomValues(new Uint8Array(12)); // 12 bytes for GCM
+    
+    const encrypted = await crypto.subtle.encrypt(
+      {
+        name: 'AES-GCM',
+        iv: iv,
+      },
+      key,
+      encoder.encode(data)
+    );
 
-  // Combine IV and encrypted data
-  const combined = new Uint8Array(iv.length + encryptedData.byteLength);
-  combined.set(iv);
-  combined.set(new Uint8Array(encryptedData), iv.length);
-
-  return Buffer.from(combined).toString('base64');
+    // Combine IV and encrypted data, then base64 encode
+    const combined = new Uint8Array(iv.length + encrypted.byteLength);
+    combined.set(iv);
+    combined.set(new Uint8Array(encrypted), iv.length);
+    
+    return btoa(String.fromCharCode(...combined));
+  } catch (error) {
+    console.error('Encryption failed:', error);
+    throw new Error('Failed to encrypt data');
+  }
 };
 
-// Decrypt data
-const decrypt = async (encryptedData: string, password: string): Promise<string> => {
+// Decrypt data using AES-GCM
+const decryptData = async (encryptedData: string, password: string): Promise<string> => {
   try {
+    const decoder = new TextDecoder();
     const key = await deriveKey(password);
-    const combined = Buffer.from(encryptedData, 'base64');
+    
+    // Decode from base64
+    const combined = new Uint8Array(
+      atob(encryptedData)
+        .split('')
+        .map(char => char.charCodeAt(0))
+    );
+    
+    // Extract IV and encrypted data
     const iv = combined.slice(0, 12);
-    const data = combined.slice(12);
+    const encrypted = combined.slice(12);
 
     const decrypted = await crypto.subtle.decrypt(
       {
         name: 'AES-GCM',
-        iv: new Uint8Array(iv)
+        iv: iv,
       },
       key,
-      new Uint8Array(data)
+      encrypted
     );
 
-    return new TextDecoder().decode(decrypted);
+    return decoder.decode(decrypted);
   } catch (error) {
     console.error('Decryption failed:', error);
-    return '';
+    throw new Error('Failed to decrypt data');
   }
 };
 
-// Secure storage interface
+// API key validation
+const validateApiKey = (key: string, provider: string): boolean => {
+  if (!key || typeof key !== 'string') return false;
+  
+  switch (provider) {
+    case 'openrouter':
+      return key.startsWith('sk-') && key.length > 20;
+    case 'openai':
+      return key.startsWith('sk-') && key.length > 20;
+    case 'gemini':
+      return key.length > 20;
+    default:
+      return key.length > 10;
+  }
+};
+
+// Simple password for encryption (in a real app, this should be user-derived)
+const getEncryptionPassword = (): string => {
+  const stored = localStorage.getItem('quiz-app-session-id');
+  if (stored) return stored;
+  
+  const sessionId = crypto.getRandomValues(new Uint32Array(4)).join('-');
+  localStorage.setItem('quiz-app-session-id', sessionId);
+  return sessionId;
+};
+
+// Main secure storage interface
 export const secureStorage = {
-  // Store API key securely
-  setApiKey: async (key: string, provider: string): Promise<void> => {
+  async setApiKey(apiKey: string, provider: string): Promise<void> {
+    if (!validateApiKey(apiKey, provider)) {
+      throw new Error('Invalid API key format');
+    }
+    
     try {
-      const encrypted = await encrypt(key, process.env.NEXT_PUBLIC_STORAGE_KEY || 'default-key');
-      localStorage.setItem(`api_key_${provider}`, encrypted);
+      const password = getEncryptionPassword();
+      const encrypted = await encryptData(apiKey, password);
+      localStorage.setItem(`secure-api-key-${provider}`, encrypted);
     } catch (error) {
-      console.error('Failed to store API key:', error);
       throw new Error('Failed to store API key securely');
     }
   },
 
-  // Retrieve API key securely
-  getApiKey: async (provider: string): Promise<string> => {
+  async getApiKey(provider: string): Promise<string | null> {
     try {
-      const encrypted = localStorage.getItem(`api_key_${provider}`);
-      if (!encrypted) return '';
-      return await decrypt(encrypted, process.env.NEXT_PUBLIC_STORAGE_KEY || 'default-key');
+      const encrypted = localStorage.getItem(`secure-api-key-${provider}`);
+      if (!encrypted) return null;
+      
+      const password = getEncryptionPassword();
+      return await decryptData(encrypted, password);
     } catch (error) {
       console.error('Failed to retrieve API key:', error);
-      return '';
+      return null;
     }
   },
 
-  // Remove API key
-  removeApiKey: (provider: string): void => {
-    localStorage.removeItem(`api_key_${provider}`);
+  removeApiKey(provider: string): void {
+    localStorage.removeItem(`secure-api-key-${provider}`);
   },
 
-  // Validate API key format
-  validateApiKey: (key: string, provider: string): boolean => {
-    if (!key) return false;
-
-    const patterns = {
-      openai: /^sk-[A-Za-z0-9]{32,}$/,
-      gemini: /^AI[a-zA-Z0-9_-]{35,}$/,
-      openrouter: /^sk-or-[A-Za-z0-9]{32,}$/
-    };
-
-    return patterns[provider as keyof typeof patterns]?.test(key) || false;
-  }
+  validateApiKey
 }; 

@@ -1,17 +1,22 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Volume2, VolumeX } from "lucide-react";
-import { setVolume, toggleMute, isSoundMuted, getVolume } from '@/utils/soundEffects';
+import { setVolume, toggleMute, getMuteState } from '@/utils/soundEffects';
 
 const SoundControls: React.FC = () => {
-  const [muted, setMuted] = React.useState(isSoundMuted());
-  const [volume, setVolumeState] = React.useState(getVolume());
+  const [muted, setMuted] = useState(false);
+  const [volume, setVolumeState] = useState(30); // Start with 30% volume (matches soundEffects.ts default)
+
+  useEffect(() => {
+    // Initialize mute state
+    setMuted(getMuteState());
+  }, []);
 
   const handleVolumeChange = (value: number[]) => {
     const newVolume = value[0];
     setVolumeState(newVolume);
-    setVolume(newVolume);
+    setVolume(newVolume / 100); // Convert percentage to decimal for the sound system
   };
 
   const handleMuteToggle = () => {
@@ -32,10 +37,14 @@ const SoundControls: React.FC = () => {
       <Slider
         value={[volume]}
         onValueChange={handleVolumeChange}
-        max={1}
-        step={0.1}
+        max={100}
+        step={5}
         className="w-24"
+        disabled={muted}
       />
+      <span className="text-xs text-muted-foreground w-8">
+        {muted ? '0%' : `${volume}%`}
+      </span>
     </div>
   );
 };
