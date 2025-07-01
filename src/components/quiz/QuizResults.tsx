@@ -3,9 +3,12 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { QuizQuestion } from "@/types/quiz";
-import { CheckCircle, XCircle, Brain, MessageSquare, ChevronDown, ChevronUp } from "lucide-react";
+import { CheckCircle, XCircle, Brain, MessageSquare, ChevronDown, ChevronUp, RefreshCw, Plus } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import QuestionFeedback from "./QuestionFeedback";
+import LearningDashboard from '../analytics/LearningDashboard';
+import StorageManager from '@/utils/storageManager';
+import { toast } from 'sonner';
 
 interface QuizResultsProps {
   questions: QuizQuestion[];
@@ -32,9 +35,10 @@ const QuizResults: React.FC<QuizResultsProps> = ({
   apiKey,
   selectedModel
 }) => {
-  const [prescription, setPrescription] = useState<string>("");
-  const [loadingPrescription, setLoadingPrescription] = useState<boolean>(false);
+  const [prescription, setPrescription] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(new Set());
+  const [showDetails, setShowDetails] = useState(false);
 
   const totalPossible = questions.reduce((total, question) => {
     return total + (question.type === 'essay' ? 10 : 1);
@@ -52,196 +56,135 @@ const QuizResults: React.FC<QuizResultsProps> = ({
     setExpandedQuestions(newExpanded);
   };
 
-  const generatePrescription = async () => {
+  const handleGeneratePrescription = async () => {
     if (!onGeneratePrescription) return;
     
-    setLoadingPrescription(true);
+    setLoading(true);
     try {
       const result = await onGeneratePrescription();
       setPrescription(result);
     } catch (error) {
-      console.error("Error generating prescription:", error);
+      console.error('Failed to generate prescription:', error);
+      toast.error('Failed to generate learning prescription');
     } finally {
-      setLoadingPrescription(false);
+      setLoading(false);
     }
   };
 
+  // Load sessions for the dashboard
+  const [sessions, setSessions] = useState([]);
+  React.useEffect(() => {
+    const loadSessions = async () => {
+      try {
+        const userData = await StorageManager.loadUserData();
+        if (userData) {
+          setSessions(userData.sessions);
+        }
+      } catch (error) {
+        console.error('Failed to load sessions:', error);
+      }
+    };
+    loadSessions();
+  }, []);
+
   return (
-    <Card className="w-full max-w-4xl mx-auto animate-fade-in">
-      <CardHeader>
-        <CardTitle className="text-2xl text-center">Quiz Results</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="text-center mb-6">
-          <div className="text-5xl font-bold mb-2">{percentage}%</div>
-          <p className="text-xl">
-            You scored {score} out of {totalPossible}
+    <div className="space-y-6">
+      {/* Results Summary */}
+      <Card className="p-6">
+        <div className="text-center space-y-4">
+          <h2 className="text-2xl font-bold">Quiz Complete!</h2>
+          <div className="text-4xl font-bold text-blue-600">
+            {score} / {questions.length}
+          </div>
+          <p className="text-gray-600">
+            {score === questions.length
+              ? "Perfect score! 🎉"
+              : score >= questions.length * 0.8
+              ? "Great job! 🌟"
+              : score >= questions.length * 0.6
+              ? "Good effort! 💪"
+              : "Keep practicing! 📚"}
           </p>
         </div>
+      </Card>
 
-        {/* Question-by-Question Review */}
-        <div className="space-y-4 mt-8">
-          <h3 className="text-lg font-medium flex items-center gap-2">
-            <Brain className="w-5 h-5" />
-            Question-by-Question Review
-          </h3>
-          
-          {questions.map((question, index) => {
-            const isEssay = question.type === 'essay';
-            const isCorrect = !isEssay && userAnswers[index] === question.answer;
-            const essayRating = isEssay ? essayRatings[index] : null;
-            const isExpanded = expandedQuestions.has(index);
-
-            return (
-              <div key={index} className="border rounded-lg overflow-hidden">
-                {/* Question Header */}
-                <div 
-                  className="p-4 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
-                  onClick={() => toggleQuestionExpansion(index)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="font-medium">Question {index + 1}</span>
-                      {isEssay ? (
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          essayRating !== null && essayRating >= 7 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {essayRating !== null ? `${essayRating}/10` : 'Not rated'}
-                        </span>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          {isCorrect ? (
-                            <CheckCircle className="w-5 h-5 text-green-600" />
-                          ) : (
-                            <XCircle className="w-5 h-5 text-red-600" />
-                          )}
-                          <span className={`text-sm font-medium ${
-                            isCorrect ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            {isCorrect ? 'Correct' : 'Incorrect'}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    {isExpanded ? (
-                      <ChevronUp className="w-5 h-5 text-gray-500" />
-                    ) : (
-                      <ChevronDown className="w-5 h-5 text-gray-500" />
-                    )}
-                  </div>
-                  
-                  <p className="text-sm text-gray-600 mt-2 line-clamp-2">
-                    {question.question}
-                  </p>
-                </div>
-
-                {/* Expanded Content */}
-                {isExpanded && (
-                  <div className="p-4 space-y-4">
-                    {/* Question Details */}
-                    <div className="space-y-2">
-                      <h4 className="font-medium">Question:</h4>
-                      <p className="text-gray-700">{question.question}</p>
-                      
-                      {!isEssay && question.options && (
-                        <div>
-                          <h4 className="font-medium mt-3">Options:</h4>
-                          <ul className="list-disc list-inside text-sm text-gray-600">
-                            {question.options.map((option, optIndex) => (
-                              <li key={optIndex} className={`
-                                ${option === question.answer ? 'text-green-600 font-medium' : ''}
-                                ${option === userAnswers[index] && option !== question.answer ? 'text-red-600 font-medium' : ''}
-                              `}>
-                                {option}
-                                {option === question.answer && ' ✓'}
-                                {option === userAnswers[index] && option !== question.answer && ' ✗'}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      
-                      <div className="grid grid-cols-2 gap-4 mt-3">
-                        <div>
-                          <h4 className="font-medium text-sm">Your Answer:</h4>
-                          <p className="text-sm text-gray-600">
-                            {userAnswers[index] || 'No answer provided'}
-                          </p>
-                        </div>
-                        {!isEssay && (
-                          <div>
-                            <h4 className="font-medium text-sm">Correct Answer:</h4>
-                            <p className="text-sm text-green-600 font-medium">
-                              {question.answer}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* AI Feedback */}
-                    <QuestionFeedback
-                      question={question}
-                      userAnswer={userAnswers[index] || ''}
-                      isCorrect={isEssay ? (essayRating !== null && essayRating >= 7) : isCorrect}
-                      questionNumber={index + 1}
-                      provider={provider}
-                      apiKey={apiKey}
-                      selectedModel={selectedModel}
-                      essayRating={isEssay ? essayRating : undefined}
-                    />
-                  </div>
-                )}
-              </div>
-            );
-          })}
+      {/* Learning Analytics */}
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-semibold">Learning Analytics</h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowDetails(!showDetails)}
+          >
+            {showDetails ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </Button>
         </div>
 
-        {/* AI Study Prescription */}
-        {onGeneratePrescription && (
-          <div className="mt-8 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium flex items-center gap-2">
-                <Brain className="w-5 h-5" />
-                AI Study Prescription
-              </h3>
-              <Button
-                onClick={generatePrescription}
-                disabled={loadingPrescription}
-                className="flex items-center gap-2"
-              >
-                {loadingPrescription ? (
-                  <Spinner className="w-4 h-4" />
-                ) : (
-                  <Brain className="w-4 h-4" />
-                )}
-                Generate Prescription
-              </Button>
+        {showDetails && (
+          <LearningDashboard
+            questions={questions}
+            sessions={sessions}
+          />
+        )}
+      </div>
+
+      {/* AI Learning Prescription */}
+      {onGeneratePrescription && (
+        <Card className="p-6">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Brain className="w-5 h-5 text-blue-500" />
+              <h3 className="font-semibold">AI Learning Prescription</h3>
             </div>
 
-            {prescription && (
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
-                <div className="prose prose-sm max-w-none">
-                  <ReactMarkdown>
-                    {prescription}
-                  </ReactMarkdown>
-                </div>
+            {!prescription ? (
+              <Button
+                onClick={handleGeneratePrescription}
+                disabled={loading}
+                className="w-full"
+              >
+                {loading ? (
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Brain className="w-4 h-4 mr-2" />
+                )}
+                Generate Learning Prescription
+              </Button>
+            ) : (
+              <div className="prose max-w-none">
+                {prescription.split('\n').map((line, i) => (
+                  <p key={i}>{line}</p>
+                ))}
               </div>
             )}
           </div>
-        )}
-      </CardContent>
-      <CardFooter className="flex gap-2">
-        <Button onClick={onRestart} variant="outline" className="flex-1">
-          Restart Quiz
+        </Card>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex gap-4">
+        <Button
+          onClick={onRestart}
+          variant="outline"
+          className="flex-1"
+        >
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Try Again
         </Button>
-        <Button onClick={onNewQuiz} className="flex-1">
+        <Button
+          onClick={onNewQuiz}
+          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          <Plus className="w-4 h-4 mr-2" />
           New Quiz
         </Button>
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   );
 };
 

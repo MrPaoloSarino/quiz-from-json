@@ -61,8 +61,24 @@ export const sanitizeJson = (json: string): any => {
 };
 
 // Validate content length
-export const validateContentLength = (content: string, maxLength: number = 10000): boolean => {
-  return content.length <= maxLength;
+export const validateContentLength = (
+  content: string, 
+  minLength: number = 50,
+  maxLength: number = 10000
+): { valid: boolean; message?: string } => {
+  if (content.length < minLength) {
+    return {
+      valid: false,
+      message: `Answer must be at least ${minLength} characters long. Current length: ${content.length}`
+    };
+  }
+  if (content.length > maxLength) {
+    return {
+      valid: false,
+      message: `Answer cannot exceed ${maxLength} characters. Current length: ${content.length}`
+    };
+  }
+  return { valid: true };
 };
 
 // Validate URL

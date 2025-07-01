@@ -14,6 +14,18 @@ import SoundControls from './SoundControls';
 import { secureStorage } from '@/utils/secureStorage';
 import { sanitizeMarkdown, sanitizeJson, validateContentLength } from '@/utils/sanitize';
 import { loadResource, verifyResourceIntegrity } from '@/utils/secureResources';
+import { QuizSession, EnhancedQuizQuestion } from '@/types/user';
+import StorageManager from '@/utils/storageManager';
+import {
+  calculateNextReview,
+  updateLearningAnalytics,
+  generateActiveRecallPrompts,
+  getInterleavedQuestions,
+  initializeSpacedRepetition,
+  initializeLearningAnalytics
+} from '@/utils/quizFileHandler';
+import { Debug, debugSpacedRepetition, debugActiveRecall, debugInterleaving, debugAnalytics, debugSession, debugError } from '@/utils/debug';
+import ActiveRecallPrompt from './ActiveRecallPrompt';
 
 const API_URLS = {
   OPENROUTER: "https://openrouter.ai/api/v1/chat/completions",
@@ -53,7 +65,99 @@ const decryptData = (encryptedData: string, salt: string = 'quiz-app'): string =
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_MODEL = "deepseek/deepseek-chat-v3-0324:free";
 
+// Helper functions for session analytics
+const calculateSessionDifficulty = (questions: EnhancedQuizQuestion[]): string => {
+  const avgDifficulty = questions.reduce((sum, q) => {
+    switch (q.difficulty) {
+      case 'easy': return sum + 1;
+      case 'medium': return sum + 2;
+      case 'hard': return sum + 3;
+      default: return sum + 2;
+    }
+  }, 0) / questions.length;
+  
+  if (avgDifficulty <= 1.5) return 'easy';
+  if (avgDifficulty <= 2.5) return 'medium';
+  return 'hard';
+};
+
+const getSessionTags = (questions: EnhancedQuizQuestion[]): string[] => {
+  const tags = new Set<string>();
+  questions.forEach(q => q.tags?.forEach(tag => tags.add(tag)));
+  return Array.from(tags);
+};
+
+const calculateAverageSpacing = (questions: EnhancedQuizQuestion[]): number => {
+  const intervals = questions.map(q => q.spacedRepetition.interval);
+  return intervals.reduce((a, b) => a + b, 0) / intervals.length;
+};
+
+const calculateActiveRecallSuccess = (questions: EnhancedQuizQuestion[]): number => {
+  const successes = questions.filter(q => q.analytics.lastRecallSuccess).length;
+  return (successes / questions.length) * 100;
+};
+
+const countElaborations = (questions: EnhancedQuizQuestion[]): number => {
+  return questions.reduce((sum, q) => sum + (q.elaborations?.length || 0), 0);
+};
+
+const calculateRetentionScore = (questions: EnhancedQuizQuestion[]): number => {
+  return questions.reduce((sum, q) => sum + q.analytics.strengthScore, 0) / questions.length;
+};
+
+const hasElaborations = (questions: EnhancedQuizQuestion[]): boolean => {
+  return questions.some(q => q.elaborations?.length > 0);
+};
+
+const hasFeynmanExplanations = (questions: EnhancedQuizQuestion[]): boolean => {
+  return questions.some(q => q.feynmanExplanation);
+};
+
+const shouldInterleave = (questions: EnhancedQuizQuestion[], currentTopic: string): boolean => {
+  // Interleave if:
+  // 1. We have related topics
+  // 2. We haven't interleaved recently (at least 2 questions ago)
+  // 3. Current performance is good (strength score > 0.7)
+  const currentQ = questions.find(q => q.category === currentTopic);
+  if (!currentQ) return false;
+  
+  const hasRelatedTopics = questions.some(q => 
+    q.category !== currentTopic && 
+    q.analytics.relatedConcepts.includes(currentTopic)
+  );
+  
+  const recentlyInterleaved = questions
+    .slice(-2)
+    .some(q => q.category !== currentTopic);
+  
+  return hasRelatedTopics && 
+         !recentlyInterleaved && 
+         currentQ.analytics.strengthScore > 0.7;
+};
+
 const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQuestions }) => {
+  // Initialize state with enhanced questions
+  const initializeEnhancedQuestions = (questions: QuizQuestion[]): EnhancedQuizQuestion[] => {
+    return questions.map((q, index) => ({
+      ...q,
+      id: `question_${Date.now()}_${index}`,
+      difficulty: 'medium',
+      tags: [],
+      category: 'general',
+      estimatedTime: q.type === 'essay' ? 300 : 60,
+      attempts: 0,
+      successRate: 0,
+      averageTime: 0,
+      commonMistakes: [],
+      learningObjectives: [],
+      spacedRepetition: initializeSpacedRepetition(),
+      analytics: initializeLearningAnalytics(),
+      activeRecallPrompts: [],
+      elaborations: [],
+      feynmanExplanation: undefined
+    }));
+  };
+
   const [state, setState] = useState<QuizState>({
     questions: [],
     currentQuestion: 0,
@@ -62,10 +166,18 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
     userAnswers: [],
     feedback: null,
     essayRatings: [],
+    isInterleaved: false,
+    startTime: new Date(),
+    activeRecallPrompts: [],
+    showActiveRecall: false,
+    showConfirmation: false
   });
-  const [showInput, setShowInput] = useState<boolean>(!externalQuestions);
+
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState<boolean>(false);
+  const [showInput, setShowInput] = useState<boolean>(!externalQuestions);
+  const [activeRecallPrompts, setActiveRecallPrompts] = useState<string[]>([]);
+  const [showActiveRecall, setShowActiveRecall] = useState<boolean>(false);
   const [provider, setProvider] = useState<'openrouter' | 'gemini' | 'openai'>('openrouter');
   const [openRouterKey, setOpenRouterKey] = useState<string>("");
   const [siteUrl, setSiteUrl] = useState<string>("");
@@ -94,24 +206,50 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
 
   // Initialize with external questions if provided
   useEffect(() => {
-    console.log('🔧 [DEBUG] Quiz useEffect - checking external questions');
-    console.log('🔧 [DEBUG] externalQuestions:', externalQuestions);
-    console.log('🔧 [DEBUG] externalQuestions length:', externalQuestions?.length || 'null/undefined');
-    
-    if (externalQuestions && externalQuestions.length > 0) {
-      console.log('🔧 [DEBUG] Setting up quiz with external questions');
-      setState({
-        questions: externalQuestions,
-        currentQuestion: 0,
-        score: 0,
-        showResults: false,
-        userAnswers: Array(externalQuestions.length).fill(""),
-        feedback: null,
-        essayRatings: Array(externalQuestions.length).fill(null),
+    try {
+      Debug.logSession('Quiz Initialize', {
+        startTime: new Date(),
+        questions: [],
+        userAnswers: [],
+        totalScore: 0,
+        timeSpent: 0,
+        confidenceRatings: [],
+        strategiesUsed: {
+          activeRecall: false,
+          spacedRepetition: false,
+          interleaving: false,
+          elaboration: false,
+          feynmanTechnique: false
+        }
       });
-      setShowInput(false);
-      setLoadedQuestions(externalQuestions);
-      console.log('🔧 [DEBUG] Quiz state initialized with external questions');
+
+      if (externalQuestions && externalQuestions.length > 0) {
+        const enhancedQuestions = initializeEnhancedQuestions(externalQuestions);
+        Debug.logAnalytics('Questions Enhanced', {
+          strengthScore: 0,
+          lastRecallSuccess: false,
+          recallAttempts: 0,
+          recallSuccesses: 0,
+          averageRecallTime: 0,
+          lastInterleaved: new Date(),
+          relatedConcepts: []
+        });
+
+        setState({
+          ...state,
+          questions: enhancedQuestions,
+          userAnswers: Array(enhancedQuestions.length).fill(""),
+          essayRatings: Array(enhancedQuestions.length).fill(null),
+          startTime: new Date(),
+          isInterleaved: false,
+          activeRecallPrompts: [],
+          showActiveRecall: false,
+          showConfirmation: false
+        });
+        setShowInput(false);
+      }
+    } catch (error) {
+      debugError('Quiz Initialization', error as Error);
     }
   }, [externalQuestions]);
 
@@ -202,17 +340,22 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
   };
 
   const prepareQuiz = (questions: QuizQuestion[]) => {
+    const enhancedQuestions = initializeEnhancedQuestions(questions);
     setLoadedQuestions(questions);
     setShowInput(false);
-    // Skip optional AI configuration and start quiz immediately
     setState({
-      questions,
+      questions: enhancedQuestions,
       currentQuestion: 0,
       score: 0,
       showResults: false,
       userAnswers: Array(questions.length).fill(""),
       feedback: null,
       essayRatings: Array(questions.length).fill(null),
+      isInterleaved: false,
+      startTime: new Date(),
+      activeRecallPrompts: [],
+      showActiveRecall: false,
+      showConfirmation: false
     });
     setShowGeminiInput(false);
   };
@@ -245,77 +388,171 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
     setShowGeminiInput(false);
   };
 
-  const handleAnswer = (selectedOption: string) => {
-    setSelectedOption(selectedOption);
-    setShowFeedback(true);
+  const handleAnswer = async (selectedOption: string) => {
+    const answerStartTime = performance.now();
     
+    try {
+      const currentQ = state.questions[state.currentQuestion];
+      if (!currentQ) {
+        throw new Error('Current question is undefined in handleAnswer');
+      }
+      
+      const isEssay = currentQ.type === 'essay';
+      
+      // Add essay validation
+      if (isEssay) {
+        const validation = validateContentLength(selectedOption);
+        if (!validation.valid) {
+          toast.error(validation.message);
+          return;
+        }
+      }
+      
+      setSelectedOption(selectedOption);
+      setShowFeedback(true);
+      
+      const isCorrect = selectedOption === currentQ.answer;
+      
+      // Track timing
+      const timeSpent = (performance.now() - answerStartTime) / 1000;
+      debugActiveRecall(isCorrect, timeSpent);
+      
+      // Update spaced repetition
+      const performanceRating = isCorrect ? 'good' : 'again';
+      const updatedSpacedRepetition = calculateNextReview(
+        currentQ.spacedRepetition,
+        performanceRating
+      );
+      debugSpacedRepetition(currentQ);
+      
+      // Update analytics
+      const updatedAnalytics = updateLearningAnalytics(
+        currentQ.analytics,
+        isCorrect,
+        timeSpent,
+        state.isInterleaved
+      );
+      debugAnalytics({ ...currentQ, analytics: updatedAnalytics });
+      
+      // Generate active recall prompts
+      let activeRecallPrompts: string[] = [];
+      if (!isCorrect && !isEssay) {
+        activeRecallPrompts = generateActiveRecallPrompts(currentQ);
+        Debug.logActiveRecall('Generated Prompts', false, timeSpent);
+      }
+      
+      // Play sound
+      if (!isEssay) {
+        playSound(isCorrect ? 'correct' : 'incorrect');
+      }
+      
+      // Update state
+      const updatedQuestions = [...state.questions];
+      updatedQuestions[state.currentQuestion] = {
+        ...currentQ,
+        spacedRepetition: updatedSpacedRepetition,
+        analytics: updatedAnalytics,
+        activeRecallPrompts
+      };
+      
+      setState({
+        ...state,
+        questions: updatedQuestions,
+        score: isEssay ? state.score : (isCorrect ? state.score + 1 : state.score),
+        userAnswers: [...state.userAnswers, selectedOption],
+        feedback: null,
+        essayRatings: [...state.essayRatings],
+      });
+      
+      // Show feedback
+      if (!isEssay) {
+        if (isCorrect) {
+          toast.success("Correct answer!");
+        } else {
+          toast.error("Incorrect answer! Try explaining this concept in your own words.");
+        }
+      } else {
+        toast.success("Answer submitted for AI evaluation!");
+      }
+
+      // Handle active recall
+      if (activeRecallPrompts.length > 0) {
+        setActiveRecallPrompts(activeRecallPrompts);
+        setShowActiveRecall(true);
+      } else {
+        setShowConfirmation(true);
+      }
+
+      // Log session progress
+      debugSession({
+        questions: updatedQuestions,
+        totalScore: state.score,
+        strategiesUsed: {
+          activeRecall: true,
+          spacedRepetition: true,
+          interleaving: state.isInterleaved,
+          elaboration: activeRecallPrompts.length > 0,
+          feynmanTechnique: false
+        }
+      });
+
+    } catch (error) {
+      debugError('Answer Processing', error as Error);
+      toast.error("Error processing answer. Please try again.");
+    }
+  };
+
+  const handleActiveRecallSubmit = (explanation: string) => {
+    console.log('🎯 [DEBUG] Processing active recall submission...');
     const currentQ = state.questions[state.currentQuestion];
-    if (!currentQ) {
-      console.error('🔧 [ERROR] Current question is undefined in handleAnswer');
-      return;
-    }
     
-    const isEssay = currentQ.type === 'essay';
-    const isCorrect = selectedOption === currentQ.answer;
-    
-    // Play sound only for multiple choice questions
-    if (!isEssay) {
-      playSound(isCorrect ? 'correct' : 'incorrect');
-    }
-    
-    // Update the userAnswers array
-    const updatedUserAnswers = [...state.userAnswers];
-    updatedUserAnswers[state.currentQuestion] = selectedOption;
+    // Save the Feynman explanation
+    const updatedQuestions = [...state.questions];
+    updatedQuestions[state.currentQuestion] = {
+      ...currentQ,
+      feynmanExplanation: explanation,
+      elaborations: [...(currentQ.elaborations || []), explanation]
+    };
     
     setState({
       ...state,
-      score: isEssay ? state.score : (isCorrect ? state.score + 1 : state.score),
-      userAnswers: updatedUserAnswers,
-      feedback: null,
-      essayRatings: [...state.essayRatings],
+      questions: updatedQuestions
     });
     
-    // Show toast for feedback - only for multiple choice questions
-    if (!isEssay) {
-      if (isCorrect) {
-        toast.success("Correct answer!");
-      } else {
-        toast.error("Incorrect answer!");
-      }
-    } else {
-      toast.success("Answer submitted for AI evaluation!");
-    }
-
-    // Get AI feedback if API key is provided
-    if (provider === 'openrouter' && openRouterKey && openRouterKey.trim() !== "") {
-      getFeedback(
-        currentQ.question,
-        selectedOption,
-        currentQ.answer || '',
-        isCorrect
-      );
-    } else if (provider === 'gemini' && geminiKey && geminiKey.trim() !== "") {
-      getFeedback(
-        currentQ.question,
-        selectedOption,
-        currentQ.answer || '',
-        isCorrect
-      );
-    } else if (provider === 'openai' && openAIKey && openAIKey.trim() !== "") {
-      getFeedback(
-        currentQ.question,
-        selectedOption,
-        currentQ.answer || '',
-        isCorrect
-      );
-    }
-
-    // Show confirmation button instead of automatically moving to the next question
+    setShowActiveRecall(false);
     setShowConfirmation(true);
+    
+    toast.success("Great job explaining the concept!");
   };
 
   const moveToNextQuestion = () => {
     if (state.currentQuestion < state.questions.length - 1) {
+      // Get interleaved questions if appropriate
+      let nextQuestions = [...state.questions];
+      const currentTopic = state.questions[state.currentQuestion].category;
+      
+      if (shouldInterleave(state.questions, currentTopic)) {
+        const interleavedQuestions = getInterleavedQuestions(
+          state.questions,
+          currentTopic,
+          2 // Get 2 related questions
+        );
+        
+        if (interleavedQuestions.length > 0) {
+          // Insert interleaved questions after current position
+          nextQuestions.splice(
+            state.currentQuestion + 1,
+            0,
+            ...interleavedQuestions
+          );
+          setState({
+            ...state,
+            questions: nextQuestions,
+            isInterleaved: true
+          });
+        }
+      }
+      
       setState({
         ...state,
         currentQuestion: state.currentQuestion + 1,
@@ -323,7 +560,47 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       });
       setSelectedOption(null);
       setShowFeedback(false);
+      setShowConfirmation(false);
+      
     } else {
+      // Save session data before showing results
+      const session: QuizSession = {
+        id: `session_${Date.now()}`,
+        startTime: state.startTime,
+        endTime: new Date(),
+        questions: state.questions,
+        userAnswers: state.userAnswers.map((answer, index) => ({
+          questionId: state.questions[index].id,
+          answer,
+          isCorrect: answer === state.questions[index].answer,
+          timeSpent: state.questions[index].analytics.averageRecallTime,
+          confidence: 0, // TODO: Add confidence rating
+          attempts: 1,
+          hintsUsed: 0,
+          timestamp: new Date()
+        })),
+        confidenceRatings: [],
+        totalScore: state.score,
+        timeSpent: (Date.now() - state.startTime.getTime()) / 1000,
+        difficulty: calculateSessionDifficulty(state.questions),
+        tags: getSessionTags(state.questions),
+        interleaved: state.isInterleaved,
+        spacingInterval: calculateAverageSpacing(state.questions),
+        activeRecallSuccess: calculateActiveRecallSuccess(state.questions),
+        elaborationCount: countElaborations(state.questions),
+        retentionScore: calculateRetentionScore(state.questions),
+        strategiesUsed: {
+          activeRecall: true,
+          spacedRepetition: true,
+          interleaving: state.isInterleaved,
+          elaboration: hasElaborations(state.questions),
+          feynmanTechnique: hasFeynmanExplanations(state.questions)
+        }
+      };
+      
+      // Save session
+      StorageManager.saveQuizSession(session);
+      
       setState({
         ...state,
         showResults: true
@@ -1144,26 +1421,22 @@ Format your response exactly as shown above with proper markdown headers and str
 
   const restartQuiz = () => {
     setState({
-      questions: state.questions,
+      ...state,
       currentQuestion: 0,
       score: 0,
       showResults: false,
       userAnswers: Array(state.questions.length).fill(""),
       feedback: null,
       essayRatings: Array(state.questions.length).fill(null),
+      isInterleaved: false,
+      startTime: new Date(),
+      activeRecallPrompts: [],
+      showActiveRecall: false,
+      showConfirmation: false
     });
-    setSelectedOption(null);
-    setShowFeedback(false);
-    setShowConfirmation(false);
-    setApiError(null);
-    setRetryCount(0);
-    setApiCalls([]);
-    setQuizReadyToStart(false);
-    setLoadedQuestions(state.questions);
   };
 
   const newQuiz = () => {
-    setShowInput(true);
     setState({
       questions: [],
       currentQuestion: 0,
@@ -1172,15 +1445,13 @@ Format your response exactly as shown above with proper markdown headers and str
       userAnswers: [],
       feedback: null,
       essayRatings: [],
+      isInterleaved: false,
+      startTime: new Date(),
+      activeRecallPrompts: [],
+      showActiveRecall: false,
+      showConfirmation: false
     });
-    setShowConfirmation(false);
-    setQuizReadyToStart(false);
-    setLoadedQuestions([]);
-    setApiError(null);
-    setRetryCount(0);
-    setApiCalls([]);
-    setSelectedOption(null);
-    setShowFeedback(false);
+    setShowInput(true);
   };
 
   const handleApiError = (error: any) => {
@@ -1518,9 +1789,11 @@ Format your response exactly as shown above with proper markdown headers and str
         </Button>
         <SoundControls />
       </div>
-      <div className="w-full max-w-2xl mx-auto">
+
+      <div className="w-full max-w-2xl mx-auto space-y-6">
         {!state.showResults ? (
-          <div className="space-y-4">
+          <>
+            {/* Navigation */}
             <div className="flex justify-between items-center mb-4">
               <Button
                 onClick={handleBack}
@@ -1540,10 +1813,11 @@ Format your response exactly as shown above with proper markdown headers and str
               </Button>
             </div>
             
+            {/* Progress Bar */}
             <div className="mb-6">
               <div className="w-full bg-gray-200 h-2 rounded-full">
                 <div 
-                  className="bg-quiz-primary h-2 rounded-full transition-all duration-300"
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${(state.currentQuestion / state.questions.length) * 100}%` }}
                 />
               </div>
@@ -1552,41 +1826,51 @@ Format your response exactly as shown above with proper markdown headers and str
               </div>
             </div>
 
+            {/* Quiz Card */}
             <QuizCard
-              question={currentQuestion}
+              question={state.questions[state.currentQuestion]}
               questionNumber={state.currentQuestion + 1}
               totalQuestions={state.questions.length}
               onAnswer={handleAnswer}
               showFeedback={showFeedback}
               selectedOption={selectedOption}
-              isCorrect={selectedOption === currentQuestion.answer}
+              isCorrect={selectedOption === state.questions[state.currentQuestion].answer}
             />
 
-            {/* AI feedback per question */}
+            {/* Active Recall Prompts */}
+            {state.showActiveRecall && (
+              <ActiveRecallPrompt
+                prompts={state.activeRecallPrompts}
+                onSubmit={handleActiveRecallSubmit}
+              />
+            )}
+
+            {/* AI Feedback */}
             {showFeedback && (
               <QuestionFeedback
-                question={currentQuestion}
+                question={state.questions[state.currentQuestion]}
                 userAnswer={selectedOption || ""}
-                isCorrect={selectedOption === currentQuestion.answer}
+                isCorrect={selectedOption === state.questions[state.currentQuestion].answer}
                 questionNumber={state.currentQuestion + 1}
                 provider={provider}
                 apiKey={provider === 'openrouter' ? openRouterKey : provider === 'gemini' ? geminiKey : openAIKey}
                 selectedModel={provider === 'openrouter' ? selectedModel : provider === 'gemini' ? selectedGeminiModel : undefined}
-                essayRating={currentQuestion.type === 'essay' ? state.essayRatings[state.currentQuestion] : undefined}
+                essayRating={state.questions[state.currentQuestion].type === 'essay' ? state.essayRatings[state.currentQuestion] : undefined}
               />
             )}
 
+            {/* Next Question Button */}
             {showConfirmation && (
               <div className="mt-4 flex justify-end">
                 <Button 
                   onClick={handleNext}
-                  className="bg-quiz-primary hover:bg-quiz-secondary text-white"
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   {state.currentQuestion < state.questions.length - 1 ? "Next Question" : "View Results"}
                 </Button>
               </div>
             )}
-          </div>
+          </>
         ) : (
           <QuizResults
             questions={state.questions}

@@ -4,7 +4,7 @@
 
 import { GoogleDriveUserStorage } from './googleDriveStorage';
 import LocalStorageBackup from './localStorageBackup';
-import { UserProfile, UserData, UserQuiz } from '@/types/user';
+import { UserProfile, UserData, UserQuiz, QuizSession } from '@/types/user';
 import { QuizQuestion } from '@/types/quiz';
 
 export enum StorageMode {
@@ -368,6 +368,23 @@ class StorageManager {
       canMigrate: !this.isGoogleConfigured && !!import.meta.env.VITE_GOOGLE_CLIENT_ID,
       userCount: this.isCloudMode() ? 1 : 1 // Always 1 for current implementation
     };
+  }
+
+  // Quiz Management
+  async saveQuizSession(session: QuizSession): Promise<void> {
+    console.log('💾 [DEBUG] Saving quiz session...');
+    try {
+      const userData = await this.loadUserData();
+      if (!userData) throw new Error('User data not found');
+      
+      userData.sessions.push(session);
+      await this.saveUserData(userData);
+      
+      console.log('✅ [DEBUG] Quiz session saved successfully');
+    } catch (error) {
+      console.error('❌ [DEBUG] Failed to save quiz session:', error);
+      throw error;
+    }
   }
 }
 

@@ -16,6 +16,18 @@ export interface QuizSession {
   timeSpent: number;
   difficulty: string;
   tags: string[];
+  interleaved: boolean;
+  spacingInterval: number;
+  activeRecallSuccess: number;
+  elaborationCount: number;
+  retentionScore: number;
+  strategiesUsed: {
+    activeRecall: boolean;
+    spacedRepetition: boolean;
+    interleaving: boolean;
+    elaboration: boolean;
+    feynmanTechnique: boolean;
+  };
 }
 
 export interface AnswerData {
@@ -27,6 +39,33 @@ export interface AnswerData {
   attempts: number;
   hintsUsed: number;
   timestamp: Date;
+}
+
+export interface SpacedRepetitionData {
+  lastReviewDate: Date;
+  nextReviewDate: Date;
+  interval: number;  // Days until next review
+  easeFactor: number;  // Multiplier for interval adjustments
+  consecutiveCorrect: number;
+  reviewHistory: ReviewHistoryEntry[];
+}
+
+export interface ReviewHistoryEntry {
+  date: Date;
+  performance: 'again' | 'hard' | 'good' | 'easy';
+  timeSpent: number;
+  confidence: number;
+  isCorrect: boolean;
+}
+
+export interface LearningAnalytics {
+  strengthScore: number;  // 0-1 mastery level
+  lastRecallSuccess: boolean;
+  recallAttempts: number;
+  recallSuccesses: number;
+  averageRecallTime: number;
+  lastInterleaved: Date;  // Last time practiced with other topics
+  relatedConcepts: string[];  // For interleaving practice
 }
 
 export interface EnhancedQuizQuestion {
@@ -55,6 +94,17 @@ export interface EnhancedQuizQuestion {
   averageTime: number;
   commonMistakes: string[];
   learningObjectives: string[];
+  
+  // Enhanced Spaced Repetition
+  spacedRepetition: SpacedRepetitionData;
+  
+  // Enhanced Learning Analytics
+  analytics: LearningAnalytics;
+  
+  // Active Recall Support
+  activeRecallPrompts: string[];  // Questions to test understanding
+  elaborations: string[];  // User explanations/notes
+  feynmanExplanation?: string;  // Simple explanation in user's words
 }
 
 export interface UserQuiz {
@@ -98,6 +148,23 @@ export interface UserData {
   achievements: Achievement[];
   level: number;
   xp: number;
+  learningStats: {
+    // Existing analytics...
+    
+    // Spaced Repetition Stats
+    averageRetentionRate: number;
+    optimalReviewIntervals: { [difficulty: string]: number };
+    topicsForReview: string[];
+    
+    // Active Recall Stats
+    activeRecallSuccess: number;
+    elaborationQuality: number;
+    interleavingStrength: number;
+    
+    // Learning Velocity
+    retentionTrend: number[];  // Historical retention scores
+    masteryProgress: { [topic: string]: number };  // 0-1 mastery level per topic
+  };
 }
 
 export interface Achievement {

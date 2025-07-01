@@ -1,3 +1,5 @@
+import { EnhancedQuizQuestion } from './user';
+
 export interface QuizQuestion {
   question: string;
   options?: string[];
@@ -6,13 +8,18 @@ export interface QuizQuestion {
 }
 
 export interface QuizState {
-  questions: QuizQuestion[];
+  questions: EnhancedQuizQuestion[];
   currentQuestion: number;
   score: number;
   showResults: boolean;
   userAnswers: string[];
   feedback: string | null;
   essayRatings: number[];
+  isInterleaved: boolean;
+  startTime: Date;
+  activeRecallPrompts: string[];
+  showActiveRecall: boolean;
+  showConfirmation: boolean;
 }
 
 export interface GeminiResponse {
