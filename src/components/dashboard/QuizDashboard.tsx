@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { GoogleDriveUserStorage, UserQuiz } from '@/utils/googleDriveStorage';
+import { UserQuiz } from '@/types/user';
 import { QuizQuestion } from '@/types/quiz';
 import { toast } from 'sonner';
+import StorageManager from '@/utils/storageManager';
 import { 
   Plus, 
   Play, 
@@ -25,7 +26,11 @@ interface QuizDashboardProps {
   onCreateQuiz: () => void;
 }
 
-const QuizDashboard: React.FC<QuizDashboardProps> = ({ onStartQuiz, onCreateQuiz }) => {
+export interface QuizDashboardRef {
+  refreshQuizzes: () => void;
+}
+
+const QuizDashboard = forwardRef<QuizDashboardRef, QuizDashboardProps>(({ onStartQuiz, onCreateQuiz }, ref) => {
   const [quizzes, setQuizzes] = useState<UserQuiz[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -33,22 +38,29 @@ const QuizDashboard: React.FC<QuizDashboardProps> = ({ onStartQuiz, onCreateQuiz
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   useEffect(() => {
+    console.log('📊 [DEBUG] QuizDashboard mounted');
     loadQuizzes();
   }, []);
 
   const loadQuizzes = async () => {
+    console.log('📚 [DEBUG] Loading quizzes from storage...');
+    setLoading(true);
     try {
-      const userQuizzes = await GoogleDriveUserStorage.getQuizzes();
+      const userQuizzes = await StorageManager.getQuizzes();
+      console.log('📚 [DEBUG] Loaded quizzes:', userQuizzes);
+      console.log('📚 [DEBUG] Quizzes count:', userQuizzes.length);
       setQuizzes(userQuizzes);
     } catch (error) {
-      console.error('Failed to load quizzes:', error);
+      console.error('❌ [DEBUG] Failed to load quizzes:', error);
       toast.error('Failed to load your quizzes');
     } finally {
       setLoading(false);
+      console.log('📚 [DEBUG] Finished loading quizzes');
     }
   };
 
   const handleStartQuiz = (quiz: UserQuiz) => {
+    console.log('🎮 [DEBUG] Starting quiz:', quiz.title);
     // Convert UserQuiz to legacy QuizQuestion format for compatibility
     const legacyQuestions: QuizQuestion[] = quiz.questions.map(q => ({
       question: q.question,
@@ -62,16 +74,18 @@ const QuizDashboard: React.FC<QuizDashboardProps> = ({ onStartQuiz, onCreateQuiz
   };
 
   const handleDeleteQuiz = async (quizId: string, quizTitle: string) => {
+    console.log('🗑️ [DEBUG] Attempting to delete quiz:', quizTitle);
     if (!confirm(`Are you sure you want to delete "${quizTitle}"? This action cannot be undone.`)) {
       return;
     }
 
     try {
-      await GoogleDriveUserStorage.deleteQuiz(quizId);
+      await StorageManager.deleteQuiz(quizId);
+      console.log('✅ [DEBUG] Quiz deleted successfully');
       await loadQuizzes(); // Refresh the list
       toast.success(`"${quizTitle}" has been deleted`);
     } catch (error) {
-      console.error('Failed to delete quiz:', error);
+      console.error('❌ [DEBUG] Failed to delete quiz:', error);
       toast.error('Failed to delete quiz');
     }
   };
@@ -102,6 +116,14 @@ const QuizDashboard: React.FC<QuizDashboardProps> = ({ onStartQuiz, onCreateQuiz
     const minutes = Math.round(seconds / 60);
     return `${minutes} min`;
   };
+
+  // Expose the refresh method via ref
+  useImperativeHandle(ref, () => ({
+    refreshQuizzes: () => {
+      console.log('🔄 [DEBUG] Refreshing quizzes list via ref');
+      loadQuizzes();
+    }
+  }));
 
   if (loading) {
     return (
@@ -298,6 +320,6 @@ const QuizDashboard: React.FC<QuizDashboardProps> = ({ onStartQuiz, onCreateQuiz
       )}
     </div>
   );
-};
+});
 
 export default QuizDashboard; 

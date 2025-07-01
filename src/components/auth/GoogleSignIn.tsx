@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GoogleDriveUserStorage, UserProfile } from '@/utils/googleDriveStorage';
 import { toast } from 'sonner';
-import { Chrome, Shield, Cloud, Users, Sparkles, Brain, Zap } from 'lucide-react';
+import { Chrome, Shield, Cloud, Users, Sparkles, Brain, Zap, Play, Settings, ExternalLink, CheckCircle, AlertCircle } from 'lucide-react';
+import StorageManager from '@/utils/storageManager';
 
 interface GoogleSignInProps {
   onSignIn: (user: UserProfile) => void;
@@ -16,42 +17,141 @@ const GoogleSignIn: React.FC<GoogleSignInProps> = ({ onSignIn }) => {
   useEffect(() => {
     // Check if Google APIs are properly configured
     const checkApiAvailability = async () => {
+      console.log('🔍 [DEBUG] Checking Google API availability...');
       const available = await GoogleDriveUserStorage.initializeGoogleClient();
+      console.log('🔍 [DEBUG] Google API available:', available);
       setApiAvailable(available);
+      
+      if (!available) {
+        console.log('ℹ️ [DEBUG] Running in offline mode - Google APIs not configured or failed to initialize');
+      }
     };
     checkApiAvailability();
   }, []);
 
-  // If APIs aren't available, show offline mode message
+  // If APIs aren't available, show enhanced offline mode with helpful guidance
   if (!apiAvailable) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">QuizMaster AI</CardTitle>
-            <p className="text-gray-600">Running in offline mode</p>
-          </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-yellow-800">
-                Google APIs not configured. You can still:
-              </p>
-              <ul className="text-xs text-yellow-700 mt-2 space-y-1">
-                <li>• Create and take quizzes</li>
-                <li>• Export/import quiz files</li>
-                <li>• Use AI explanations</li>
-              </ul>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4">
+        <Card className="w-full max-w-2xl shadow-2xl">
+          <CardHeader className="text-center pb-6">
+            <div className="w-20 h-20 bg-gradient-to-br from-orange-500 via-red-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+              <AlertCircle className="w-10 h-10 text-white" />
             </div>
-            <Button 
-              onClick={() => onSignIn({ 
-                id: 'offline-user', 
-                name: 'Offline User', 
-                email: 'offline@example.com' 
-              })}
-              className="w-full"
-            >
-              Continue Offline
-            </Button>
+            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-orange-600 via-red-600 to-pink-600 bg-clip-text text-transparent">
+              QuizMaster AI
+            </CardTitle>
+            <p className="text-gray-600 mt-3 text-lg">
+              Google APIs not configured - Running in Local Mode
+            </p>
+          </CardHeader>
+          
+          <CardContent className="space-y-8">
+            {/* Current Capabilities */}
+            <div className="bg-green-50 border border-green-200 rounded-xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+                <h3 className="text-lg font-semibold text-green-900">What You Can Do Right Now</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center gap-3">
+                  <Play className="w-5 h-5 text-green-600" />
+                  <span className="text-green-800">Create unlimited quizzes</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Brain className="w-5 h-5 text-green-600" />
+                  <span className="text-green-800">Get AI explanations</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Settings className="w-5 h-5 text-green-600" />
+                  <span className="text-green-800">Export/import quiz files</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Zap className="w-5 h-5 text-green-600" />
+                  <span className="text-green-800">Use all AI features</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Missing Features */}
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <Cloud className="w-6 h-6 text-blue-600" />
+                <h3 className="text-lg font-semibold text-blue-900">Unlock Cloud Features</h3>
+              </div>
+              <p className="text-blue-800 mb-4">
+                To get the full experience with cloud sync, progress tracking, and multi-device access, 
+                you'll need to configure Google APIs (it's free!).
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="text-blue-700 border-blue-300 hover:bg-blue-100"
+                  onClick={() => window.open('https://console.cloud.google.com/', '_blank')}
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Google Cloud Console
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="text-blue-700 border-blue-300 hover:bg-blue-100"
+                  onClick={() => window.open('/GOOGLE_SETUP.md', '_blank')}
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Setup Guide
+                </Button>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Button 
+                onClick={() => onSignIn({ 
+                  id: 'offline-user', 
+                  name: 'Offline User', 
+                  email: 'offline@example.com',
+                  picture: ''
+                })}
+                className="h-14 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium shadow-lg"
+              >
+                <Play className="w-5 h-5 mr-2" />
+                Start Creating Quizzes
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                className="h-14 border-2 border-blue-300 text-blue-700 hover:bg-blue-50 font-medium"
+                onClick={() => window.open('https://github.com/yourusername/quiz-from-json#setup', '_blank')}
+              >
+                <ExternalLink className="w-5 h-5 mr-2" />
+                View Setup Instructions
+              </Button>
+            </div>
+
+            {/* Quick Setup Preview */}
+            <div className="bg-gray-50 rounded-xl p-6">
+              <h4 className="font-semibold text-gray-900 mb-3">Quick Setup (5 minutes):</h4>
+              <ol className="text-sm text-gray-700 space-y-2">
+                <li className="flex items-start gap-2">
+                  <span className="bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+                  <span>Create a Google Cloud project (free)</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+                  <span>Enable Google Drive API</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
+                  <span>Copy your API keys to environment variables</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="bg-green-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">✓</span>
+                  <span className="font-medium">Enjoy unlimited cloud sync!</span>
+                </li>
+              </ol>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -61,16 +161,15 @@ const GoogleSignIn: React.FC<GoogleSignInProps> = ({ onSignIn }) => {
   const handleSignIn = async () => {
     setLoading(true);
     try {
-      const user = await GoogleDriveUserStorage.signIn();
+      const user = await StorageManager.signIn();
       if (user) {
         onSignIn(user);
-        toast.success(`Welcome back, ${user.name}! 🎉`);
       } else {
-        toast.error('Sign-in was cancelled');
+        throw new Error('Sign in failed');
       }
     } catch (error) {
-      console.error('Sign-in failed:', error);
-      toast.error('Failed to sign in with Google');
+      console.error('Sign in error:', error);
+      toast.error('Failed to sign in. Please try again.');
     } finally {
       setLoading(false);
     }

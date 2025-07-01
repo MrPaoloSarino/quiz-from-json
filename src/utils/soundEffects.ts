@@ -7,6 +7,9 @@ const SOUNDS = {
 // Cache for audio elements
 const audioCache: { [key: string]: HTMLAudioElement } = {};
 
+// Track active intervals for cleanup
+const activeIntervals = new Set<NodeJS.Timeout>();
+
 // Sound settings - starting with lower volume
 let volume = 0.3; // Reduced from 0.5 to 0.3
 let isMuted = false;
@@ -25,9 +28,14 @@ export const preloadSounds = () => {
 export const setVolume = (newVolume: number) => {
   volume = Math.max(0, Math.min(1, newVolume));
   Object.values(audioCache).forEach(audio => {
-    audio.volume = volume;
+    if (!audio.muted) {
+      audio.volume = volume;
+    }
   });
 };
+
+// Get mute state
+export const getMuteState = () => isMuted;
 
 // Toggle mute
 export const toggleMute = () => {
@@ -38,8 +46,13 @@ export const toggleMute = () => {
   return isMuted;
 };
 
-// Get mute state
-export const getMuteState = () => isMuted;
+// Clean up all active intervals
+export const cleanupAudio = () => {
+  activeIntervals.forEach(interval => {
+    clearInterval(interval);
+  });
+  activeIntervals.clear();
+};
 
 // Play sound - now with fade effect for less intrusive sound
 export const playSound = (type: 'correct' | 'incorrect') => {
@@ -54,15 +67,17 @@ export const playSound = (type: 'correct' | 'incorrect') => {
     });
     
     // Fade out the sound quickly
-    setTimeout(() => {
+    const fadeTimeout = setTimeout(() => {
       const fadeOut = setInterval(() => {
         if (audio.volume > 0.01) {
           audio.volume -= 0.05;
         } else {
           clearInterval(fadeOut);
+          activeIntervals.delete(fadeOut);
           audio.pause();
         }
       }, 50);
+      activeIntervals.add(fadeOut);
     }, 200);
   }
 }; 

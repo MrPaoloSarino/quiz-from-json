@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { GoogleDriveUserStorage, UserProfile } from '@/utils/googleDriveStorage';
+import React, { useState, useEffect, useRef } from 'react';
+import { UserProfile } from '@/types/user';
 import { QuizQuestion } from '@/types/quiz';
 import GoogleSignIn from '@/components/auth/GoogleSignIn';
 import UserProfileComponent from '@/components/auth/UserProfile';
 import Quiz from '@/components/quiz/Quiz';
 import JsonInput from '@/components/quiz/JsonInput';
+import QuizDashboard from '@/components/dashboard/QuizDashboard';
+import StorageManager from '@/utils/storageManager';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User, Plus, BookOpen } from 'lucide-react';
+import { ArrowLeft, User, Plus, BookOpen, Cloud, HardDrive } from 'lucide-react';
 
 type AppView = 'dashboard' | 'quiz' | 'create' | 'profile';
 
@@ -16,6 +18,23 @@ const QuizMasterApp: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>('dashboard');
   const [currentQuiz, setCurrentQuiz] = useState<QuizQuestion[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const dashboardRef = useRef<{ refreshQuizzes: () => void }>(null);
+
+  // Enhanced state tracking with useEffect
+  useEffect(() => {
+    console.log('🔄 [STATE] currentQuiz state changed:', currentQuiz);
+    console.log('🔄 [STATE] currentQuiz length:', currentQuiz?.length || 'null/undefined');
+    console.log('🔄 [STATE] Stack trace:', new Error().stack);
+  }, [currentQuiz]);
+
+  useEffect(() => {
+    console.log('🔄 [STATE] currentView state changed:', currentView);
+    // If we're returning to dashboard, refresh the quiz list
+    if (currentView === 'dashboard') {
+      console.log('🔄 [DEBUG] Back to dashboard, refreshing quizzes...');
+      dashboardRef.current?.refreshQuizzes();
+    }
+  }, [currentView]);
 
   useEffect(() => {
     initializeApp();
@@ -23,13 +42,19 @@ const QuizMasterApp: React.FC = () => {
 
   const initializeApp = async () => {
     try {
-      const initialized = await GoogleDriveUserStorage.initializeGoogleClient();
-      if (initialized && GoogleDriveUserStorage.isSignedIn()) {
-        const currentUser = GoogleDriveUserStorage.getCurrentUser();
+      // StorageManager auto-initializes based on environment configuration
+      const isSignedIn = await StorageManager.isSignedIn();
+      if (isSignedIn) {
+        const currentUser = await StorageManager.getCurrentUser();
         if (currentUser) {
           setUser(currentUser);
         }
       }
+      
+      // Show storage mode info
+      const storageInfo = StorageManager.getStorageInfo();
+      const modeText = storageInfo.mode === 'local_storage' ? 'Offline Mode' : 'Cloud Mode';
+      console.log(`🚀 QuizMaster initialized in ${modeText}`);
     } catch (error) {
       console.error('Failed to initialize app:', error);
       toast.error('Failed to initialize application');
@@ -38,34 +63,98 @@ const QuizMasterApp: React.FC = () => {
     }
   };
 
-  const handleSignIn = (signedInUser: UserProfile) => {
+  const handleSignIn = async (signedInUser: UserProfile) => {
     setUser(signedInUser);
     setCurrentView('dashboard');
+    
+    const storageInfo = StorageManager.getStorageInfo();
+    const modeText = storageInfo.mode === 'local_storage' ? 'offline mode' : 'cloud mode';
+    toast.success(`Welcome! Running in ${modeText}`);
   };
 
-  const handleSignOut = () => {
-    setUser(null);
-    setCurrentView('dashboard');
-    setCurrentQuiz(null);
+  const handleSignOut = async () => {
+    try {
+      await StorageManager.signOut();
+      setUser(null);
+      setCurrentView('dashboard');
+      setCurrentQuiz(null);
+      toast.success('Signed out successfully');
+    } catch (error) {
+      console.error('Sign out error:', error);
+      toast.error('Error signing out');
+    }
   };
 
   const handleStartQuiz = (questions: QuizQuestion[]) => {
+    console.log('🎯 [DEBUG] QuizMasterApp.handleStartQuiz called');
+    console.log('🎯 [DEBUG] Received questions:', questions);
+    console.log('🎯 [DEBUG] Questions count:', questions.length);
+    console.log('🎯 [DEBUG] Current view before:', currentView);
+    console.log('🎯 [DEBUG] Current quiz before:', currentQuiz);
+    
+    // Prevent any potential race conditions by batching the state updates
+    console.log('🎯 [DEBUG] Setting quiz state and view simultaneously...');
+    
+    // Set quiz first
     setCurrentQuiz(questions);
+    console.log('🎯 [DEBUG] setCurrentQuiz called with questions');
+    
+    // Then immediately set view to quiz without setTimeout to prevent race conditions
     setCurrentView('quiz');
+    console.log('🎯 [DEBUG] setCurrentView("quiz") called immediately');
+    
+    // Add a verification check
+    setTimeout(() => {
+      console.log('🎯 [VERIFY] State verification after 100ms:');
+      console.log('🎯 [VERIFY] currentView should be "quiz":', currentView);
+      console.log('🎯 [VERIFY] currentQuiz should exist:', !!currentQuiz);
+      console.log('🎯 [VERIFY] currentQuiz length:', currentQuiz?.length || 'null/undefined');
+    }, 100);
   };
 
   const handleCreateQuiz = () => {
+    console.log('📝 [DEBUG] QuizMasterApp.handleCreateQuiz called');
+    console.log('📝 [DEBUG] Current view before:', currentView);
     setCurrentView('create');
+    console.log('📝 [DEBUG] setCurrentView("create") called');
   };
 
-  const handleQuizCreated = (questions: QuizQuestion[]) => {
+  const handleQuizCreated = async (questions: QuizQuestion[]) => {
+    console.log('✨ [DEBUG] QuizMasterApp.handleQuizCreated called');
+    console.log('✨ [DEBUG] Received questions:', questions);
+    console.log('✨ [DEBUG] Questions count:', questions.length);
+    console.log('✨ [DEBUG] Current view before:', currentView);
+    
+    // Reset quiz state and navigate back to dashboard
+    setCurrentQuiz(null);
+    console.log('✨ [DEBUG] setCurrentQuiz(null) called');
+    
+    // Navigate back to dashboard and show success message
     setCurrentView('dashboard');
-    toast.success('Quiz created successfully! 🎉');
+    console.log('✨ [DEBUG] setCurrentView("dashboard") called');
+    
+    // Give the dashboard a moment to mount before showing success message
+    setTimeout(() => {
+      toast.success('Quiz created successfully! 🎉');
+      console.log('✨ [DEBUG] Success toast shown');
+    }, 100);
   };
 
   const handleBackToDashboard = () => {
-    setCurrentView('dashboard');
+    console.log('🔙 [DEBUG] handleBackToDashboard called');
+    console.log('🔙 [DEBUG] Current view before:', currentView);
+    console.log('🔙 [DEBUG] Current quiz before:', currentQuiz);
+    console.log('🔙 [DEBUG] Stack trace:', new Error().stack);
+    
+    // Clear quiz state before navigating
     setCurrentQuiz(null);
+    console.log('🔙 [DEBUG] setCurrentQuiz(null) called');
+    
+    setTimeout(() => {
+      console.log('🔙 [DEBUG] Setting view to dashboard');
+      setCurrentView('dashboard');
+      console.log('🔙 [DEBUG] setCurrentView("dashboard") called');
+    }, 0);
   };
 
   const handleViewProfile = () => {
@@ -126,42 +215,37 @@ const QuizMasterApp: React.FC = () => {
     </nav>
   );
 
-  // Simple dashboard for now
-  const renderDashboard = () => (
-    <div className="container mx-auto p-6 space-y-8">
-      <div className="text-center">
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">Welcome to QuizMaster AI</h2>
-        <p className="text-gray-600 mb-8">Create, manage, and take quizzes with AI-powered insights</p>
-        
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button 
-            onClick={handleCreateQuiz}
-            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-            size="lg"
-          >
-            <Plus className="w-5 h-5" />
-            Create New Quiz
-          </Button>
-        </div>
-      </div>
-      
-      <div className="text-center">
-        <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-        <p className="text-gray-500">Your quizzes will appear here once you create them</p>
-      </div>
-    </div>
-  );
+  // Replace the placeholder dashboard with the actual QuizDashboard component
+  const renderDashboard = () => {
+    console.log('📊 [DEBUG] Rendering QuizDashboard component');
+    return (
+      <QuizDashboard
+        ref={dashboardRef}
+        onStartQuiz={handleStartQuiz}
+        onCreateQuiz={handleCreateQuiz}
+      />
+    );
+  };
 
   // Render current view
   const renderCurrentView = () => {
+    console.log('🖥️ [DEBUG] renderCurrentView called');
+    console.log('🖥️ [DEBUG] Current view:', currentView);
+    console.log('🖥️ [DEBUG] Current quiz:', currentQuiz);
+    console.log('🖥️ [DEBUG] Quiz length:', currentQuiz?.length || 'null/undefined');
+    
     switch (currentView) {
       case 'dashboard':
+        console.log('📊 [DEBUG] Rendering QuizDashboard component');
         return renderDashboard();
       
       case 'quiz':
+        console.log('🖥️ [DEBUG] Rendering quiz view');
+        console.log('🖥️ [DEBUG] currentQuiz exists:', !!currentQuiz);
+        console.log('🖥️ [DEBUG] Passing questions to Quiz component:', currentQuiz?.length || 'null/undefined');
         return currentQuiz ? (
           <div className="container mx-auto p-4">
-            <Quiz />
+            <Quiz questions={currentQuiz} />
           </div>
         ) : (
           <div className="container mx-auto p-4 text-center">
@@ -170,13 +254,16 @@ const QuizMasterApp: React.FC = () => {
         );
       
       case 'create':
+        console.log('🖥️ [DEBUG] Rendering create view');
+        console.log('🖥️ [DEBUG] handleStartQuiz function:', typeof handleStartQuiz);
         return (
           <div className="container mx-auto p-4">
-            <JsonInput onQuizStart={handleQuizCreated} />
+            <JsonInput onQuizStart={handleStartQuiz} />
           </div>
         );
       
       case 'profile':
+        console.log('🖥️ [DEBUG] Rendering profile view');
         return (
           <div className="container mx-auto p-4 flex justify-center">
             <UserProfileComponent onSignOut={handleSignOut} />
@@ -184,6 +271,7 @@ const QuizMasterApp: React.FC = () => {
         );
       
       default:
+        console.error('🖥️ [DEBUG] Unknown view:', currentView);
         return <div>Unknown view</div>;
     }
   };

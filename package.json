@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --fix",
-    "clean": "rm -rf dist .vite node_modules/.vite",
+    "clean": "node -e \"const fs = require('fs'); const path = require('path'); ['dist', '.vite', 'node_modules/.vite', 'node_modules/.cache'].forEach(dir => { try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {} });\"",
     "check": "npm run lint && npm run build",
     "update-deps": "npm update caniuse-lite && npm update",
     "audit-fix": "npm audit fix"

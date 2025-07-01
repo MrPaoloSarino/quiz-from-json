@@ -53,7 +53,7 @@ const decryptData = (encryptedData: string, salt: string = 'quiz-app'): string =
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_MODEL = "deepseek/deepseek-chat-v3-0324:free";
 
-const Quiz: React.FC = () => {
+const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQuestions }) => {
   const [state, setState] = useState<QuizState>({
     questions: [],
     currentQuestion: 0,
@@ -63,7 +63,7 @@ const Quiz: React.FC = () => {
     feedback: null,
     essayRatings: [],
   });
-  const [showInput, setShowInput] = useState<boolean>(true);
+  const [showInput, setShowInput] = useState<boolean>(!externalQuestions);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState<boolean>(false);
   const [provider, setProvider] = useState<'openrouter' | 'gemini' | 'openai'>('openrouter');
@@ -92,10 +92,53 @@ const Quiz: React.FC = () => {
   const [openAIKey, setOpenAIKey] = useState<string>("");
   const [geminiKey, setGeminiKey] = useState<string>("");
 
+  // Initialize with external questions if provided
+  useEffect(() => {
+    console.log('🔧 [DEBUG] Quiz useEffect - checking external questions');
+    console.log('🔧 [DEBUG] externalQuestions:', externalQuestions);
+    console.log('🔧 [DEBUG] externalQuestions length:', externalQuestions?.length || 'null/undefined');
+    
+    if (externalQuestions && externalQuestions.length > 0) {
+      console.log('🔧 [DEBUG] Setting up quiz with external questions');
+      setState({
+        questions: externalQuestions,
+        currentQuestion: 0,
+        score: 0,
+        showResults: false,
+        userAnswers: Array(externalQuestions.length).fill(""),
+        feedback: null,
+        essayRatings: Array(externalQuestions.length).fill(null),
+      });
+      setShowInput(false);
+      setLoadedQuestions(externalQuestions);
+      console.log('🔧 [DEBUG] Quiz state initialized with external questions');
+    }
+  }, [externalQuestions]);
+
   // Enhanced API key validation with proper error handling
   const validateApiKey = (key: string): boolean => {
     if (!key || typeof key !== 'string') return false;
-    return key.trim().length > 20 && key.startsWith("sk-");
+    const trimmedKey = key.trim();
+    
+    // Basic format validation
+    if (trimmedKey.length < 20) return false;
+    
+    // Check for common API key patterns
+    const validPrefixes = ['sk-', 'pk-', 'api-', 'key-'];
+    const hasValidPrefix = validPrefixes.some(prefix => trimmedKey.startsWith(prefix));
+    
+    // Must have valid prefix and reasonable length
+    if (!hasValidPrefix || trimmedKey.length > 200) return false;
+    
+    // Check for suspicious patterns (all same character, etc.)
+    const uniqueChars = new Set(trimmedKey).size;
+    if (uniqueChars < 8) return false; // Too few unique characters
+    
+    // Check for valid characters (alphanumeric, hyphens, underscores)
+    const validChars = /^[a-zA-Z0-9\-_]+$/;
+    if (!validChars.test(trimmedKey)) return false;
+    
+    return true;
   };
 
   // Rate limiting check with error handling
@@ -207,6 +250,11 @@ const Quiz: React.FC = () => {
     setShowFeedback(true);
     
     const currentQ = state.questions[state.currentQuestion];
+    if (!currentQ) {
+      console.error('🔧 [ERROR] Current question is undefined in handleAnswer');
+      return;
+    }
+    
     const isEssay = currentQ.type === 'essay';
     const isCorrect = selectedOption === currentQ.answer;
     
@@ -241,23 +289,23 @@ const Quiz: React.FC = () => {
     // Get AI feedback if API key is provided
     if (provider === 'openrouter' && openRouterKey && openRouterKey.trim() !== "") {
       getFeedback(
-        state.questions[state.currentQuestion].question,
+        currentQ.question,
         selectedOption,
-        state.questions[state.currentQuestion].answer,
+        currentQ.answer || '',
         isCorrect
       );
     } else if (provider === 'gemini' && geminiKey && geminiKey.trim() !== "") {
       getFeedback(
-        state.questions[state.currentQuestion].question,
+        currentQ.question,
         selectedOption,
-        state.questions[state.currentQuestion].answer,
+        currentQ.answer || '',
         isCorrect
       );
     } else if (provider === 'openai' && openAIKey && openAIKey.trim() !== "") {
       getFeedback(
-        state.questions[state.currentQuestion].question,
+        currentQ.question,
         selectedOption,
-        state.questions[state.currentQuestion].answer,
+        currentQ.answer || '',
         isCorrect
       );
     }
@@ -330,13 +378,13 @@ const Quiz: React.FC = () => {
         });
         if (!res.ok) throw new Error("Failed to fetch models");
         const data = await res.json();
-        if (isMounted) {
+        if (isMounted && !abortController.signal.aborted) {
           setModels(data.data || []);
           if (data.data && data.data.length > 0) {
             setSelectedModel(data.data[0].id);
           }
         }
-      } catch (e) {
+      } catch (e: any) {
         if (isMounted && e.name !== 'AbortError') {
           setModels([]);
           setSelectedModel("");
@@ -351,37 +399,52 @@ const Quiz: React.FC = () => {
     };
   }, [openRouterKey, provider]);
 
-  // Fetch Gemini models
+  // Fetch Gemini models with proper cleanup
   useEffect(() => {
     if (provider !== 'gemini') return;
+    
+    let isMounted = true;
+    const abortController = new AbortController();
+    
     const fetchGeminiModels = async () => {
       if (!geminiKey || geminiKey.trim().length < 20) {
-        setGeminiModels([]);
-        setSelectedGeminiModel("");
+        if (isMounted) {
+          setGeminiModels([]);
+          setSelectedGeminiModel("");
+        }
         return;
       }
       try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey}`);
-        if (!res.ok) throw new Error("Failed to fetch Gemini models");
-        const data = await res.json();
-        // Only include models that support generateContent
-        const filtered = (data.models || []).filter((m: any) => (m.supportedGenerationMethods || []).includes('generateContent'));
-        setGeminiModels(filtered);
-        if (filtered.length > 0) {
-          setSelectedGeminiModel(filtered[0].name);
+        const response = await fetch(`${API_URLS.GEMINI_BASE}?key=${geminiKey}`, {
+          signal: abortController.signal,
+        });
+        if (!response.ok) throw new Error("Failed to fetch Gemini models");
+        const data = await response.json();
+        if (isMounted && !abortController.signal.aborted) {
+          setGeminiModels(data.models || []);
+          if (data.models && data.models.length > 0) {
+            setSelectedGeminiModel(data.models[0].name);
+          }
         }
-      } catch (e) {
-        setGeminiModels([]);
-        setSelectedGeminiModel("");
+      } catch (e: any) {
+        if (isMounted && e.name !== 'AbortError') {
+          setGeminiModels([]);
+          setSelectedGeminiModel("");
+        }
       }
     };
     fetchGeminiModels();
+    
+    return () => {
+      isMounted = false;
+      abortController.abort();
+    };
   }, [geminiKey, provider]);
 
   const getFeedback = async (
     question: string, 
     userAnswer: string, 
-    correctAnswer: string, 
+    correctAnswer: string | undefined, 
     isCorrect: boolean
   ) => {
     setApiError(null);
@@ -410,7 +473,8 @@ Format:
 **One Thing to Improve:**
 [Single specific improvement]`;
       } else {
-        prompt = `\n          I'm doing a quiz. The question was: "${question}".\n          I chose: "${userAnswer}".\n          The correct answer is: "${correctAnswer}".\n          My answer was ${isCorrect ? 'correct' : 'incorrect'}.\n          Provide me a constructive feedback as to why my answer is correct or incorrect max 2-5 sentences.\n        `;
+        const correctAnswerText = correctAnswer || 'No correct answer specified';
+        prompt = `\n          I'm doing a quiz. The question was: "${question}".\n          I chose: "${userAnswer}".\n          The correct answer is: "${correctAnswerText}".\n          My answer was ${isCorrect ? 'correct' : 'incorrect'}.\n          Provide me a constructive feedback as to why my answer is correct or incorrect max 2-5 sentences.\n        `;
       }
       if (provider === 'openrouter') {
         if (!openRouterKey || !validateApiKey(openRouterKey)) {
@@ -1130,6 +1194,31 @@ Format your response exactly as shown above with proper markdown headers and str
     toast.success(message);
   };
 
+  // Add a loading check to prevent rendering before state is properly initialized
+  if (!showInput && !showGeminiInput && (!state.questions || state.questions.length === 0)) {
+    console.log('🔧 [DEBUG] Quiz waiting for questions to be initialized...');
+    return (
+      <div className="container mx-auto p-4 text-center">
+        <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading quiz...</p>
+      </div>
+    );
+  }
+
+  // Ensure we have a valid current question
+  const currentQuestion = state.questions[state.currentQuestion];
+  if (!showInput && !showGeminiInput && !state.showResults && !currentQuestion) {
+    console.log('🔧 [DEBUG] Current question is undefined, resetting...');
+    return (
+      <div className="container mx-auto p-4 text-center">
+        <p className="text-red-500">Error: Invalid question state</p>
+        <Button onClick={() => setShowInput(true)} className="mt-4">
+          Back to Quiz Input
+        </Button>
+      </div>
+    );
+  }
+
   if (showInput) {
     return <JsonInput onQuizStart={prepareQuiz} />;
   }
@@ -1464,26 +1553,26 @@ Format your response exactly as shown above with proper markdown headers and str
             </div>
 
             <QuizCard
-              question={state.questions[state.currentQuestion]}
+              question={currentQuestion}
               questionNumber={state.currentQuestion + 1}
               totalQuestions={state.questions.length}
               onAnswer={handleAnswer}
               showFeedback={showFeedback}
               selectedOption={selectedOption}
-              isCorrect={selectedOption === state.questions[state.currentQuestion].answer}
+              isCorrect={selectedOption === currentQuestion.answer}
             />
 
             {/* AI feedback per question */}
             {showFeedback && (
               <QuestionFeedback
-                question={state.questions[state.currentQuestion]}
+                question={currentQuestion}
                 userAnswer={selectedOption || ""}
-                isCorrect={selectedOption === state.questions[state.currentQuestion].answer}
+                isCorrect={selectedOption === currentQuestion.answer}
                 questionNumber={state.currentQuestion + 1}
                 provider={provider}
                 apiKey={provider === 'openrouter' ? openRouterKey : provider === 'gemini' ? geminiKey : openAIKey}
                 selectedModel={provider === 'openrouter' ? selectedModel : provider === 'gemini' ? selectedGeminiModel : undefined}
-                essayRating={state.questions[state.currentQuestion].type === 'essay' ? state.essayRatings[state.currentQuestion] : undefined}
+                essayRating={currentQuestion.type === 'essay' ? state.essayRatings[state.currentQuestion] : undefined}
               />
             )}
 

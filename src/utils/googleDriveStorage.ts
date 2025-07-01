@@ -23,8 +23,19 @@ export class GoogleDriveUserStorage {
   static async initializeGoogleClient(): Promise<boolean> {
     if (isInitialized) return true;
     
+    console.log('🔧 [DEBUG] Initializing Google Client...');
+    console.log('🔧 [DEBUG] CLIENT_ID configured:', CLIENT_ID ? 'Yes' : 'No');
+    console.log('🔧 [DEBUG] API_KEY configured:', API_KEY ? 'Yes' : 'No');
+    
     if (!CLIENT_ID || !API_KEY) {
-      console.warn('Google API credentials not configured');
+      console.warn('⚠️ Google API credentials not configured - running in offline mode');
+      console.log('ℹ️ To enable cloud features, configure VITE_GOOGLE_CLIENT_ID and VITE_GOOGLE_API_KEY');
+      return false;
+    }
+    
+    if (CLIENT_ID.includes('your_google_client_id_here') || API_KEY.includes('your_google_api_key_here')) {
+      console.warn('⚠️ Google API credentials are placeholder values - running in offline mode');
+      console.log('ℹ️ Please replace placeholder values with actual Google API credentials');
       return false;
     }
     
@@ -42,6 +53,7 @@ export class GoogleDriveUserStorage {
           resolve(true);
         } catch (error) {
           console.error('❌ Google API init failed:', error);
+          console.log('🔄 Falling back to offline mode');
           resolve(false);
         }
       });
@@ -340,22 +352,51 @@ export class GoogleDriveUserStorage {
 
   // Quiz-specific methods
   static async saveQuiz(quiz: Omit<UserQuiz, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
-    const userData = await this.loadUserData();
-    if (!userData) throw new Error('User data not found');
+    console.log('☁️ [DEBUG] GoogleDriveUserStorage.saveQuiz called');
+    console.log('☁️ [DEBUG] Quiz to save:', quiz);
+    
+    try {
+      console.log('☁️ [DEBUG] Loading user data...');
+      const userData = await this.loadUserData();
+      
+      if (!userData) {
+        console.error('❌ [DEBUG] User data not found');
+        throw new Error('User data not found');
+      }
+      
+      console.log('☁️ [DEBUG] User data loaded successfully');
+      console.log('☁️ [DEBUG] Current quizzes count:', userData.quizzes.length);
 
-    const now = new Date().toISOString();
-    const newQuiz: UserQuiz = {
-      ...quiz,
-      id: `quiz_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      createdAt: now,
-      updatedAt: now,
-    };
+      const now = new Date().toISOString();
+      const newQuiz: UserQuiz = {
+        ...quiz,
+        id: `quiz_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        createdAt: now,
+        updatedAt: now,
+      };
+      
+      console.log('☁️ [DEBUG] New quiz created:', newQuiz);
+      console.log('☁️ [DEBUG] New quiz ID:', newQuiz.id);
 
-    userData.quizzes.push(newQuiz);
-    await this.saveUserData(userData);
+      userData.quizzes.push(newQuiz);
+      console.log('☁️ [DEBUG] Quiz added to user data. New count:', userData.quizzes.length);
+      
+      console.log('☁️ [DEBUG] Saving updated user data...');
+      await this.saveUserData(userData);
+      console.log('☁️ [DEBUG] User data saved successfully');
 
-    console.log('✅ Quiz saved:', newQuiz.title);
-    return newQuiz.id;
+      console.log('✅ Quiz saved:', newQuiz.title);
+      return newQuiz.id;
+      
+    } catch (error) {
+      console.error('❌ [DEBUG] GoogleDriveUserStorage.saveQuiz error:', error);
+      console.log('☁️ [DEBUG] Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack available',
+        type: typeof error
+      });
+      throw error;
+    }
   }
 
   static async getQuizzes(): Promise<UserQuiz[]> {
@@ -442,17 +483,43 @@ export class GoogleDriveUserStorage {
 
   // Import quiz from legacy format
   static async importLegacyQuiz(title: string, questions: QuizQuestion[], description?: string): Promise<string> {
-    const enhancedQuestions = this.convertLegacyQuestions(questions);
+    console.log('☁️ [DEBUG] GoogleDriveUserStorage.importLegacyQuiz called');
+    console.log('☁️ [DEBUG] Parameters:', { title, questionsCount: questions.length, description });
+    console.log('☁️ [DEBUG] Questions:', questions);
     
-    return await this.saveQuiz({
-      title,
-      description: description || 'Imported quiz',
-      questions: enhancedQuestions,
-      tags: ['imported'],
-      category: 'General',
-      difficulty: 'medium',
-      estimatedDuration: enhancedQuestions.reduce((total, q) => total + q.estimatedTime, 0),
-    });
+    try {
+      console.log('☁️ [DEBUG] Converting legacy questions...');
+      const enhancedQuestions = this.convertLegacyQuestions(questions);
+      console.log('☁️ [DEBUG] Enhanced questions:', enhancedQuestions);
+      console.log('☁️ [DEBUG] Enhanced questions count:', enhancedQuestions.length);
+      
+      const quizData = {
+        title,
+        description: description || 'Imported quiz',
+        questions: enhancedQuestions,
+        tags: ['imported'],
+        category: 'General',
+        difficulty: 'medium' as const,
+        estimatedDuration: enhancedQuestions.reduce((total, q) => total + q.estimatedTime, 0),
+      };
+      
+      console.log('☁️ [DEBUG] Quiz data to save:', quizData);
+      console.log('☁️ [DEBUG] Calling saveQuiz...');
+      
+      const result = await this.saveQuiz(quizData);
+      
+      console.log('✅ [DEBUG] GoogleDriveUserStorage.importLegacyQuiz completed successfully:', result);
+      return result;
+      
+    } catch (error) {
+      console.error('❌ [DEBUG] GoogleDriveUserStorage.importLegacyQuiz error:', error);
+      console.log('☁️ [DEBUG] Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack available',
+        type: typeof error
+      });
+      throw error;
+    }
   }
 }
 

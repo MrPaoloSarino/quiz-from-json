@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { GoogleDriveUserStorage, UserProfile as UserProfileType, UserData } from '@/utils/googleDriveStorage';
 import { toast } from 'sonner';
 import { LogOut, Settings, Trophy, BookOpen, Clock, Target, TrendingUp, Zap } from 'lucide-react';
+import StorageManager from '@/utils/storageManager';
 
 interface UserProfileProps {
   onSignOut: () => void;
@@ -15,11 +16,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ onSignOut }) => {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadUserData();
-  }, []);
-
-  const loadUserData = async () => {
+  const loadUserData = useCallback(async () => {
     try {
       const currentUser = GoogleDriveUserStorage.getCurrentUser();
       if (currentUser) {
@@ -33,15 +30,20 @@ const UserProfile: React.FC<UserProfileProps> = ({ onSignOut }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadUserData();
+  }, [loadUserData]);
 
   const handleSignOut = async () => {
     try {
-      await GoogleDriveUserStorage.signOut();
+      await StorageManager.signOut();
       onSignOut();
       toast.success('Signed out successfully');
     } catch (error) {
-      toast.error('Failed to sign out');
+      console.error('Sign out error:', error);
+      toast.error('Error signing out');
     }
   };
 
