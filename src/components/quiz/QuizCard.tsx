@@ -94,8 +94,8 @@ const QuizCard: React.FC<QuizCardProps> = ({
               <Button
                 key={index}
                 onClick={() => onAnswer(option)}
-                variant={selectedOption === option ? (isCorrect ? 'success' : 'destructive') : 'outline'}
-                className="w-full justify-start text-left"
+                variant={selectedOption === option ? (isCorrect ? 'default' : 'destructive') : 'outline'}
+                className={`w-full justify-start text-left ${selectedOption === option && isCorrect ? 'bg-green-100 hover:bg-green-200' : ''}`}
                 disabled={showFeedback}
               >
                 {option}
@@ -105,12 +105,7 @@ const QuizCard: React.FC<QuizCardProps> = ({
         )}
 
         {question.type === 'essay' && (
-          <textarea
-            className="w-full h-32 p-2 border rounded"
-            placeholder="Type your answer here..."
-            disabled={showFeedback}
-            onChange={(e) => onAnswer(e.target.value)}
-          />
+          <EssayInput onSubmit={onAnswer} disabled={showFeedback} initialValue={selectedOption || ''} />
         )}
       </div>
 
@@ -136,6 +131,7 @@ const QuizCard: React.FC<QuizCardProps> = ({
 
 function EssayInput({ onSubmit, disabled, initialValue }: { onSubmit: (text: string) => void, disabled: boolean, initialValue: string }) {
   const [value, setValue] = useState(initialValue);
+
   return (
     <form
       onSubmit={e => {
@@ -151,7 +147,11 @@ function EssayInput({ onSubmit, disabled, initialValue }: { onSubmit: (text: str
         disabled={disabled}
         placeholder="Type your answer here..."
       />
-      <Button type="submit" className="bg-quiz-primary text-white" disabled={disabled || !value.trim()}>
+      <Button 
+        type="submit" 
+        className="bg-quiz-primary text-white"
+        disabled={disabled || !value.trim()}
+      >
         Submit Answer
       </Button>
     </form>
