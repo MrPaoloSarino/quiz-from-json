@@ -1,11 +1,13 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { QuizQuestion } from "@/types/quiz";
 import { toast } from "sonner";
 import { exportQuizToFile, importQuizFromFile } from "@/utils/quizFileHandler";
+import { GoogleDriveUserStorage } from '@/utils/googleDriveStorage';
 
 interface JsonInputProps {
   onQuizStart: (questions: QuizQuestion[]) => void;
@@ -35,6 +37,8 @@ const JsonInput: React.FC<JsonInputProps> = ({ onQuizStart }) => {
   }
 ]`);
   const [error, setError] = useState<string | null>(null);
+  const [quizTitle, setQuizTitle] = useState<string>('');
+  const [quizDescription, setQuizDescription] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const validateQuestions = (questions: any[]): questions is QuizQuestion[] => {
@@ -77,6 +81,34 @@ const JsonInput: React.FC<JsonInputProps> = ({ onQuizStart }) => {
       toast.success("Quiz loaded successfully!");
     } catch (err) {
       setError("Unexpected error. Please check your input.");
+    }
+  };
+
+  const handleSaveToCloud = async () => {
+    if (!quizTitle.trim()) {
+      toast.error("Please enter a quiz title");
+      return;
+    }
+
+    try {
+      const parsedQuestions = JSON.parse(jsonInput);
+      if (!validateQuestions(parsedQuestions)) {
+        toast.error("Invalid quiz format. Please fix the errors before saving.");
+        return;
+      }
+
+      await GoogleDriveUserStorage.importLegacyQuiz(
+        quizTitle.trim(),
+        parsedQuestions,
+        quizDescription.trim() || undefined
+      );
+
+      toast.success("Quiz saved to cloud successfully!");
+      setQuizTitle('');
+      setQuizDescription('');
+    } catch (err) {
+      console.error('Failed to save quiz:', err);
+      toast.error("Error saving quiz to cloud");
     }
   };
 
@@ -125,9 +157,34 @@ const JsonInput: React.FC<JsonInputProps> = ({ onQuizStart }) => {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="quizTitle" className="block text-sm font-medium mb-2">
+                Quiz Title *
+              </label>
+              <Input
+                id="quizTitle"
+                value={quizTitle}
+                onChange={(e) => setQuizTitle(e.target.value)}
+                placeholder="Enter quiz title..."
+              />
+            </div>
+            <div>
+              <label htmlFor="quizDescription" className="block text-sm font-medium mb-2">
+                Description (Optional)
+              </label>
+              <Input
+                id="quizDescription"
+                value={quizDescription}
+                onChange={(e) => setQuizDescription(e.target.value)}
+                placeholder="Brief description..."
+              />
+            </div>
+          </div>
+          
           <div>
             <label htmlFor="jsonInput" className="block text-sm font-medium mb-2">
-              Paste your quiz JSON below:
+              Quiz Questions (JSON Format):
             </label>
             <Textarea
               id="jsonInput"
@@ -138,6 +195,7 @@ const JsonInput: React.FC<JsonInputProps> = ({ onQuizStart }) => {
               placeholder="Paste your JSON quiz data here..."
             />
           </div>
+          
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
@@ -145,27 +203,40 @@ const JsonInput: React.FC<JsonInputProps> = ({ onQuizStart }) => {
           )}
         </div>
       </CardContent>
-      <CardFooter className="flex gap-2">
-        <Button 
-          onClick={handleStartQuiz}
-          className="flex-1 bg-quiz-primary hover:bg-quiz-secondary text-white"
-        >
-          Start Quiz
-        </Button>
-        <Button
-          onClick={handleExport}
-          variant="outline"
-          className="flex-1"
-        >
-          Export Quiz
-        </Button>
-        <Button
-          onClick={() => fileInputRef.current?.click()}
-          variant="outline"
-          className="flex-1"
-        >
-          Import Quiz
-        </Button>
+      <CardFooter className="flex flex-col gap-3">
+        <div className="flex gap-2 w-full">
+          <Button 
+            onClick={handleStartQuiz}
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            Start Quiz
+          </Button>
+          <Button
+            onClick={handleSaveToCloud}
+            variant="outline"
+            className="flex-1 border-green-500 text-green-600 hover:bg-green-50"
+          >
+            Save to Cloud
+          </Button>
+        </div>
+        
+        <div className="flex gap-2 w-full">
+          <Button
+            onClick={handleExport}
+            variant="outline"
+            className="flex-1"
+          >
+            Export File
+          </Button>
+          <Button
+            onClick={() => fileInputRef.current?.click()}
+            variant="outline"
+            className="flex-1"
+          >
+            Import File
+          </Button>
+        </div>
+        
         <input
           ref={fileInputRef}
           type="file"

@@ -2,7 +2,7 @@ export interface QuizQuestion {
   question: string;
   options?: string[];
   answer?: string;
-  type?: 'multiple' | 'essay';
+  type?: 'multiple' | 'essay' | 'fill-blank' | 'drag-drop' | 'sequence' | 'matching';
 }
 
 export interface QuizState {

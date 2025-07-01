@@ -5,10 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "build:dev": "vite build --mode development",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "dev:host": "vite --host",
+    "dev:debug": "DEBUG=* vite",
+    "setup": "node scripts/dev-setup.js",
+    "test:google": "node -e \"console.log('CLIENT_ID:', process.env.VITE_GOOGLE_CLIENT_ID ? '✅ Set' : '❌ Missing'); console.log('API_KEY:', process.env.VITE_GOOGLE_API_KEY ? '✅ Set' : '❌ Missing');\"",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint . --fix",
+    "clean": "rm -rf dist .vite node_modules/.vite",
+    "check": "npm run lint && npm run build",
+    "update-deps": "npm update caniuse-lite && npm update",
+    "audit-fix": "npm audit fix"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -40,11 +48,15 @@
     "@radix-ui/react-toggle-group": "^1.1.0",
     "@radix-ui/react-tooltip": "^1.1.4",
     "@tanstack/react-query": "^5.56.2",
+    "@types/dompurify": "^3.0.5",
+    "buffer": "^6.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",
+    "dompurify": "^3.0.6",
     "embla-carousel-react": "^8.3.0",
+    "gapi-script": "^1.2.0",
     "input-otp": "^1.2.4",
     "lucide-react": "^0.462.0",
     "next-themes": "^0.3.0",
@@ -60,10 +72,7 @@
     "tailwind-merge": "^2.5.2",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.3",
-    "zod": "^3.23.8",
-    "dompurify": "^3.0.6",
-    "@types/dompurify": "^3.0.5",
-    "buffer": "^6.0.3"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
