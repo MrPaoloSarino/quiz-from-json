@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Component, ErrorInfo } from "react";
 import JsonInput from "./JsonInput";
 import QuizCard from "./QuizCard";
 import QuizResults from "./QuizResults";
@@ -6,7 +6,7 @@ import AiFeedback from "./AiFeedback";
 import QuestionFeedback from "./QuestionFeedback";
 import { QuizQuestion, QuizState, GeminiResponse } from "@/types/quiz";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Eye, EyeOff, Brain } from "lucide-react";
 import { playSound } from '@/utils/soundEffects';
@@ -135,44 +135,61 @@ const shouldInterleave = (questions: EnhancedQuizQuestion[], currentTopic: strin
          currentQ.analytics.strengthScore > 0.7;
 };
 
-const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQuestions }) => {
-  // Initialize state with enhanced questions
-  const initializeEnhancedQuestions = (questions: QuizQuestion[]): EnhancedQuizQuestion[] => {
-    return questions.map((q, index) => ({
-      ...q,
-      id: `question_${Date.now()}_${index}`,
-      difficulty: 'medium',
-      tags: [],
-      category: 'general',
-      estimatedTime: q.type === 'essay' ? 300 : 60,
-      attempts: 0,
-      successRate: 0,
-      averageTime: 0,
-      commonMistakes: [],
-      learningObjectives: [],
-      spacedRepetition: initializeSpacedRepetition(),
-      analytics: initializeLearningAnalytics(),
+const initializeQuizState = (externalQuestions?: QuizQuestion[]): QuizState => {
+  if (!externalQuestions || externalQuestions.length === 0) {
+    return {
+      questions: [],
+      currentQuestion: 0,
+      score: 0,
+      showResults: false,
+      userAnswers: [],
+      feedback: null,
+      essayRatings: [],
+      isInterleaved: false,
+      startTime: new Date(),
       activeRecallPrompts: [],
-      elaborations: [],
-      feynmanExplanation: undefined
-    }));
-  };
+      showActiveRecall: false,
+      showConfirmation: false
+    };
+  }
 
-  const [state, setState] = useState<QuizState>({
-    questions: [],
+  const enhancedQuestions = externalQuestions.map((q, index) => ({
+    ...q,
+    id: `question_${Date.now()}_${index}`,
+    difficulty: 'medium' as const,
+    tags: [],
+    category: 'general',
+    estimatedTime: q.type === 'essay' ? 300 : 60,
+    attempts: 0,
+    successRate: 0,
+    averageTime: 0,
+    commonMistakes: [],
+    learningObjectives: [],
+    spacedRepetition: initializeSpacedRepetition(),
+    analytics: initializeLearningAnalytics(),
+    activeRecallPrompts: [],
+    elaborations: [],
+    feynmanExplanation: undefined
+  }));
+
+  return {
+    questions: enhancedQuestions,
     currentQuestion: 0,
     score: 0,
     showResults: false,
-    userAnswers: [],
+    userAnswers: Array(enhancedQuestions.length).fill(""),
     feedback: null,
-    essayRatings: [],
+    essayRatings: Array(enhancedQuestions.length).fill(null),
     isInterleaved: false,
     startTime: new Date(),
     activeRecallPrompts: [],
     showActiveRecall: false,
     showConfirmation: false
-  });
+  };
+};
 
+const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQuestions }) => {
+  const [state, setState] = useState<QuizState>(() => initializeQuizState(externalQuestions));
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState<boolean>(false);
   const [showInput, setShowInput] = useState<boolean>(!externalQuestions);
@@ -203,6 +220,23 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
   const [showGeminiModelDropdown, setShowGeminiModelDropdown] = useState(false);
   const [openAIKey, setOpenAIKey] = useState<string>("");
   const [geminiKey, setGeminiKey] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  // Add AbortController ref for API calls
+  const abortControllerRef = React.useRef<AbortController>(new AbortController());
+
+  // Cleanup function for API calls
+  const cleanupAPICalls = () => {
+    abortControllerRef.current.abort();
+    abortControllerRef.current = new AbortController();
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current.abort();
+    };
+  }, []);
 
   // Initialize with external questions if provided
   useEffect(() => {
@@ -224,7 +258,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       });
 
       if (externalQuestions && externalQuestions.length > 0) {
-        const enhancedQuestions = initializeEnhancedQuestions(externalQuestions);
+        const enhancedQuestions = initializeQuizState(externalQuestions).questions;
         Debug.logAnalytics('Questions Enhanced', {
           strengthScore: 0,
           lastRecallSuccess: false,
@@ -235,8 +269,8 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
           relatedConcepts: []
         });
 
-        setState({
-          ...state,
+        setState(prevState => ({
+          ...prevState,
           questions: enhancedQuestions,
           userAnswers: Array(enhancedQuestions.length).fill(""),
           essayRatings: Array(enhancedQuestions.length).fill(null),
@@ -245,7 +279,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
           activeRecallPrompts: [],
           showActiveRecall: false,
           showConfirmation: false
-        });
+        }));
         setShowInput(false);
       }
     } catch (error) {
@@ -340,10 +374,11 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
   };
 
   const prepareQuiz = (questions: QuizQuestion[]) => {
-    const enhancedQuestions = initializeEnhancedQuestions(questions);
+    const enhancedQuestions = initializeQuizState(questions).questions;
     setLoadedQuestions(questions);
     setShowInput(false);
-    setState({
+    setState(prevState => ({
+      ...prevState,
       questions: enhancedQuestions,
       currentQuestion: 0,
       score: 0,
@@ -356,14 +391,14 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       activeRecallPrompts: [],
       showActiveRecall: false,
       showConfirmation: false
-    });
+    }));
     setShowGeminiInput(false);
   };
 
   const randomizeQuestions = () => {
     const shuffled = [...state.questions].sort(() => Math.random() - 0.5);
-    setState({
-      ...state,
+    setState(prevState => ({
+      ...prevState,
       questions: shuffled,
       currentQuestion: 0,
       score: 0,
@@ -371,19 +406,19 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       showResults: false,
       feedback: null,
       essayRatings: []
-    });
+    }));
   };
   
   const startQuiz = () => {
-    setState({
-      ...state,
+    setState(prevState => ({
+      ...prevState,
       currentQuestion: 0,
       score: 0,
       userAnswers: [],
       showResults: false,
       feedback: null,
       essayRatings: []
-    });
+    }));
     // Hide AI configuration modal if it is open
     setShowGeminiInput(false);
   };
@@ -392,80 +427,73 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
     const answerStartTime = performance.now();
     
     try {
-      const currentQ = state.questions[state.currentQuestion];
-      if (!currentQ) {
-        throw new Error('Current question is undefined in handleAnswer');
-      }
-      
-      const isEssay = currentQ.type === 'essay';
-      
-      // Add essay validation
-      if (isEssay) {
-        const validation = validateContentLength(selectedOption);
-        if (!validation.valid) {
-          toast.error(validation.message);
-          return;
+      setIsLoading(true);
+      setState(prevState => {
+        const currentQ = prevState.questions[prevState.currentQuestion];
+        if (!currentQ) {
+          throw new Error('Current question is undefined in handleAnswer');
         }
-      }
+        
+        const isEssay = currentQ.type === 'essay';
+        
+        // Validate content length for essay answers
+        if (isEssay && !validateContentLength(selectedOption)) {
+          throw new Error('Answer exceeds maximum length limit');
+        }
+        
+        const isCorrect = selectedOption === currentQ.answer;
+        const timeSpent = (performance.now() - answerStartTime) / 1000;
+        
+        // Update spaced repetition
+        const performanceRating = isCorrect ? 'good' : 'again';
+        const updatedSpacedRepetition = calculateNextReview(
+          currentQ.spacedRepetition,
+          performanceRating
+        );
+        
+        // Update analytics
+        const updatedAnalytics = updateLearningAnalytics(
+          currentQ.analytics,
+          isCorrect,
+          timeSpent,
+          prevState.isInterleaved
+        );
+        
+        // Generate active recall prompts
+        let activeRecallPrompts: string[] = [];
+        if (!isCorrect && !isEssay) {
+          activeRecallPrompts = generateActiveRecallPrompts(currentQ);
+        }
+        
+        // Update the current question with new data
+        const updatedQuestions = [...prevState.questions];
+        updatedQuestions[prevState.currentQuestion] = {
+          ...currentQ,
+          spacedRepetition: updatedSpacedRepetition,
+          analytics: updatedAnalytics,
+          activeRecallPrompts
+        };
+        
+        return {
+          ...prevState,
+          questions: updatedQuestions,
+          score: isEssay ? prevState.score : (isCorrect ? prevState.score + 1 : prevState.score),
+          userAnswers: [...prevState.userAnswers, selectedOption],
+          feedback: null,
+          essayRatings: [...prevState.essayRatings],
+          activeRecallPrompts: activeRecallPrompts,
+          showActiveRecall: activeRecallPrompts.length > 0,
+          showConfirmation: activeRecallPrompts.length === 0
+        };
+      });
+
+      // Play sound outside of setState to avoid unnecessary re-renders
+      const currentQ = state.questions[state.currentQuestion];
+      const isEssay = currentQ?.type === 'essay';
+      const isCorrect = selectedOption === currentQ?.answer;
       
-      setSelectedOption(selectedOption);
-      setShowFeedback(true);
-      
-      const isCorrect = selectedOption === currentQ.answer;
-      
-      // Track timing
-      const timeSpent = (performance.now() - answerStartTime) / 1000;
-      debugActiveRecall(isCorrect, timeSpent);
-      
-      // Update spaced repetition
-      const performanceRating = isCorrect ? 'good' : 'again';
-      const updatedSpacedRepetition = calculateNextReview(
-        currentQ.spacedRepetition,
-        performanceRating
-      );
-      debugSpacedRepetition(currentQ);
-      
-      // Update analytics
-      const updatedAnalytics = updateLearningAnalytics(
-        currentQ.analytics,
-        isCorrect,
-        timeSpent,
-        state.isInterleaved
-      );
-      debugAnalytics({ ...currentQ, analytics: updatedAnalytics });
-      
-      // Generate active recall prompts
-      let activeRecallPrompts: string[] = [];
-      if (!isCorrect && !isEssay) {
-        activeRecallPrompts = generateActiveRecallPrompts(currentQ);
-        Debug.logActiveRecall('Generated Prompts', false, timeSpent);
-      }
-      
-      // Play sound
       if (!isEssay) {
         playSound(isCorrect ? 'correct' : 'incorrect');
-      }
-      
-      // Update state
-      const updatedQuestions = [...state.questions];
-      updatedQuestions[state.currentQuestion] = {
-        ...currentQ,
-        spacedRepetition: updatedSpacedRepetition,
-        analytics: updatedAnalytics,
-        activeRecallPrompts
-      };
-      
-      setState({
-        ...state,
-        questions: updatedQuestions,
-        score: isEssay ? state.score : (isCorrect ? state.score + 1 : state.score),
-        userAnswers: [...state.userAnswers, selectedOption],
-        feedback: null,
-        essayRatings: [...state.essayRatings],
-      });
-      
-      // Show feedback
-      if (!isEssay) {
         if (isCorrect) {
           toast.success("Correct answer!");
         } else {
@@ -475,30 +503,11 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
         toast.success("Answer submitted for AI evaluation!");
       }
 
-      // Handle active recall
-      if (activeRecallPrompts.length > 0) {
-        setActiveRecallPrompts(activeRecallPrompts);
-        setShowActiveRecall(true);
-      } else {
-        setShowConfirmation(true);
-      }
-
-      // Log session progress
-      debugSession({
-        questions: updatedQuestions,
-        totalScore: state.score,
-        strategiesUsed: {
-          activeRecall: true,
-          spacedRepetition: true,
-          interleaving: state.isInterleaved,
-          elaboration: activeRecallPrompts.length > 0,
-          feynmanTechnique: false
-        }
-      });
-
     } catch (error) {
       debugError('Answer Processing', error as Error);
-      toast.error("Error processing answer. Please try again.");
+      toast.error("An error occurred while processing your answer");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -724,6 +733,8 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
     correctAnswer: string | undefined, 
     isCorrect: boolean
   ) => {
+    cleanupAPICalls(); // Cleanup any existing calls
+    
     setApiError(null);
     setLoadingFeedback(true);
     try {
@@ -753,6 +764,7 @@ Format:
         const correctAnswerText = correctAnswer || 'No correct answer specified';
         prompt = `\n          I'm doing a quiz. The question was: "${question}".\n          I chose: "${userAnswer}".\n          The correct answer is: "${correctAnswerText}".\n          My answer was ${isCorrect ? 'correct' : 'incorrect'}.\n          Provide me a constructive feedback as to why my answer is correct or incorrect max 2-5 sentences.\n        `;
       }
+
       if (provider === 'openrouter') {
         if (!openRouterKey || !validateApiKey(openRouterKey)) {
           throw new Error("Invalid OpenRouter API key format");
@@ -764,6 +776,7 @@ Format:
           throw new Error("Rate limit exceeded. Please wait before making more requests.");
         }
         recordApiCall();
+        
         const response = await fetch(OPENROUTER_API_URL, {
           method: "POST",
           headers: {
@@ -780,7 +793,9 @@ Format:
             ],
             extra_body: {},
           }),
+          signal: abortControllerRef.current.signal
         });
+
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           throw new Error(`API error: ${errorData?.error?.message || response.statusText}`);
@@ -1096,6 +1111,10 @@ Format:
         }
       }
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        // Ignore abort errors
+        return;
+      }
       console.error("Error getting AI feedback:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to get AI feedback";
       setApiError(errorMessage);
@@ -1163,6 +1182,7 @@ Please provide a helpful response related to this quiz question and topic.`;
             ],
             extra_body: {},
           }),
+          signal: abortControllerRef.current.signal
         });
 
         if (!response.ok) {
@@ -1196,8 +1216,8 @@ Please provide a helpful response related to this quiz question and topic.`;
                 }
               ]
             }),
-          }
-        );
+            signal: abortControllerRef.current.signal
+          });
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -1228,6 +1248,7 @@ Please provide a helpful response related to this quiz question and topic.`;
             max_tokens: 256,
             temperature: 0.7
           }),
+          signal: abortControllerRef.current.signal
         });
 
         if (!response.ok) {
@@ -1332,6 +1353,7 @@ Format your response exactly as shown above with proper markdown headers and str
             ],
             extra_body: {},
           }),
+          signal: abortControllerRef.current.signal
         });
 
         if (!response.ok) {
@@ -1365,8 +1387,8 @@ Format your response exactly as shown above with proper markdown headers and str
                 }
               ]
             }),
-          }
-        );
+            signal: abortControllerRef.current.signal
+          });
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -1397,6 +1419,7 @@ Format your response exactly as shown above with proper markdown headers and str
             max_tokens: 1000,
             temperature: 0.7
           }),
+          signal: abortControllerRef.current.signal
         });
 
         if (!response.ok) {
@@ -1890,4 +1913,69 @@ Format your response exactly as shown above with proper markdown headers and str
   );
 };
 
-export default Quiz;
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class QuizErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = {
+      hasError: false,
+      error: null
+    };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return {
+      hasError: true,
+      error
+    };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    debugError('Quiz Error Boundary', error);
+    console.error('Quiz error details:', errorInfo);
+  }
+
+  render(): React.ReactNode {
+    if (this.state.hasError) {
+      return (
+        <Card className="p-6">
+          <CardHeader>
+            <CardTitle className="text-red-600">Something went wrong</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-600 mb-4">
+              We're sorry, but there was an error loading the quiz. Please try refreshing the page.
+            </p>
+            <Button
+              onClick={() => {
+                this.setState({ hasError: false, error: null });
+                window.location.reload();
+              }}
+            >
+              Reload Quiz
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// Wrap the Quiz component with the error boundary
+export default function QuizWithErrorBoundary(props: { questions?: QuizQuestion[] }) {
+  return (
+    <QuizErrorBoundary>
+      <Quiz {...props} />
+    </QuizErrorBoundary>
+  );
+}
