@@ -13,35 +13,78 @@ const LearningDashboard: React.FC<LearningDashboardProps> = ({
   questions,
   sessions
 }) => {
-  // Calculate overall metrics
-  const overallStrength = Math.round(
-    questions.reduce((sum, q) => sum + q.analytics.strengthScore, 0) / questions.length * 100
-  );
+  // Add safety checks and console logging for debugging
+  console.log('🔍 [LearningDashboard] Questions:', questions?.length || 0);
+  console.log('🔍 [LearningDashboard] Sessions:', sessions?.length || 0);
+  
+  if (!questions || questions.length === 0) {
+    return (
+      <div className="space-y-4">
+        <Card className="p-6 text-center">
+          <h3 className="text-lg font-medium mb-2">No Learning Data Available</h3>
+          <p className="text-gray-500">Complete some quiz questions to see your analytics!</p>
+        </Card>
+      </div>
+    );
+  }
 
-  const recallSuccess = Math.round(
-    questions.reduce((sum, q) => sum + (q.analytics.recallSuccesses / Math.max(1, q.analytics.recallAttempts)), 0) / questions.length * 100
-  );
+  // Calculate overall metrics with safety checks
+  const validQuestions = questions.filter(q => q.analytics && typeof q.analytics.strengthScore === 'number');
+  const questionsWithAttempts = questions.filter(q => q.analytics && q.analytics.recallAttempts > 0);
+  
+  console.log('🔍 [Analytics] Valid questions:', validQuestions.length);
+  console.log('🔍 [Analytics] Questions with attempts:', questionsWithAttempts.length);
 
-  const avgResponseTime = Math.round(
-    questions.reduce((sum, q) => sum + q.analytics.averageRecallTime, 0) / questions.length
-  );
+  const overallStrength = validQuestions.length > 0 
+    ? Math.round(validQuestions.reduce((sum, q) => sum + q.analytics.strengthScore, 0) / validQuestions.length * 100)
+    : 0;
 
-  const masteredTopics = questions.filter(q => q.analytics.strengthScore > 0.8).length;
+  const recallSuccess = questionsWithAttempts.length > 0 
+    ? Math.round(questionsWithAttempts.reduce((sum, q) => {
+        const attempts = Math.max(1, q.analytics.recallAttempts);
+        return sum + (q.analytics.recallSuccesses / attempts);
+      }, 0) / questionsWithAttempts.length * 100)
+    : 0;
+
+  const avgResponseTime = questionsWithAttempts.length > 0
+    ? Math.round(questionsWithAttempts.reduce((sum, q) => sum + q.analytics.averageRecallTime, 0) / questionsWithAttempts.length)
+    : 0;
+
+  const masteredTopics = validQuestions.filter(q => q.analytics.strengthScore > 0.8).length;
 
   // Calculate learning velocity (questions mastered per hour of study)
-  const totalStudyTime = sessions.reduce((sum, s) => sum + s.timeSpent, 0) / 3600; // Convert to hours
-  const learningVelocity = Math.round((masteredTopics / Math.max(1, totalStudyTime)) * 10) / 10;
+  const totalStudyTime = sessions && sessions.length > 0 
+    ? sessions.reduce((sum, s) => sum + (s.timeSpent || 0), 0) / 3600 // Convert to hours
+    : 0;
+  const learningVelocity = totalStudyTime > 0 
+    ? Math.round((masteredTopics / totalStudyTime) * 10) / 10
+    : 0;
+
+  console.log('🔍 [Analytics] Calculated metrics:', {
+    overallStrength,
+    recallSuccess,
+    avgResponseTime,
+    masteredTopics,
+    totalStudyTime,
+    learningVelocity
+  });
 
   // Get upcoming reviews
   const upcomingReviews = questions
     .filter(q => {
-      const daysUntil = Math.ceil((q.spacedRepetition.nextReviewDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      if (!q.spacedRepetition?.nextReviewDate) return false;
+      const nextReview = new Date(q.spacedRepetition.nextReviewDate);
+      const daysUntil = Math.ceil((nextReview.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
       return daysUntil <= 7; // Next 7 days
     })
-    .sort((a, b) => a.spacedRepetition.nextReviewDate.getTime() - b.spacedRepetition.nextReviewDate.getTime());
+    .sort((a, b) => {
+      const aDate = new Date(a.spacedRepetition.nextReviewDate);
+      const bDate = new Date(b.spacedRepetition.nextReviewDate);
+      return aDate.getTime() - bDate.getTime();
+    });
 
   // Get topics for interleaving
-  const topicsForInterleaving = questions
+  const topicsForInterleaving = validQuestions
     .filter(q => q.analytics.strengthScore > 0.7)
     .map(q => q.category)
     .filter((v, i, a) => a.indexOf(v) === i); // Unique topics

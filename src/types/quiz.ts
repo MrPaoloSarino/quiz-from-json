@@ -20,6 +20,13 @@ export interface QuizState {
   activeRecallPrompts: string[];
   showActiveRecall: boolean;
   showConfirmation: boolean;
+  lockedAnswers: {
+    [questionId: string]: {
+      answer: string;
+      timestamp: number;
+      isCorrect: boolean;
+    };
+  };
 }
 
 export interface GeminiResponse {

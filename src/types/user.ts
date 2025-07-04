@@ -105,6 +105,15 @@ export interface EnhancedQuizQuestion {
   activeRecallPrompts: string[];  // Questions to test understanding
   elaborations: string[];  // User explanations/notes
   feynmanExplanation?: string;  // Simple explanation in user's words
+  
+  // Answer Locking
+  isAnswerLocked: boolean;
+  submissionTime?: number;
+  answerHistory: {
+    answer: string;
+    timestamp: number;
+    isCorrect: boolean;
+  }[];
 }
 
 export interface UserQuiz {

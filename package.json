@@ -8,6 +8,7 @@
     "dev:host": "vite --host",
     "dev:debug": "DEBUG=* vite",
     "setup": "node scripts/dev-setup.js",
+    "start": "npm run setup && npm run dev",
     "test:google": "node -e \"console.log('CLIENT_ID:', process.env.VITE_GOOGLE_CLIENT_ID ? '✅ Set' : '❌ Missing'); console.log('API_KEY:', process.env.VITE_GOOGLE_API_KEY ? '✅ Set' : '❌ Missing');\"",
     "build": "tsc && vite build",
     "preview": "vite preview",

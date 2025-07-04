@@ -26,6 +26,8 @@ import {
 } from '@/utils/quizFileHandler';
 import { Debug, debugSpacedRepetition, debugActiveRecall, debugInterleaving, debugAnalytics, debugSession, debugError } from '@/utils/debug';
 import ActiveRecallPrompt from './ActiveRecallPrompt';
+import { useLearning } from '@/contexts/LearningContext';
+import { generateFeedback } from '@/utils/learningEngine';
 
 const API_URLS = {
   OPENROUTER: "https://openrouter.ai/api/v1/chat/completions",
@@ -149,28 +151,44 @@ const initializeQuizState = (externalQuestions?: QuizQuestion[]): QuizState => {
       startTime: new Date(),
       activeRecallPrompts: [],
       showActiveRecall: false,
-      showConfirmation: false
+      showConfirmation: false,
+      lockedAnswers: {}
     };
   }
 
-  const enhancedQuestions = externalQuestions.map((q, index) => ({
-    ...q,
-    id: `question_${Date.now()}_${index}`,
-    difficulty: 'medium' as const,
-    tags: [],
-    category: 'general',
-    estimatedTime: q.type === 'essay' ? 300 : 60,
-    attempts: 0,
-    successRate: 0,
-    averageTime: 0,
-    commonMistakes: [],
-    learningObjectives: [],
-    spacedRepetition: initializeSpacedRepetition(),
-    analytics: initializeLearningAnalytics(),
-    activeRecallPrompts: [],
-    elaborations: [],
-    feynmanExplanation: undefined
-  }));
+  const enhancedQuestions: EnhancedQuizQuestion[] = externalQuestions.map((q, index) => {
+    // Initialize with proper defaults
+    const spacedRepetition = initializeSpacedRepetition();
+    const analytics = initializeLearningAnalytics();
+    
+    return {
+      ...q,
+      id: `question_${Date.now()}_${index}`,
+      difficulty: (q as any).difficulty || 'medium' as const,
+      tags: (q as any).tags || [],
+      category: (q as any).category || 'general',
+      estimatedTime: q.type === 'essay' ? 300 : 60,
+      attempts: 0,
+      successRate: 0,
+      averageTime: 0,
+      commonMistakes: [],
+      learningObjectives: [],
+      spacedRepetition,
+      analytics,
+      activeRecallPrompts: [],
+      elaborations: [],
+      feynmanExplanation: undefined,
+      isAnswerLocked: false,
+      submissionTime: undefined,
+      answerHistory: []
+    };
+  });
+
+  console.log('🚀 [Quiz Init] Enhanced questions with analytics:', enhancedQuestions.map(q => ({
+    id: q.id,
+    analytics: q.analytics,
+    spacedRepetition: q.spacedRepetition
+  })));
 
   return {
     questions: enhancedQuestions,
@@ -184,7 +202,8 @@ const initializeQuizState = (externalQuestions?: QuizQuestion[]): QuizState => {
     startTime: new Date(),
     activeRecallPrompts: [],
     showActiveRecall: false,
-    showConfirmation: false
+    showConfirmation: false,
+    lockedAnswers: {}
   };
 };
 
@@ -396,17 +415,20 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
   };
 
   const randomizeQuestions = () => {
-    const shuffled = [...state.questions].sort(() => Math.random() - 0.5);
-    setState(prevState => ({
-      ...prevState,
-      questions: shuffled,
-      currentQuestion: 0,
-      score: 0,
-      userAnswers: [],
-      showResults: false,
-      feedback: null,
-      essayRatings: []
-    }));
+    setState(prevState => {
+      const shuffled = [...prevState.questions].sort(() => Math.random() - 0.5);
+      return {
+        ...prevState,
+        questions: shuffled,
+        currentQuestion: 0,
+        score: 0,
+        userAnswers: [],
+        showResults: false,
+        feedback: null,
+        essayRatings: [],
+        lockedAnswers: {}
+      };
+    });
   };
   
   const startQuiz = () => {
@@ -423,15 +445,37 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
     setShowGeminiInput(false);
   };
 
+  // Add learning context
+  const { state: learningState, dispatch: learningDispatch } = useLearning();
+  
+  // Track question start time
+  const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
+  
+  // Update question start time when question changes
+  useEffect(() => {
+    setQuestionStartTime(Date.now());
+  }, [state.currentQuestion]);
+
   const handleAnswer = async (selectedOption: string) => {
     const answerStartTime = performance.now();
+    const timeSpent = (Date.now() - questionStartTime) / 1000; // Convert to seconds
     
     try {
       setIsLoading(true);
+      
+      // Update state and get the updated question
+      let updatedQuestion: EnhancedQuizQuestion | null = null;
+      
       setState(prevState => {
         const currentQ = prevState.questions[prevState.currentQuestion];
         if (!currentQ) {
           throw new Error('Current question is undefined in handleAnswer');
+        }
+        
+        // Check if answer is already locked
+        if (currentQ.isAnswerLocked || prevState.lockedAnswers[currentQ.id]) {
+          toast.error("This question has been answered and cannot be changed");
+          return prevState;
         }
         
         const isEssay = currentQ.type === 'essay';
@@ -442,7 +486,50 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
         }
         
         const isCorrect = selectedOption === currentQ.answer;
-        const timeSpent = (performance.now() - answerStartTime) / 1000;
+        
+        // Update learning state
+        learningDispatch({
+          type: 'UPDATE_ANALYTICS',
+          payload: {
+            performance: isCorrect ? 1 : 0,
+            timeSpent
+          }
+        });
+
+        learningDispatch({
+          type: 'UPDATE_COGNITIVE_LOAD',
+          payload: {
+            performance: isCorrect ? 1 : 0,
+            timeSpent
+          }
+        });
+
+        learningDispatch({
+          type: 'UPDATE_MASTERY',
+          payload: {
+            accuracy: isCorrect ? 1 : 0,
+            speed: timeSpent / currentQ.estimatedTime,
+            timeSpent
+          }
+        });
+
+        learningDispatch({
+          type: 'UPDATE_ADAPTIVE_SETTINGS',
+          payload: {
+            performance: isCorrect ? 1 : 0,
+            timeSpent,
+            confidence: 3 // TODO: Add confidence rating
+          }
+        });
+
+        learningDispatch({
+          type: 'UPDATE_SPACED_REPETITION',
+          payload: {
+            performance: isCorrect ? 'good' : 
+                        timeSpent < currentQ.estimatedTime ? 'perfect' :
+                        timeSpent > currentQ.estimatedTime * 1.5 ? 'hard' : 'medium'
+          }
+        });
         
         // Update spaced repetition
         const performanceRating = isCorrect ? 'good' : 'again';
@@ -467,27 +554,64 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
         
         // Update the current question with new data
         const updatedQuestions = [...prevState.questions];
-        updatedQuestions[prevState.currentQuestion] = {
+        updatedQuestion = {
           ...currentQ,
+          isAnswerLocked: true,
+          submissionTime: Date.now(),
+          answerHistory: [
+            ...(currentQ.answerHistory || []),
+            {
+              answer: selectedOption,
+              timestamp: Date.now(),
+              isCorrect
+            }
+          ],
           spacedRepetition: updatedSpacedRepetition,
           analytics: updatedAnalytics,
           activeRecallPrompts
+        };
+        updatedQuestions[prevState.currentQuestion] = updatedQuestion;
+        
+        // Update locked answers state
+        const updatedLockedAnswers = {
+          ...prevState.lockedAnswers,
+          [currentQ.id]: {
+            answer: selectedOption,
+            timestamp: Date.now(),
+            isCorrect
+          }
         };
         
         return {
           ...prevState,
           questions: updatedQuestions,
           score: isEssay ? prevState.score : (isCorrect ? prevState.score + 1 : prevState.score),
-          userAnswers: [...prevState.userAnswers, selectedOption],
+          userAnswers: (() => {
+            const newUserAnswers = [...prevState.userAnswers];
+            newUserAnswers[prevState.currentQuestion] = selectedOption;
+            return newUserAnswers;
+          })(),
           feedback: null,
           essayRatings: [...prevState.essayRatings],
           activeRecallPrompts: activeRecallPrompts,
           showActiveRecall: activeRecallPrompts.length > 0,
-          showConfirmation: activeRecallPrompts.length === 0
+          showConfirmation: activeRecallPrompts.length === 0,
+          lockedAnswers: updatedLockedAnswers
         };
       });
+      
+      // Set selected option AFTER state update to trigger re-render with updated analytics
+      setSelectedOption(selectedOption);
 
-      // Play sound outside of setState to avoid unnecessary re-renders
+      // Generate feedback based on learning state
+      const feedbackMessages = generateFeedback(
+        learningState.feedback,
+        learningState.analytics.performance.accuracy,
+        timeSpent,
+        learningState.mastery.currentLevel
+      );
+
+      // Show feedback
       const currentQ = state.questions[state.currentQuestion];
       const isEssay = currentQ?.type === 'essay';
       const isCorrect = selectedOption === currentQ?.answer;
@@ -495,12 +619,23 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       if (!isEssay) {
         playSound(isCorrect ? 'correct' : 'incorrect');
         if (isCorrect) {
-          toast.success("Correct answer!");
+          toast.success(feedbackMessages[0] || "Correct answer!");
         } else {
-          toast.error("Incorrect answer! Try explaining this concept in your own words.");
+          toast.error(feedbackMessages[0] || "Incorrect answer! Try explaining this concept in your own words.");
         }
       } else {
         toast.success("Answer submitted for AI evaluation!");
+      }
+
+      // Show additional feedback if available
+      if (feedbackMessages.length > 1) {
+        setTimeout(() => {
+          feedbackMessages.slice(1).forEach((message: string, index: number) => {
+            setTimeout(() => {
+              toast.info(message);
+            }, index * 1000);
+          });
+        }, 1000);
       }
 
     } catch (error) {
@@ -573,21 +708,36 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       
     } else {
       // Save session data before showing results
+      console.log('🏁 [Quiz Complete] Creating session with:', {
+        questionsCount: state.questions.length,
+        userAnswersCount: state.userAnswers.length,
+        score: state.score,
+        questionsWithAnalytics: state.questions.filter(q => q.analytics && q.analytics.recallAttempts > 0).length
+      });
+
       const session: QuizSession = {
         id: `session_${Date.now()}`,
         startTime: state.startTime,
         endTime: new Date(),
         questions: state.questions,
-        userAnswers: state.userAnswers.map((answer, index) => ({
-          questionId: state.questions[index].id,
-          answer,
-          isCorrect: answer === state.questions[index].answer,
-          timeSpent: state.questions[index].analytics.averageRecallTime,
-          confidence: 0, // TODO: Add confidence rating
-          attempts: 1,
-          hintsUsed: 0,
-          timestamp: new Date()
-        })),
+        userAnswers: state.questions
+          .map((question, index) => {
+            const answer = state.userAnswers[index];
+            if (!question || !question.id || answer === undefined || answer === "") {
+              return null;
+            }
+            return {
+              questionId: question.id,
+              answer,
+              isCorrect: answer === question.answer,
+              timeSpent: question.analytics?.averageRecallTime || 0,
+              confidence: 0, // TODO: Add confidence rating
+              attempts: 1,
+              hintsUsed: 0,
+              timestamp: new Date()
+            };
+          })
+          .filter((answerData): answerData is NonNullable<typeof answerData> => answerData !== null),
         confidenceRatings: [],
         totalScore: state.score,
         timeSpent: (Date.now() - state.startTime.getTime()) / 1000,
@@ -629,1353 +779,116 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
     }
   };
 
-  const handleNext = () => {
-    if (state.currentQuestion < state.questions.length - 1) {
-      moveToNextQuestion();
-    } else {
-      setState({
-        ...state,
-        showResults: true
-      });
-    }
-  };
-
-  // Fetch OpenRouter models with proper cleanup
-  useEffect(() => {
-    if (provider !== 'openrouter') return;
-    
-    let isMounted = true;
-    const abortController = new AbortController();
-    
-    const fetchModels = async () => {
-      if (!openRouterKey || !validateApiKey(openRouterKey)) {
-        if (isMounted) {
-          setModels([]);
-          setSelectedModel("");
-        }
-        return;
-      }
-      try {
-        const res = await fetch(API_URLS.OPENROUTER_MODELS, {
-          headers: {
-            "Authorization": `Bearer ${openRouterKey}`,
-          },
-          signal: abortController.signal,
-        });
-        if (!res.ok) throw new Error("Failed to fetch models");
-        const data = await res.json();
-        if (isMounted && !abortController.signal.aborted) {
-          setModels(data.data || []);
-          if (data.data && data.data.length > 0) {
-            setSelectedModel(data.data[0].id);
-          }
-        }
-      } catch (e: any) {
-        if (isMounted && e.name !== 'AbortError') {
-          setModels([]);
-          setSelectedModel("");
-        }
-      }
-    };
-    fetchModels();
-    
-    return () => {
-      isMounted = false;
-      abortController.abort();
-    };
-  }, [openRouterKey, provider]);
-
-  // Fetch Gemini models with proper cleanup
-  useEffect(() => {
-    if (provider !== 'gemini') return;
-    
-    let isMounted = true;
-    const abortController = new AbortController();
-    
-    const fetchGeminiModels = async () => {
-      if (!geminiKey || geminiKey.trim().length < 20) {
-        if (isMounted) {
-          setGeminiModels([]);
-          setSelectedGeminiModel("");
-        }
-        return;
-      }
-      try {
-        const response = await fetch(`${API_URLS.GEMINI_BASE}?key=${geminiKey}`, {
-          signal: abortController.signal,
-        });
-        if (!response.ok) throw new Error("Failed to fetch Gemini models");
-        const data = await response.json();
-        if (isMounted && !abortController.signal.aborted) {
-          setGeminiModels(data.models || []);
-          if (data.models && data.models.length > 0) {
-            setSelectedGeminiModel(data.models[0].name);
-          }
-        }
-      } catch (e: any) {
-        if (isMounted && e.name !== 'AbortError') {
-          setGeminiModels([]);
-          setSelectedGeminiModel("");
-        }
-      }
-    };
-    fetchGeminiModels();
-    
-    return () => {
-      isMounted = false;
-      abortController.abort();
-    };
-  }, [geminiKey, provider]);
-
-  const getFeedback = async (
-    question: string, 
-    userAnswer: string, 
-    correctAnswer: string | undefined, 
-    isCorrect: boolean
-  ) => {
-    cleanupAPICalls(); // Cleanup any existing calls
-    
-    setApiError(null);
-    setLoadingFeedback(true);
-    try {
-      const currentQ = state.questions[state.currentQuestion];
-      const isEssay = currentQ.type === 'essay';
-      let prompt = '';
-      if (isEssay) {
-        prompt = `You are an expert evaluator. Here's what I need:
-
-1. First, provide a PERFECT 10/10 benchmark answer for this question
-2. Rate my answer (0-10) by comparing it to your perfect answer
-3. Give me ONLY ONE specific thing to improve (not a list)
-4. Be encouraging but direct
-
-Question: ${question}
-My answer: ${userAnswer}
-
-Format:
-**Perfect Answer (10/10):**
-[Your perfect answer here]
-
-**Your Score: X/10**
-
-**One Thing to Improve:**
-[Single specific improvement]`;
-      } else {
-        const correctAnswerText = correctAnswer || 'No correct answer specified';
-        prompt = `\n          I'm doing a quiz. The question was: "${question}".\n          I chose: "${userAnswer}".\n          The correct answer is: "${correctAnswerText}".\n          My answer was ${isCorrect ? 'correct' : 'incorrect'}.\n          Provide me a constructive feedback as to why my answer is correct or incorrect max 2-5 sentences.\n        `;
-      }
-
-      if (provider === 'openrouter') {
-        if (!openRouterKey || !validateApiKey(openRouterKey)) {
-          throw new Error("Invalid OpenRouter API key format");
-        }
-        if (!selectedModel) {
-          throw new Error("No model selected");
-        }
-        if (isRateLimited()) {
-          throw new Error("Rate limit exceeded. Please wait before making more requests.");
-        }
-        recordApiCall();
-        
-        const response = await fetch(OPENROUTER_API_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${openRouterKey}`,
-            ...(siteUrl ? { "HTTP-Referer": siteUrl } : { "HTTP-Referer": window.location.origin }),
-            ...(siteName ? { "X-Title": siteName } : {}),
-          },
-          body: JSON.stringify({
-            model: selectedModel,
-            messages: [
-              { role: "system", content: isEssay ? "You are a patient, encouraging essay tutor who gives one improvement at a time. Keep responses short and focused." : "You are a helpful educational assistant. Provide clear and concise answers to help students learn." },
-              { role: "user", content: prompt }
-            ],
-            extra_body: {},
-          }),
-          signal: abortControllerRef.current.signal
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(`API error: ${errorData?.error?.message || response.statusText}`);
-        }
-        const data = await response.json();
-        if (!data?.choices?.[0]?.message?.content) {
-          throw new Error("Invalid API response format");
-        }
-        setState((prevState) => ({
-          ...prevState,
-          feedback: data.choices[0].message.content,
-        }));
-        setRetryCount(0);
-        
-        // Essay scoring: extract rating and update score
-        if (isEssay) {
-          const openRouterText = data.choices[0].message.content;
-          // Try to extract a rating robustly
-          let rating = null;
-          // Prefer patterns like 'score: 7/10', 'rating: 8/10', '8 out of 10'
-          const patterns = [
-            /score\s*[:=]?\s*(10|[0-9])\s*\/\s*10/i,
-            /rating\s*[:=]?\s*(10|[0-9])\s*\/\s*10/i,
-            /(10|[0-9])\s*out of\s*10/i,
-            /score\s*[:=]?\s*(10|[0-9])/i,
-            /rating\s*[:=]?\s*(10|[0-9])/i
-          ];
-          for (const pattern of patterns) {
-            const match = openRouterText.match(pattern);
-            if (match) {
-              rating = parseInt(match[1], 10);
-              break;
-            }
-          }
-          // Fallback: look for the first number 0-10 after 'rating', 'score', or 'out of 10'
-          if (rating === null) {
-            const fallbackPattern = /(rating|score|out of 10)[^\d]*(10|[0-9])/i;
-            const fallbackMatch = openRouterText.match(fallbackPattern);
-            if (fallbackMatch) {
-              rating = parseInt(fallbackMatch[2], 10);
-            }
-          }
-          // Last fallback: any number 0-10 in the text
-          if (rating === null) {
-            const anyNum = openRouterText.match(/\b(10|[0-9])\b/);
-            if (anyNum) {
-              rating = parseInt(anyNum[1], 10);
-            }
-          }
-          if (rating === null || isNaN(rating) || rating < 0 || rating > 10) {
-            setApiError('AI did not return a valid rating from 0 to 10. Please try again or rephrase your answer.');
-            return;
-          }
-          // Update score for this essay question
-          setState((prevState) => {
-            const newUserAnswers = [...prevState.userAnswers];
-            const newEssayRatings = [...prevState.essayRatings];
-            newUserAnswers[prevState.currentQuestion] = userAnswer;
-            newEssayRatings[prevState.currentQuestion] = rating;
-            
-            // Calculate new total score
-            let newScore = 0;
-            for (let i = 0; i < prevState.questions.length; i++) {
-              if (prevState.questions[i].type === 'essay') {
-                newScore += newEssayRatings[i] || 0;
-              } else {
-                // Multiple choice: 1 point if correct answer matches
-                if (i < newUserAnswers.length && newUserAnswers[i] === prevState.questions[i].answer) {
-                  newScore += 1;
-                }
-              }
-            }
-            
-            return {
-              ...prevState,
-              score: newScore,
-              userAnswers: newUserAnswers,
-              essayRatings: newEssayRatings,
-            };
-          });
-        }
-      } else if (provider === 'gemini') {
-        if (!geminiKey || geminiKey.trim().length < 20) {
-          throw new Error("Invalid Gemini API key format");
-        }
-        if (!selectedGeminiModel) {
-          throw new Error("No Gemini model selected");
-        }
-        // Use only the model id (after last /)
-        const modelId = selectedGeminiModel.split('/').pop();
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${geminiKey}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [
-                    {
-                      text: prompt
-                    }
-                  ]
-                }
-              ]
-            }),
-          }
-        );
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          let debugMsg = '';
-          if (errorData?.error?.message) {
-            debugMsg = `Gemini API error: ${errorData.error.message}`;
-          } else if (errorData?.error) {
-            debugMsg = `Gemini API error: ${JSON.stringify(errorData.error)}`;
-          } else {
-            debugMsg = `Raw response: ${JSON.stringify(errorData)}`;
-          }
-          throw new Error(
-            `API error: ${errorData?.error?.message || response.statusText}\n\nPossible causes:\n- Invalid API key\n- Invalid or unsupported model\n- Quota exceeded or billing issue\n- Network or server error\n\n${debugMsg}`
-          );
-        }
-        const data = await response.json();
-        const geminiText =
-          data?.contents?.[0]?.parts?.[0]?.text ||
-          data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!geminiText) {
-          let debugMsg = '';
-          if (data?.error?.message) {
-            debugMsg = `Gemini API error: ${data.error.message}`;
-          } else if (data?.error) {
-            debugMsg = `Gemini API error: ${JSON.stringify(data.error)}`;
-          } else {
-            debugMsg = `Raw response: ${JSON.stringify(data)}`;
-          }
-          throw new Error(
-            `Invalid Gemini API response format.\n\nPossible causes:\n- Invalid API key\n- Invalid or unsupported model\n- Quota exceeded or billing issue\n- Network or server error\n\n${debugMsg}`
-          );
-        }
-        setState((prevState) => ({
-          ...prevState,
-          feedback: geminiText,
-        }));
-        setRetryCount(0);
-        // Essay scoring: extract rating and update score
-        if (isEssay) {
-          // Try to extract a rating robustly
-          let rating = null;
-          // Prefer patterns like 'score: 7/10', 'rating: 8/10', '8 out of 10'
-          const patterns = [
-            /score\s*[:=]?\s*(10|[0-9])\s*\/\s*10/i,
-            /rating\s*[:=]?\s*(10|[0-9])\s*\/\s*10/i,
-            /(10|[0-9])\s*out of\s*10/i,
-            /score\s*[:=]?\s*(10|[0-9])/i,
-            /rating\s*[:=]?\s*(10|[0-9])/i
-          ];
-          for (const pattern of patterns) {
-            const match = geminiText.match(pattern);
-            if (match) {
-              rating = parseInt(match[1], 10);
-              break;
-            }
-          }
-          // Fallback: look for the first number 0-10 after 'rating', 'score', or 'out of 10'
-          if (rating === null) {
-            const fallbackPattern = /(rating|score|out of 10)[^\d]*(10|[0-9])/i;
-            const fallbackMatch = geminiText.match(fallbackPattern);
-            if (fallbackMatch) {
-              rating = parseInt(fallbackMatch[2], 10);
-            }
-          }
-          // Last fallback: any number 0-10 in the text
-          if (rating === null) {
-            const anyNum = geminiText.match(/\b(10|[0-9])\b/);
-            if (anyNum) {
-              rating = parseInt(anyNum[1], 10);
-            }
-          }
-          if (rating === null || isNaN(rating) || rating < 0 || rating > 10) {
-            setApiError('AI did not return a valid rating from 0 to 10. Please try again or rephrase your answer.');
-            return;
-          }
-          // Update score for this essay question
-          setState((prevState) => {
-            const newUserAnswers = [...prevState.userAnswers];
-            const newEssayRatings = [...prevState.essayRatings];
-            newUserAnswers[prevState.currentQuestion] = userAnswer;
-            newEssayRatings[prevState.currentQuestion] = rating;
-            
-            // Calculate new total score
-            let newScore = 0;
-            for (let i = 0; i < prevState.questions.length; i++) {
-              if (prevState.questions[i].type === 'essay') {
-                newScore += newEssayRatings[i] || 0;
-              } else {
-                // Multiple choice: 1 point if correct answer matches
-                if (i < newUserAnswers.length && newUserAnswers[i] === prevState.questions[i].answer) {
-                  newScore += 1;
-                }
-              }
-            }
-            
-            return {
-              ...prevState,
-              score: newScore,
-              userAnswers: newUserAnswers,
-              essayRatings: newEssayRatings,
-            };
-          });
-        }
-      } else if (provider === 'openai') {
-        if (!openAIKey || openAIKey.trim().length < 20) {
-          throw new Error("Invalid OpenAI API key format");
-        }
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${openAIKey}`,
-          },
-          body: JSON.stringify({
-            model: "gpt-3.5-turbo",
-            messages: [
-              { role: "system", content: isEssay ? "You are a patient, encouraging essay tutor who gives one improvement at a time. Keep responses short and focused." : "You are a helpful educational assistant. Provide clear and concise answers to help students learn." },
-              { role: "user", content: prompt }
-            ],
-            max_tokens: 256,
-            temperature: 0.7
-          }),
-        });
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(`OpenAI API error: ${errorData?.error?.message || response.statusText}`);
-        }
-        const data = await response.json();
-        if (!data?.choices?.[0]?.message?.content) {
-          throw new Error("Invalid OpenAI API response format");
-        }
-        setState((prevState) => ({
-          ...prevState,
-          feedback: data.choices[0].message.content,
-        }));
-        setRetryCount(0);
-        
-        // Essay scoring: extract rating and update score
-        if (isEssay) {
-          const openAIText = data.choices[0].message.content;
-          // Try to extract a rating robustly
-          let rating = null;
-          // Prefer patterns like 'score: 7/10', 'rating: 8/10', '8 out of 10'
-          const patterns = [
-            /score\s*[:=]?\s*(10|[0-9])\s*\/\s*10/i,
-            /rating\s*[:=]?\s*(10|[0-9])\s*\/\s*10/i,
-            /(10|[0-9])\s*out of\s*10/i,
-            /score\s*[:=]?\s*(10|[0-9])/i,
-            /rating\s*[:=]?\s*(10|[0-9])/i
-          ];
-          for (const pattern of patterns) {
-            const match = openAIText.match(pattern);
-            if (match) {
-              rating = parseInt(match[1], 10);
-              break;
-            }
-          }
-          // Fallback: look for the first number 0-10 after 'rating', 'score', or 'out of 10'
-          if (rating === null) {
-            const fallbackPattern = /(rating|score|out of 10)[^\d]*(10|[0-9])/i;
-            const fallbackMatch = openAIText.match(fallbackPattern);
-            if (fallbackMatch) {
-              rating = parseInt(fallbackMatch[2], 10);
-            }
-          }
-          // Last fallback: any number 0-10 in the text
-          if (rating === null) {
-            const anyNum = openAIText.match(/\b(10|[0-9])\b/);
-            if (anyNum) {
-              rating = parseInt(anyNum[1], 10);
-            }
-          }
-          if (rating === null || isNaN(rating) || rating < 0 || rating > 10) {
-            setApiError('AI did not return a valid rating from 0 to 10. Please try again or rephrase your answer.');
-            return;
-          }
-          // Update score for this essay question
-          setState((prevState) => {
-            const newUserAnswers = [...prevState.userAnswers];
-            const newEssayRatings = [...prevState.essayRatings];
-            newUserAnswers[prevState.currentQuestion] = userAnswer;
-            newEssayRatings[prevState.currentQuestion] = rating;
-            
-            // Calculate new total score
-            let newScore = 0;
-            for (let i = 0; i < prevState.questions.length; i++) {
-              if (prevState.questions[i].type === 'essay') {
-                newScore += newEssayRatings[i] || 0;
-              } else {
-                // Multiple choice: 1 point if correct answer matches
-                if (i < newUserAnswers.length && newUserAnswers[i] === prevState.questions[i].answer) {
-                  newScore += 1;
-                }
-              }
-            }
-            
-            return {
-              ...prevState,
-              score: newScore,
-              userAnswers: newUserAnswers,
-              essayRatings: newEssayRatings,
-            };
-          });
-        }
-      }
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        // Ignore abort errors
-        return;
-      }
-      console.error("Error getting AI feedback:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to get AI feedback";
-      setApiError(errorMessage);
-      toast.error(errorMessage);
-      setRetryCount((prev) => prev + 1);
-    } finally {
-      setLoadingFeedback(false);
-    }
-  };
-
-  const handleChatMessage = async (message: string): Promise<string> => {
-    try {
-      const currentQ = state.questions[state.currentQuestion];
-      const isEssay = currentQ.type === 'essay';
-      
-      let contextPrompt = '';
-      
-      if (isEssay) {
-        contextPrompt = `You are continuing to help improve an essay answer. 
-
-Original Question: ${currentQ.question}
-User's Original Answer: ${state.userAnswers[state.currentQuestion]}
-
-The user just said: "${message}"
-
-Your role:
-- If they've addressed your previous suggestion well, acknowledge it and give the NEXT single improvement
-- If they need clarification or haven't fully addressed it, guide them further
-- Always give only ONE specific thing to improve at a time
-- Be encouraging and supportive
-- Keep responses short and focused
-- Rate their progress when giving new suggestions (e.g., "Great! Now you're at 7/10...")
-
-Respond conversationally and helpfully.`;
-      } else {
-        contextPrompt = `Context: The user is taking a quiz. 
-Question: ${currentQ.question}
-User's answer: ${state.userAnswers[state.currentQuestion]}
-Correct answer: ${currentQ.answer}
-
-User's follow-up question: ${message}
-
-Please provide a helpful response related to this quiz question and topic.`;
-      }
-
-      if (provider === 'openrouter' && openRouterKey && validateApiKey(openRouterKey) && selectedModel) {
-        if (isRateLimited()) {
-          throw new Error("Rate limit exceeded. Please wait before making more requests.");
-        }
-        recordApiCall();
-        
-        const response = await fetch(OPENROUTER_API_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${openRouterKey}`,
-            ...(siteUrl ? { "HTTP-Referer": siteUrl } : { "HTTP-Referer": window.location.origin }),
-            ...(siteName ? { "X-Title": siteName } : {}),
-          },
-          body: JSON.stringify({
-            model: selectedModel,
-            messages: [
-              { role: "system", content: isEssay ? "You are a patient, encouraging essay tutor who gives one improvement at a time. Keep responses short and focused." : "You are a helpful educational assistant. Provide clear and concise answers to help students learn." },
-              { role: "user", content: contextPrompt }
-            ],
-            extra_body: {},
-          }),
-          signal: abortControllerRef.current.signal
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(`API error: ${errorData?.error?.message || response.statusText}`);
-        }
-
-        const data = await response.json();
-        if (!data?.choices?.[0]?.message?.content) {
-          throw new Error("Invalid API response format");
-        }
-
-        return data.choices[0].message.content;
-      } else if (provider === 'gemini' && geminiKey && geminiKey.trim().length >= 20 && selectedGeminiModel) {
-        const modelId = selectedGeminiModel.split('/').pop();
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${geminiKey}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [
-                    {
-                      text: contextPrompt
-                    }
-                  ]
-                }
-              ]
-            }),
-            signal: abortControllerRef.current.signal
-          });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(`API error: ${errorData?.error?.message || response.statusText}`);
-        }
-
-        const data = await response.json();
-        const geminiText = data?.contents?.[0]?.parts?.[0]?.text || data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        
-        if (!geminiText) {
-          throw new Error("Invalid Gemini API response format");
-        }
-
-        return geminiText;
-      } else if (provider === 'openai' && openAIKey && openAIKey.trim().length >= 20) {
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${openAIKey}`,
-          },
-          body: JSON.stringify({
-            model: "gpt-3.5-turbo",
-            messages: [
-              { role: "system", content: isEssay ? "You are a patient, encouraging essay tutor who gives one improvement at a time. Keep responses short and focused." : "You are a helpful educational assistant. Provide clear and concise answers to help students learn." },
-              { role: "user", content: contextPrompt }
-            ],
-            max_tokens: 256,
-            temperature: 0.7
-          }),
-          signal: abortControllerRef.current.signal
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(`OpenAI API error: ${errorData?.error?.message || response.statusText}`);
-        }
-
-        const data = await response.json();
-        if (!data?.choices?.[0]?.message?.content) {
-          throw new Error("Invalid OpenAI API response format");
-        }
-
-        return data.choices[0].message.content;
-      } else {
-        throw new Error("No valid API configuration found");
-      }
-    } catch (error) {
-      console.error("Error in chat:", error);
-      throw new Error(error instanceof Error ? error.message : "Failed to send chat message");
-    }
-  };
-
-  const generatePrescription = async (): Promise<string> => {
-    try {
-      // Create a detailed analysis of the quiz performance
-      const wrongAnswers = state.questions
-        .map((q, index) => {
-          if (q.type === 'essay') {
-            const rating = state.essayRatings[index];
-            return rating !== null && rating < 7 
-              ? `Essay Question ${index + 1}: "${q.question}" - Your answer received ${rating}/10. Answer: "${state.userAnswers[index] || 'No answer'}"`
-              : null;
-          } else {
-            return state.userAnswers[index] !== q.answer 
-              ? `Question ${index + 1}: "${q.question}" - You answered "${state.userAnswers[index]}", correct answer: "${q.answer}"`
-              : null;
-          }
-        })
-        .filter(Boolean);
-
-      const correctAnswers = state.questions
-        .map((q, index) => {
-          if (q.type === 'essay') {
-            const rating = state.essayRatings[index];
-            return rating !== null && rating >= 7 
-              ? `Essay Question ${index + 1}: "${q.question}" - Scored ${rating}/10`
-              : null;
-          } else {
-            return state.userAnswers[index] === q.answer 
-              ? `Question ${index + 1}: "${q.question}" - Correct!`
-              : null;
-          }
-        })
-        .filter(Boolean);
-
-      const totalPossible = state.questions.reduce((total, question) => {
-        return total + (question.type === 'essay' ? 10 : 1);
-      }, 0);
-      
-      const percentage = Math.round((state.score / totalPossible) * 100);
-
-      const prescriptionPrompt = `Based on the results of all the tests, make a prescription drill tailored to the person. Follow this specific format:
-
-## Performance Analysis
-Overall Score: ${state.score}/${totalPossible} (${percentage}%)
-
-## Strengths
-${correctAnswers.length > 0 ? correctAnswers.join('\n') : 'None identified in this quiz.'}
-
-## Areas for Improvement
-${wrongAnswers.length > 0 ? wrongAnswers.join('\n') : 'Great job! All answers were correct.'}
-
-## Prescription Drill
-Based on the analysis above, provide:
-1. **Priority Focus Areas**: List 2-3 specific topics that need immediate attention
-2. **Study Plan**: A 3-step actionable study plan with specific tasks
-3. **Practice Recommendations**: Specific exercises or question types to practice
-4. **Timeline**: Suggested timeline for improvement (e.g., "Focus on X for 2 weeks, then Y")
-5. **Success Metrics**: How to measure improvement
-
-Format your response exactly as shown above with proper markdown headers and structure.`;
-
-      if (provider === 'openrouter' && openRouterKey && validateApiKey(openRouterKey) && selectedModel) {
-        if (isRateLimited()) {
-          throw new Error("Rate limit exceeded. Please wait before making more requests.");
-        }
-        recordApiCall();
-        
-        const response = await fetch(OPENROUTER_API_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${openRouterKey}`,
-            ...(siteUrl ? { "HTTP-Referer": siteUrl } : { "HTTP-Referer": window.location.origin }),
-            ...(siteName ? { "X-Title": siteName } : {}),
-          },
-          body: JSON.stringify({
-            model: selectedModel,
-            messages: [
-              { role: "system", content: "You are an expert educational consultant and learning specialist. Analyze quiz performance and create detailed, actionable study prescriptions." },
-              { role: "user", content: prescriptionPrompt }
-            ],
-            extra_body: {},
-          }),
-          signal: abortControllerRef.current.signal
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(`API error: ${errorData?.error?.message || response.statusText}`);
-        }
-
-        const data = await response.json();
-        if (!data?.choices?.[0]?.message?.content) {
-          throw new Error("Invalid API response format");
-        }
-
-        return data.choices[0].message.content;
-      } else if (provider === 'gemini' && geminiKey && geminiKey.trim().length >= 20 && selectedGeminiModel) {
-        const modelId = selectedGeminiModel.split('/').pop();
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${geminiKey}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [
-                    {
-                      text: prescriptionPrompt
-                    }
-                  ]
-                }
-              ]
-            }),
-            signal: abortControllerRef.current.signal
-          });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(`API error: ${errorData?.error?.message || response.statusText}`);
-        }
-
-        const data = await response.json();
-        const geminiText = data?.contents?.[0]?.parts?.[0]?.text || data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        
-        if (!geminiText) {
-          throw new Error("Invalid Gemini API response format");
-        }
-
-        return geminiText;
-      } else if (provider === 'openai' && openAIKey && openAIKey.trim().length >= 20) {
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${openAIKey}`,
-          },
-          body: JSON.stringify({
-            model: "gpt-3.5-turbo",
-            messages: [
-              { role: "system", content: "You are an expert educational consultant and learning specialist. Analyze quiz performance and create detailed, actionable study prescriptions." },
-              { role: "user", content: prescriptionPrompt }
-            ],
-            max_tokens: 1000,
-            temperature: 0.7
-          }),
-          signal: abortControllerRef.current.signal
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(`OpenAI API error: ${errorData?.error?.message || response.statusText}`);
-        }
-
-        const data = await response.json();
-        if (!data?.choices?.[0]?.message?.content) {
-          throw new Error("Invalid OpenAI API response format");
-        }
-
-        return data.choices[0].message.content;
-      } else {
-        throw new Error("No valid API configuration found");
-      }
-    } catch (error) {
-      console.error("Error generating prescription:", error);
-      throw new Error(error instanceof Error ? error.message : "Failed to generate prescription");
-    }
-  };
-
-  const restartQuiz = () => {
-    setState({
-      ...state,
-      currentQuestion: 0,
-      score: 0,
-      showResults: false,
-      userAnswers: Array(state.questions.length).fill(""),
-      feedback: null,
-      essayRatings: Array(state.questions.length).fill(null),
-      isInterleaved: false,
-      startTime: new Date(),
-      activeRecallPrompts: [],
-      showActiveRecall: false,
-      showConfirmation: false
-    });
-  };
-
-  const newQuiz = () => {
-    setState({
-      questions: [],
-      currentQuestion: 0,
-      score: 0,
-      showResults: false,
-      userAnswers: [],
-      feedback: null,
-      essayRatings: [],
-      isInterleaved: false,
-      startTime: new Date(),
-      activeRecallPrompts: [],
-      showActiveRecall: false,
-      showConfirmation: false
-    });
-    setShowInput(true);
-  };
-
-  const handleApiError = (error: any) => {
-    console.error("API Error:", error);
-    const errorMessage = error instanceof Error ? error.message : "An error occurred";
-    setApiError(errorMessage);
-    toast.error(errorMessage);
-  };
-
-  const handleSuccess = (message: string) => {
-    toast.success(message);
-  };
-
-  // Add a loading check to prevent rendering before state is properly initialized
-  if (!showInput && !showGeminiInput && (!state.questions || state.questions.length === 0)) {
-    console.log('🔧 [DEBUG] Quiz waiting for questions to be initialized...');
-    return (
-      <div className="container mx-auto p-4 text-center">
-        <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-gray-600">Loading quiz...</p>
-      </div>
-    );
-  }
-
-  // Ensure we have a valid current question
-  const currentQuestion = state.questions[state.currentQuestion];
-  if (!showInput && !showGeminiInput && !state.showResults && !currentQuestion) {
-    console.log('🔧 [DEBUG] Current question is undefined, resetting...');
-    return (
-      <div className="container mx-auto p-4 text-center">
-        <p className="text-red-500">Error: Invalid question state</p>
-        <Button onClick={() => setShowInput(true)} className="mt-4">
-          Back to Quiz Input
-        </Button>
-      </div>
-    );
-  }
-
-  if (showInput) {
-    return <JsonInput onQuizStart={prepareQuiz} />;
-  }
-
-  if (showGeminiInput) {
-    return (
-      <Card className="w-full max-w-xl mx-auto p-6">
-        <h2 className="text-xl font-semibold mb-4">Enter API Key & Choose Provider</h2>
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-1">Provider</label>
-          <select
-            className="w-full p-2 border rounded"
-            value={provider}
-            onChange={e => setProvider(e.target.value as 'openrouter' | 'gemini' | 'openai')}
-          >
-            <option value="openrouter">OpenRouter</option>
-            <option value="gemini">Gemini</option>
-            <option value="openai">OpenAI</option>
-          </select>
-        </div>
-        {provider === 'openrouter' && (
-          <>
-            <p className="text-sm text-green-500 mb-4">
-              To get AI feedback on your answers, please enter your OpenRouter API key.<br />
-              You can get a free key at <a href="https://openrouter.ai/" target="_blank" rel="noopener noreferrer" className="underline">openrouter.ai</a>.<br />
-              <b>Optional:</b> For better ranking, enter your site URL and site name.
-            </p>
-            <div className="flex relative mb-2">
-              <input
-                type={showPassword ? "text" : "password"}
-                value={openRouterKey}
-                onChange={e => setOpenRouterKey(e.target.value)}
-                placeholder="Paste your OpenRouter API key here"
-                className="w-full p-2 border rounded pr-10"
-              />
-              <button 
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-2 text-green-500"
-                aria-label={showPassword ? "Hide API key" : "Show API key"}
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-            {openRouterKey && !validateApiKey(openRouterKey) && (
-              <p className="text-sm text-red-500 mb-2">
-                API key seems invalid. It should start with <code>sk-</code> and be at least 20 characters.
-              </p>
-            )}
-            <label className="block text-sm font-medium mb-1">Choose a model</label>
-            <input
-              type="text"
-              className="w-full p-2 border rounded mb-2"
-              placeholder="Search models..."
-              value={modelSearch}
-              onChange={e => setModelSearch(e.target.value)}
-              onFocus={() => setShowModelDropdown(true)}
-            />
-            {/* Custom dropdown for model selection with autowrap */}
-            <div
-              className="w-full border rounded bg-white relative"
-              style={{ maxHeight: 180, overflowY: 'auto', zIndex: 10, position: 'relative' }}
-              tabIndex={0}
-              onBlur={() => setShowModelDropdown(false)}
-            >
-              {showModelDropdown && models.length > 0 && (
-                <div>
-                  {models
-                    .filter(model => model.id.toLowerCase().includes(modelSearch.toLowerCase()))
-                    .map((model) => (
-                      <div
-                        key={model.id}
-                        className={`p-2 cursor-pointer hover:bg-gray-100 ${selectedModel === model.id ? 'bg-gray-200' : ''}`}
-                        style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}
-                        onMouseDown={() => {
-                          setSelectedModel(model.id);
-                          setShowModelDropdown(false);
-                        }}
-                      >
-                        {model.id}
-                      </div>
-                    ))}
-                  {models.filter(model => model.id.toLowerCase().includes(modelSearch.toLowerCase())).length === 0 && (
-                    <div className="p-2 text-gray-400">No models found</div>
-                  )}
-                </div>
-              )}
-              {!showModelDropdown && (
-                <div
-                  className="p-2 text-gray-700 cursor-pointer"
-                  style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}
-                  onClick={() => setShowModelDropdown(true)}
-                >
-                  {selectedModel || 'Select a model'}
-                </div>
-              )}
-            </div>
-            <input
-              type="text"
-              value={siteUrl}
-              onChange={e => setSiteUrl(e.target.value)}
-              placeholder="Your site URL (optional)"
-              className="w-full p-2 border rounded mb-2"
-            />
-            <input
-              type="text"
-              value={siteName}
-              onChange={e => setSiteName(e.target.value)}
-              placeholder="Your site name (optional)"
-              className="w-full p-2 border rounded mb-4"
-            />
-          </>
-        )}
-        {provider === 'gemini' && (
-          <>
-            <p className="text-sm text-green-500 mb-4">
-              To get AI feedback on your answers, please enter your Gemini API key.<br />
-              You can get a key at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="underline">Google AI Studio</a>.<br />
-            </p>
-            <div className="flex relative mb-2">
-              <input
-                type={showPassword ? "text" : "password"}
-                value={geminiKey}
-                onChange={e => setGeminiKey(e.target.value)}
-                placeholder="Paste your Gemini API key here"
-                className="w-full p-2 border rounded pr-10"
-              />
-              <button 
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-2 text-green-500"
-                aria-label={showPassword ? "Hide API key" : "Show API key"}
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-            {geminiKey && geminiKey.trim().length < 20 && (
-              <p className="text-sm text-red-500 mb-2">
-                API key seems invalid. It should be at least 20 characters.
-              </p>
-            )}
-            <label className="block text-sm font-medium mb-1">Choose a Gemini model</label>
-            <input
-              type="text"
-              className="w-full p-2 border rounded mb-2"
-              placeholder="Search Gemini models..."
-              value={geminiModelSearch}
-              onChange={e => setGeminiModelSearch(e.target.value)}
-              onFocus={() => setShowGeminiModelDropdown(true)}
-            />
-            <div
-              className="w-full border rounded bg-white relative"
-              style={{ maxHeight: 180, overflowY: 'auto', zIndex: 10, position: 'relative' }}
-              tabIndex={0}
-              onBlur={() => setShowGeminiModelDropdown(false)}
-            >
-              {showGeminiModelDropdown && geminiModels.length > 0 && (
-                <div>
-                  {geminiModels
-                    .filter(model => model.name.toLowerCase().includes(geminiModelSearch.toLowerCase()))
-                    .map((model) => (
-                      <div
-                        key={model.name}
-                        className={`p-2 cursor-pointer hover:bg-gray-100 ${selectedGeminiModel === model.name ? 'bg-gray-200' : ''}`}
-                        style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}
-                        onMouseDown={() => {
-                          setSelectedGeminiModel(model.name);
-                          setShowGeminiModelDropdown(false);
-                        }}
-                      >
-                        {model.name.split('/').pop()}
-                      </div>
-                    ))}
-                  {geminiModels.filter(model => model.name.toLowerCase().includes(geminiModelSearch.toLowerCase())).length === 0 && (
-                    <div className="p-2 text-gray-400">No Gemini models found</div>
-                  )}
-                </div>
-              )}
-              {!showGeminiModelDropdown && (
-                <div
-                  className="p-2 text-green-700 cursor-pointer"
-                  style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}
-                  onClick={() => setShowGeminiModelDropdown(true)}
-                >
-                  {selectedGeminiModel ? selectedGeminiModel.split('/').pop() : 'Select a Gemini model'}
-                </div>
-              )}
-            </div>
-          </>
-        )}
-        {provider === 'openai' && (
-          <>
-            <p className="text-sm text-green-500 mb-4">
-              To get AI feedback on your answers, please enter your OpenAI API key.<br />
-              You can get a key at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="underline">OpenAI Platform</a>.<br />
-            </p>
-            <div className="flex relative mb-2">
-              <input
-                type={showPassword ? "text" : "password"}
-                value={openAIKey}
-                onChange={e => setOpenAIKey(e.target.value)}
-                placeholder="Paste your OpenAI API key here"
-                className="w-full p-2 border rounded pr-10"
-              />
-              <button 
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-2 text-green-500"
-                aria-label={showPassword ? "Hide API key" : "Show API key"}
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-            {openAIKey && openAIKey.trim().length < 20 && (
-              <p className="text-sm text-red-500 mb-2">
-                API key seems invalid. It should be at least 20 characters.
-              </p>
-            )}
-          </>
-        )}
-        <div className="flex gap-2 mt-4">
-          <Button
-            variant="ghost"
-            onClick={() => {
-              // If quiz already started, just close modal; otherwise go back to input
-              if (state.questions.length > 0) {
-                setShowGeminiInput(false);
-              } else {
-                setShowInput(true);
-              }
-            }}
-            className="text-sm"
-          >
-            ← {state.questions.length > 0 ? 'Close' : 'Back'}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={randomizeQuestions}
-            disabled={loadedQuestions.length === 0}
-            className="text-sm"
-          >
-            🎲 Randomize
-          </Button>
-          <Button
-            onClick={startQuiz}
-            className="flex-1 bg-quiz-primary hover:bg-quiz-secondary text-white"
-            disabled={
-              (provider === 'openrouter' && (openRouterKey.trim() !== "" && !validateApiKey(openRouterKey))) ||
-              (provider === 'gemini' && (geminiKey.trim().length > 0 && geminiKey.trim().length < 20))
-            }
-          >
-            {provider === 'openrouter'
-              ? (openRouterKey ? "Start Quiz with AI Feedback" : "Start Quiz without AI Feedback")
-              : provider === 'gemini'
-              ? (geminiKey ? "Start Quiz with AI Feedback" : "Start Quiz without AI Feedback")
-              : (openAIKey ? "Start Quiz with AI Feedback" : "Start Quiz without AI Feedback")}
-          </Button>
-        </div>
-      </Card>
-    );
-  }
-
-  if (state.showResults) {
-    return (
-      <QuizResults
-        questions={state.questions}
-        userAnswers={state.userAnswers}
-        score={state.score}
-        onRestart={restartQuiz}
-        onNewQuiz={newQuiz}
-        essayRatings={state.essayRatings}
-        onGeneratePrescription={
-          (provider === 'openrouter' && openRouterKey && validateApiKey(openRouterKey) && selectedModel) ||
-          (provider === 'gemini' && geminiKey && geminiKey.trim().length >= 20 && selectedGeminiModel) ||
-          (provider === 'openai' && openAIKey && openAIKey.trim().length >= 20)
-            ? generatePrescription
-            : undefined
-        }
-        provider={provider}
-        apiKey={provider === 'openrouter' ? openRouterKey : provider === 'gemini' ? geminiKey : openAIKey}
-        selectedModel={provider === 'openrouter' ? selectedModel : provider === 'gemini' ? selectedGeminiModel : undefined}
-      />
-    );
-  }
-
   return (
     <div className="container mx-auto p-4">
-      <div className="absolute top-4 right-4 flex gap-3 items-center">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setShowGeminiInput(true)}
-          title="AI Settings"
-          className="h-8 w-8 text-blue-600 hover:bg-blue-50"
-        >
-          <Brain className="h-4 w-4" />
-        </Button>
-        <SoundControls />
-      </div>
-
-      <div className="w-full max-w-2xl mx-auto space-y-6">
-        {!state.showResults ? (
-          <>
-            {/* Navigation */}
-            <div className="flex justify-between items-center mb-4">
-              <Button
-                onClick={handleBack}
-                disabled={state.currentQuestion === 0}
-                variant="outline"
-                className="flex-1 mr-2"
-              >
-                Previous
-              </Button>
-              <Button
-                onClick={handleNext}
-                disabled={state.currentQuestion === state.questions.length - 1}
-                variant="outline"
-                className="flex-1 ml-2"
-              >
-                Next
-              </Button>
+      {showInput ? (
+        <JsonInput onQuizStart={prepareQuiz} />
+      ) : state.showResults ? (
+        <QuizResults 
+          questions={state.questions}
+          userAnswers={state.userAnswers}
+          score={state.score}
+          onRestart={() => setState(initializeQuizState())}
+          onNewQuiz={() => setShowInput(true)}
+          essayRatings={state.essayRatings}
+          provider={provider}
+          apiKey={openRouterKey}
+          selectedModel={selectedModel}
+        />
+      ) : state.questions.length > 0 ? (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold">Quiz</h2>
+            <SoundControls />
+          </div>
+          
+          <QuizCard
+            key={`${state.currentQuestion}-${state.questions[state.currentQuestion]?.analytics?.recallAttempts || 0}`}
+            question={state.questions[state.currentQuestion]}
+            questionNumber={state.currentQuestion + 1}
+            totalQuestions={state.questions.length}
+            onAnswer={handleAnswer}
+            showFeedback={showFeedback}
+            selectedOption={selectedOption}
+            isCorrect={selectedOption === state.questions[state.currentQuestion]?.answer}
+          />
+          
+          {showActiveRecall && (
+            <ActiveRecallPrompt
+              prompts={activeRecallPrompts}
+              onSubmit={handleActiveRecallSubmit}
+            />
+          )}
+          
+          {/* Show feedback after answering */}
+          {selectedOption && state.questions[state.currentQuestion]?.isAnswerLocked && (
+            <QuestionFeedback
+              question={state.questions[state.currentQuestion]}
+              userAnswer={selectedOption}
+              isCorrect={selectedOption === state.questions[state.currentQuestion]?.answer}
+              questionNumber={state.currentQuestion + 1}
+              provider={provider}
+              apiKey={openRouterKey}
+              selectedModel={selectedModel}
+              essayRating={state.essayRatings[state.currentQuestion]}
+            />
+          )}
+          
+          {/* Always visible navigation */}
+          <div className="flex justify-between items-center pt-4 border-t">
+            <Button 
+              onClick={handleBack} 
+              variant="outline"
+              disabled={state.currentQuestion === 0}
+            >
+              Previous
+            </Button>
+            
+            <div className="text-sm text-gray-500">
+              Question {state.currentQuestion + 1} of {state.questions.length}
             </div>
             
-            {/* Progress Bar */}
-            <div className="mb-6">
-              <div className="w-full bg-gray-200 h-2 rounded-full">
-                <div 
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${(state.currentQuestion / state.questions.length) * 100}%` }}
-                />
-              </div>
-              <div className="mt-2 text-sm text-gray-600">
-                Question {state.currentQuestion + 1} of {state.questions.length}
-              </div>
-            </div>
-
-            {/* Quiz Card */}
-            <QuizCard
-              question={state.questions[state.currentQuestion]}
-              questionNumber={state.currentQuestion + 1}
-              totalQuestions={state.questions.length}
-              onAnswer={handleAnswer}
-              showFeedback={showFeedback}
-              selectedOption={selectedOption}
-              isCorrect={selectedOption === state.questions[state.currentQuestion].answer}
-            />
-
-            {/* Active Recall Prompts */}
-            {state.showActiveRecall && (
-              <ActiveRecallPrompt
-                prompts={state.activeRecallPrompts}
-                onSubmit={handleActiveRecallSubmit}
-              />
-            )}
-
-            {/* AI Feedback */}
-            {showFeedback && (
-              <QuestionFeedback
-                question={state.questions[state.currentQuestion]}
-                userAnswer={selectedOption || ""}
-                isCorrect={selectedOption === state.questions[state.currentQuestion].answer}
-                questionNumber={state.currentQuestion + 1}
-                provider={provider}
-                apiKey={provider === 'openrouter' ? openRouterKey : provider === 'gemini' ? geminiKey : openAIKey}
-                selectedModel={provider === 'openrouter' ? selectedModel : provider === 'gemini' ? selectedGeminiModel : undefined}
-                essayRating={state.questions[state.currentQuestion].type === 'essay' ? state.essayRatings[state.currentQuestion] : undefined}
-              />
-            )}
-
-            {/* Next Question Button */}
-            {showConfirmation && (
-              <div className="mt-4 flex justify-end">
-                <Button 
-                  onClick={handleNext}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  {state.currentQuestion < state.questions.length - 1 ? "Next Question" : "View Results"}
+            <Button 
+              onClick={moveToNextQuestion}
+              disabled={!selectedOption && !state.questions[state.currentQuestion]?.isAnswerLocked}
+              className={state.currentQuestion === state.questions.length - 1 ? 
+                "bg-green-600 hover:bg-green-700 text-white font-semibold" : 
+                "bg-blue-600 hover:bg-blue-700 text-white"
+              }
+            >
+              {state.currentQuestion < state.questions.length - 1 ? 'Next' : 'Finish Quiz 🎉'}
+            </Button>
+          </div>
+          
+          {showConfirmation && (
+            <div className="flex justify-between">
+              {state.currentQuestion > 0 && (
+                <Button onClick={handleBack} variant="outline">
+                  Previous
                 </Button>
-              </div>
-            )}
-          </>
-        ) : (
-          <QuizResults
-            questions={state.questions}
-            userAnswers={state.userAnswers}
-            score={state.score}
-            onRestart={restartQuiz}
-            onNewQuiz={newQuiz}
-            essayRatings={state.essayRatings}
-            onGeneratePrescription={generatePrescription}
-            provider={provider}
-            apiKey={provider === 'openrouter' ? openRouterKey : provider === 'gemini' ? geminiKey : openAIKey}
-            selectedModel={provider === 'openrouter' ? selectedModel : provider === 'gemini' ? selectedGeminiModel : undefined}
-          />
-        )}
-      </div>
+              )}
+              <Button 
+                onClick={moveToNextQuestion}
+                className={state.currentQuestion === state.questions.length - 1 ? 
+                  "bg-green-600 hover:bg-green-700 text-white font-semibold" : 
+                  "bg-blue-600 hover:bg-blue-700 text-white"
+                }
+              >
+                {state.currentQuestion < state.questions.length - 1 ? 'Next' : 'Finish Quiz 🎉'}
+              </Button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="text-center">
+          <p className="text-gray-500">No questions available</p>
+          <Button onClick={() => setShowInput(true)} className="mt-4">
+            Create Quiz
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
 
-interface ErrorBoundaryProps {
-  children: React.ReactNode;
-}
-
-interface ErrorBoundaryState {
-  hasError: boolean;
-  error: Error | null;
-}
-
-class QuizErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = {
-      hasError: false,
-      error: null
-    };
-  }
-
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return {
-      hasError: true,
-      error
-    };
-  }
-
-  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    debugError('Quiz Error Boundary', error);
-    console.error('Quiz error details:', errorInfo);
-  }
-
-  render(): React.ReactNode {
-    if (this.state.hasError) {
-      return (
-        <Card className="p-6">
-          <CardHeader>
-            <CardTitle className="text-red-600">Something went wrong</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-600 mb-4">
-              We're sorry, but there was an error loading the quiz. Please try refreshing the page.
-            </p>
-            <Button
-              onClick={() => {
-                this.setState({ hasError: false, error: null });
-                window.location.reload();
-              }}
-            >
-              Reload Quiz
-            </Button>
-          </CardContent>
-        </Card>
-      );
-    }
-
-    return this.props.children;
-  }
-}
-
-// Wrap the Quiz component with the error boundary
-export default function QuizWithErrorBoundary(props: { questions?: QuizQuestion[] }) {
-  return (
-    <QuizErrorBoundary>
-      <Quiz {...props} />
-    </QuizErrorBoundary>
-  );
-}
+export default Quiz;

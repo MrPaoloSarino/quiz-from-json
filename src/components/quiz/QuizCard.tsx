@@ -1,11 +1,13 @@
 import React, { useState } from "react";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { QuizQuestion } from "@/types/quiz";
-import { CheckCircle, XCircle } from "lucide-react";
+import { CheckCircle, XCircle, Lock } from "lucide-react";
 import { Progress } from '@/components/ui/progress';
 import { EnhancedQuizQuestion } from '@/types/user';
 import { Brain, Clock, BarChart, Zap, History } from 'lucide-react';
+import { useLearning } from '@/contexts/LearningContext';
+import { toast } from "sonner";
 
 interface QuizCardProps {
   question: EnhancedQuizQuestion;
@@ -26,11 +28,38 @@ const QuizCard: React.FC<QuizCardProps> = ({
   selectedOption,
   isCorrect,
 }) => {
-  // Calculate metrics
-  const strengthScore = Math.round(question.analytics.strengthScore * 100);
-  const recallRate = Math.round((question.analytics.recallSuccesses / Math.max(1, question.analytics.recallAttempts)) * 100);
-  const avgTime = Math.round(question.analytics.averageRecallTime);
-  const daysUntilReview = Math.ceil((question.spacedRepetition.nextReviewDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  // Get learning context
+  const { state: learningState } = useLearning();
+
+  // Defensive defaults in case analytics or spaced repetition data is missing (e.g., for legacy quizzes)
+  const analytics = question.analytics ?? {
+    strengthScore: 0,
+    lastRecallSuccess: false,
+    recallAttempts: 0,
+    recallSuccesses: 0,
+    averageRecallTime: 0,
+    lastInterleaved: new Date(),
+    relatedConcepts: []
+  };
+
+  const spaced = question.spacedRepetition ?? {
+    nextReviewDate: new Date(),
+    lastReviewDate: new Date(),
+    interval: 1,
+    easeFactor: 2.5,
+    consecutiveCorrect: 0,
+    reviewHistory: []
+  };
+
+  const strengthScore = Math.round(analytics.strengthScore * 100);
+  const recallRate = Math.round((analytics.recallSuccesses / Math.max(1, analytics.recallAttempts)) * 100);
+  const avgTime = Math.round(analytics.averageRecallTime);
+  const daysUntilReview = Math.ceil((spaced.nextReviewDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+
+  // Get adaptive settings
+  const timeAllowed = learningState.adaptive.timeAllowed;
+  const scaffoldingLevel = learningState.adaptive.scaffoldingLevel;
+  const hintAvailability = learningState.adaptive.hintAvailability;
 
   return (
     <Card className="p-6 space-y-6">
@@ -42,7 +71,7 @@ const QuizCard: React.FC<QuizCardProps> = ({
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-gray-500" />
           <span className="text-sm text-gray-500">
-            {question.estimatedTime}s
+            {timeAllowed}s
           </span>
         </div>
       </div>
@@ -52,7 +81,7 @@ const QuizCard: React.FC<QuizCardProps> = ({
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Brain className="w-4 h-4 text-blue-500" />
-            <span className="text-sm font-medium">Strength</span>
+            <span className="text-sm font-medium">Mastery</span>
           </div>
           <Progress value={strengthScore} className="h-2" />
           <span className="text-xs text-gray-500">{strengthScore}%</span>
@@ -70,9 +99,13 @@ const QuizCard: React.FC<QuizCardProps> = ({
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-green-500" />
-            <span className="text-sm font-medium">Avg Time</span>
+            <span className="text-sm font-medium">Speed</span>
           </div>
-          <span className="text-sm">{avgTime}s</span>
+          <Progress 
+            value={Math.min(100, (avgTime / timeAllowed) * 100)} 
+            className="h-2" 
+          />
+          <span className="text-sm">{avgTime}s avg</span>
         </div>
 
         <div className="space-y-2">
@@ -86,26 +119,100 @@ const QuizCard: React.FC<QuizCardProps> = ({
 
       {/* Question Content */}
       <div className="space-y-4">
-        <p className="text-lg">{question.question}</p>
+        <div className="flex justify-between items-start">
+          <p className="text-lg flex-1">{question.question}</p>
+          {question.isAnswerLocked && (
+            <div className="flex items-center gap-2 text-gray-500">
+              <Lock className="w-4 h-4" />
+              <span className="text-sm">Answer Locked</span>
+            </div>
+          )}
+        </div>
         
         {question.type === 'multiple' && question.options && (
           <div className="space-y-2">
-            {question.options.map((option, index) => (
-              <Button
-                key={index}
-                onClick={() => onAnswer(option)}
-                variant={selectedOption === option ? (isCorrect ? 'default' : 'destructive') : 'outline'}
-                className={`w-full justify-start text-left ${selectedOption === option && isCorrect ? 'bg-green-100 hover:bg-green-200' : ''}`}
-                disabled={showFeedback}
-              >
-                {option}
-              </Button>
-            ))}
+            {question.options.map((option, index) => {
+              const isSelected = selectedOption === option;
+              const isCorrectAnswer = option === question.answer;
+              const isAnswerLocked = question.isAnswerLocked;
+              
+              // Get the actual correctness from answer history when locked
+              let wasSelectedWrong = false;
+              if (isAnswerLocked && isSelected) {
+                // Check answer history for this specific answer
+                const lastAnswer = question.answerHistory?.slice(-1)[0];
+                wasSelectedWrong = lastAnswer && !lastAnswer.isCorrect;
+              }
+              
+              // Determine styling based on state
+              let buttonVariant: "default" | "destructive" | "outline" | "secondary" = "outline";
+              let buttonClasses = "w-full min-h-[44px] h-auto whitespace-normal p-4 justify-start text-left border-2 transition-all duration-200";
+              
+              if (isAnswerLocked) {
+                if (isCorrectAnswer) {
+                  // Always highlight the correct answer in green when locked
+                  buttonClasses += " bg-green-50 border-green-200 text-green-800 hover:bg-green-100";
+                } else if (isSelected && wasSelectedWrong) {
+                  // Highlight the wrong selected answer in red
+                  buttonClasses += " bg-red-50 border-red-200 text-red-800 hover:bg-red-100";
+                } else {
+                  // Other options remain neutral
+                  buttonClasses += " bg-gray-50 border-gray-200 text-gray-600";
+                }
+                buttonClasses += " cursor-not-allowed";
+              } else if (isSelected) {
+                // Selected but not locked yet
+                buttonClasses += " bg-blue-50 border-blue-300 text-blue-800";
+              }
+              
+              return (
+                <Button
+                  key={index}
+                  onClick={() => onAnswer(option)}
+                  variant={buttonVariant}
+                  className={buttonClasses}
+                  disabled={showFeedback || question.isAnswerLocked}
+                >
+                  <div className="flex items-start gap-3 w-full">
+                    <span className="font-bold text-lg min-w-[24px]">
+                      {String.fromCharCode(65 + index)}.
+                    </span>
+                    <span className="flex-1 font-medium">{option}</span>
+                    {question.isAnswerLocked && (
+                      <span className="ml-2 flex items-center gap-1">
+                        {isCorrectAnswer ? (
+                          <>
+                            <CheckCircle className="w-5 h-5 text-green-600" />
+                            <span className="text-xs font-semibold text-green-700 hidden sm:inline">
+                              CORRECT
+                            </span>
+                          </>
+                        ) : isSelected && wasSelectedWrong ? (
+                          <>
+                            <XCircle className="w-5 h-5 text-red-600" />
+                            <span className="text-xs font-semibold text-red-700 hidden sm:inline">
+                              WRONG
+                            </span>
+                          </>
+                        ) : null}
+                      </span>
+                    )}
+                  </div>
+                </Button>
+              );
+            })}
           </div>
         )}
 
         {question.type === 'essay' && (
-          <EssayInput onSubmit={onAnswer} disabled={showFeedback} initialValue={selectedOption || ''} />
+          <EssayInput 
+            onSubmit={onAnswer} 
+            disabled={showFeedback || question.isAnswerLocked} 
+            initialValue={selectedOption || ''} 
+            isLocked={question.isAnswerLocked}
+            scaffoldingLevel={scaffoldingLevel}
+            hintAvailability={hintAvailability}
+          />
         )}
       </div>
 
@@ -125,35 +232,113 @@ const QuizCard: React.FC<QuizCardProps> = ({
           </div>
         </div>
       )}
+
+      {/* Learning Support */}
+      {scaffoldingLevel > 0.3 && !question.isAnswerLocked && (
+        <div className="pt-4 border-t">
+          <h4 className="text-sm font-medium mb-2">Learning Support:</h4>
+          <div className="space-y-2">
+            {question.learningObjectives.map((objective, index) => (
+              <p key={index} className="text-sm text-gray-600">
+                • {objective}
+              </p>
+            ))}
+            {hintAvailability > 0.5 && (
+              <Button
+                variant="ghost"
+                className="text-blue-600 hover:text-blue-700"
+                onClick={() => toast.info("Hint: Focus on the key concepts mentioned in the question.")}
+              >
+                Get Hint
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
     </Card>
   );
 };
 
-function EssayInput({ onSubmit, disabled, initialValue }: { onSubmit: (text: string) => void, disabled: boolean, initialValue: string }) {
+interface EssayInputProps {
+  onSubmit: (text: string) => void;
+  disabled: boolean;
+  initialValue: string;
+  isLocked: boolean;
+  scaffoldingLevel: number;
+  hintAvailability: number;
+}
+
+function EssayInput({ 
+  onSubmit, 
+  disabled, 
+  initialValue, 
+  isLocked,
+  scaffoldingLevel,
+  hintAvailability
+}: EssayInputProps) {
   const [value, setValue] = useState(initialValue);
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isLocked) {
+      toast.error("This question has been answered and cannot be changed");
+      return;
+    }
+    if (!disabled && value.trim()) {
+      onSubmit(value.trim());
+    }
+  };
+
   return (
-    <form
-      onSubmit={e => {
-        e.preventDefault();
-        if (!disabled && value.trim()) onSubmit(value.trim());
-      }}
-      className="space-y-2"
-    >
-      <textarea
-        className="w-full p-2 border rounded min-h-[100px]"
-        value={value}
-        onChange={e => setValue(e.target.value)}
-        disabled={disabled}
-        placeholder="Type your answer here..."
-      />
-      <Button 
-        type="submit" 
-        className="bg-quiz-primary text-white"
-        disabled={disabled || !value.trim()}
-      >
-        Submit Answer
-      </Button>
+    <form onSubmit={handleSubmit} className="space-y-2">
+      <div className="relative">
+        <textarea
+          className={`w-full p-2 border rounded min-h-[100px] ${
+            isLocked ? 'bg-gray-50 cursor-not-allowed' : ''
+          }`}
+          value={value}
+          onChange={e => !isLocked && setValue(e.target.value)}
+          disabled={disabled || isLocked}
+          placeholder={isLocked ? "Answer locked" : "Type your answer here..."}
+        />
+        {isLocked && (
+          <div className="absolute top-2 right-2 flex items-center gap-2 text-gray-500">
+            <Lock className="w-4 h-4" />
+          </div>
+        )}
+      </div>
+      
+      {scaffoldingLevel > 0.3 && !isLocked && (
+        <div className="text-sm text-gray-600 space-y-2">
+          <p>Suggested structure:</p>
+          <ul className="list-disc pl-5">
+            <li>Start with a clear introduction</li>
+            <li>Provide supporting evidence</li>
+            <li>Conclude with a summary</li>
+          </ul>
+        </div>
+      )}
+      
+      <div className="flex justify-between items-center">
+        <Button 
+          type="submit" 
+          className={`bg-quiz-primary text-white ${isLocked ? 'opacity-50' : ''}`}
+          disabled={disabled || !value.trim() || isLocked}
+        >
+          {isLocked ? 'Answer Locked' : 'Submit Answer'}
+        </Button>
+        
+        {hintAvailability > 0.5 && !isLocked && (
+          <Button
+            type="button"
+            variant="ghost"
+            className="text-blue-600 hover:text-blue-700"
+            onClick={() => toast.info("Tip: Make sure to address all parts of the question in your answer.")}
+          >
+            Get Writing Tips
+          </Button>
+        )}
+      </div>
     </form>
   );
 }

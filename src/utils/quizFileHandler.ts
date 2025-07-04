@@ -127,28 +127,46 @@ export const updateLearningAnalytics = (
   timeSpent: number,
   isInterleaved: boolean
 ): LearningAnalytics => {
+  console.log('📊 [Analytics Update] Input:', { 
+    analytics, 
+    isCorrect, 
+    timeSpent, 
+    isInterleaved 
+  });
+
   const newAnalytics = { ...analytics };
   
-  // Update recall stats
-  newAnalytics.recallAttempts++;
+  // Update recall stats - INCREMENT FIRST to fix division by zero
+  newAnalytics.recallAttempts = analytics.recallAttempts + 1;
   if (isCorrect) {
-    newAnalytics.recallSuccesses++;
+    newAnalytics.recallSuccesses = analytics.recallSuccesses + 1;
     newAnalytics.lastRecallSuccess = true;
+  } else {
+    newAnalytics.lastRecallSuccess = false;
   }
   
-  // Update average recall time
-  const totalTime = analytics.averageRecallTime * analytics.recallAttempts;
-  newAnalytics.averageRecallTime = (totalTime + timeSpent) / (analytics.recallAttempts + 1);
+  // Update average recall time - use NEW attempts count
+  const previousTotalTime = analytics.averageRecallTime * analytics.recallAttempts;
+  newAnalytics.averageRecallTime = (previousTotalTime + timeSpent) / newAnalytics.recallAttempts;
   
   // Update strength score (weighted average of performance metrics)
   const recallRate = newAnalytics.recallSuccesses / newAnalytics.recallAttempts;
-  const timeWeight = Math.min(1, 30 / newAnalytics.averageRecallTime); // Normalize time (30 seconds target)
+  const timeWeight = Math.min(1, 30 / Math.max(1, newAnalytics.averageRecallTime)); // Prevent division by zero
   newAnalytics.strengthScore = (recallRate * 0.7) + (timeWeight * 0.3);
   
   // Update interleaving data
   if (isInterleaved) {
     newAnalytics.lastInterleaved = new Date();
   }
+  
+  console.log('📊 [Analytics Update] Output:', {
+    recallAttempts: newAnalytics.recallAttempts,
+    recallSuccesses: newAnalytics.recallSuccesses,
+    averageRecallTime: newAnalytics.averageRecallTime,
+    strengthScore: newAnalytics.strengthScore,
+    recallRate,
+    timeWeight
+  });
   
   return newAnalytics;
 };

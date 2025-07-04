@@ -92,24 +92,13 @@ const QuizMasterApp: React.FC = () => {
     console.log('🎯 [DEBUG] Current view before:', currentView);
     console.log('🎯 [DEBUG] Current quiz before:', currentQuiz);
     
-    // Prevent any potential race conditions by batching the state updates
-    console.log('🎯 [DEBUG] Setting quiz state and view simultaneously...');
+    // Use React's batched state updates
+    React.startTransition(() => {
+      setCurrentQuiz(questions);
+      setCurrentView('quiz');
+    });
     
-    // Set quiz first
-    setCurrentQuiz(questions);
-    console.log('🎯 [DEBUG] setCurrentQuiz called with questions');
-    
-    // Then immediately set view to quiz without setTimeout to prevent race conditions
-    setCurrentView('quiz');
-    console.log('🎯 [DEBUG] setCurrentView("quiz") called immediately');
-    
-    // Add a verification check
-    setTimeout(() => {
-      console.log('🎯 [VERIFY] State verification after 100ms:');
-      console.log('🎯 [VERIFY] currentView should be "quiz":', currentView);
-      console.log('🎯 [VERIFY] currentQuiz should exist:', !!currentQuiz);
-      console.log('🎯 [VERIFY] currentQuiz length:', currentQuiz?.length || 'null/undefined');
-    }, 100);
+    console.log('🎯 [DEBUG] State updates batched and dispatched');
   };
 
   const handleCreateQuiz = () => {
@@ -144,17 +133,14 @@ const QuizMasterApp: React.FC = () => {
     console.log('🔙 [DEBUG] handleBackToDashboard called');
     console.log('🔙 [DEBUG] Current view before:', currentView);
     console.log('🔙 [DEBUG] Current quiz before:', currentQuiz);
-    console.log('🔙 [DEBUG] Stack trace:', new Error().stack);
     
-    // Clear quiz state before navigating
-    setCurrentQuiz(null);
-    console.log('🔙 [DEBUG] setCurrentQuiz(null) called');
-    
-    setTimeout(() => {
-      console.log('🔙 [DEBUG] Setting view to dashboard');
+    // Use React's batched state updates
+    React.startTransition(() => {
+      setCurrentQuiz(null);
       setCurrentView('dashboard');
-      console.log('🔙 [DEBUG] setCurrentView("dashboard") called');
-    }, 0);
+    });
+    
+    console.log('🔙 [DEBUG] Back to dashboard - state updates dispatched');
   };
 
   const handleViewProfile = () => {

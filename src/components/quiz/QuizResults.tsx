@@ -2,16 +2,16 @@ import React, { useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { QuizQuestion } from "@/types/quiz";
 import { CheckCircle, XCircle, Brain, MessageSquare, ChevronDown, ChevronUp, RefreshCw, Plus } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import QuestionFeedback from "./QuestionFeedback";
 import LearningDashboard from '../analytics/LearningDashboard';
 import StorageManager from '@/utils/storageManager';
 import { toast } from 'sonner';
+import { EnhancedQuizQuestion, QuizSession } from '@/types/user';
 
 interface QuizResultsProps {
-  questions: QuizQuestion[];
+  questions: EnhancedQuizQuestion[];
   userAnswers: string[];
   score: number;
   onRestart: () => void;
@@ -38,7 +38,7 @@ const QuizResults: React.FC<QuizResultsProps> = ({
   const [prescription, setPrescription] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(new Set());
-  const [showDetails, setShowDetails] = useState(false);
+  const [showDetails, setShowDetails] = useState(true);
 
   const totalPossible = questions.reduce((total, question) => {
     return total + (question.type === 'essay' ? 10 : 1);
@@ -72,12 +72,12 @@ const QuizResults: React.FC<QuizResultsProps> = ({
   };
 
   // Load sessions for the dashboard
-  const [sessions, setSessions] = useState([]);
+  const [sessions, setSessions] = useState<QuizSession[]>([]);
   React.useEffect(() => {
     const loadSessions = async () => {
       try {
         const userData = await StorageManager.loadUserData();
-        if (userData) {
+        if (userData && userData.sessions) {
           setSessions(userData.sessions);
         }
       } catch (error) {
@@ -109,29 +109,34 @@ const QuizResults: React.FC<QuizResultsProps> = ({
       </Card>
 
       {/* Learning Analytics */}
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold">Learning Analytics</h3>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowDetails(!showDetails)}
-          >
-            {showDetails ? (
-              <ChevronUp className="w-4 h-4" />
-            ) : (
-              <ChevronDown className="w-4 h-4" />
-            )}
-          </Button>
-        </div>
+      <Card className="p-6">
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-xl font-semibold flex items-center gap-2">
+              <Brain className="w-5 h-5 text-blue-500" />
+              Learning Analytics
+            </h3>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowDetails(!showDetails)}
+            >
+              {showDetails ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
 
-        {showDetails && (
-          <LearningDashboard
-            questions={questions}
-            sessions={sessions}
-          />
-        )}
-      </div>
+          {showDetails && (
+            <LearningDashboard
+              questions={questions}
+              sessions={sessions}
+            />
+          )}
+        </div>
+      </Card>
 
       {/* AI Learning Prescription */}
       {onGeneratePrescription && (
