@@ -9,6 +9,12 @@ export interface AIExplanationContext {
   isCorrect: boolean;
   questionType?: 'multiple' | 'essay';
   options?: string[];
+  essayGrade?: {
+    score: number;
+    maxScore: number;
+    grade: string;
+    feedback: string;
+  };
 }
 
 class AIManager {
@@ -172,19 +178,128 @@ Be clear, educational, and ${isCorrect ? 'congratulatory' : 'encouraging'}.`;
 
   // Generate chat response with context
   public async generateChatResponse(userMessage: string, context: AIExplanationContext): Promise<string> {
-    const { question, userAnswer, correctAnswer } = context;
+    const { question, userAnswer, correctAnswer, questionType, essayGrade } = context;
     
-    const prompt = `You are helping a student understand a quiz question. Here's the context:
-
+    let contextInfo = '';
+    
+    if (questionType === 'essay' && essayGrade) {
+      contextInfo = `
+**Original Question:** ${question}
+**Student's Essay Answer:** ${userAnswer}
+**AI Grade:** ${essayGrade.grade} (${essayGrade.score}/${essayGrade.maxScore} points)
+**AI Feedback:** ${essayGrade.feedback}`;
+    } else {
+      contextInfo = `
 **Original Question:** ${question}
 **Student's Answer:** ${userAnswer}
-**Correct Answer:** ${correctAnswer}
+**Correct Answer:** ${correctAnswer}`;
+    }
+    
+    const prompt = `You are helping a student understand a quiz question. Here's the context:
+${contextInfo}
 
 **Student's Follow-up Question:** ${userMessage}
 
-Please provide a helpful, educational response that addresses their question while staying relevant to the quiz context. Be supportive and encouraging.`;
+Please provide a helpful, educational response that addresses their question while staying relevant to the quiz context. ${questionType === 'essay' && essayGrade ? 'Reference their essay grade and provide specific guidance for improvement.' : 'Be supportive and encouraging.'}`;
 
     return await this.makeRequest(prompt);
+  }
+
+  // Automatically grade essay answers
+  public async gradeEssay(question: string, studentAnswer: string, rubric?: string): Promise<{
+    score: number;
+    maxScore: number;
+    feedback: string;
+    strengths: string[];
+    improvements: string[];
+    grade: string;
+  }> {
+    if (!this.activeProvider || !this.activeApiKey) {
+      throw new Error('No AI provider configured for essay grading.');
+    }
+
+    const rubricText = rubric || `
+    Grading Criteria (10 points total):
+    - Content Knowledge (4 points): Demonstrates understanding of key concepts
+    - Clarity & Organization (3 points): Well-structured, clear communication
+    - Analysis & Critical Thinking (2 points): Shows analytical thinking
+    - Writing Quality (1 point): Grammar, spelling, coherence
+    `;
+
+    const prompt = `You are an expert educator grading an essay response. Please evaluate this student's answer carefully and provide detailed feedback.
+
+**Question:** ${question}
+
+**Student's Answer:** ${studentAnswer}
+
+**Grading Rubric:** ${rubricText}
+
+**Instructions:**
+1. Grade the essay out of 10 points based on the rubric
+2. Provide specific feedback on what the student did well
+3. Identify areas for improvement with specific suggestions
+4. Be encouraging but honest in your assessment
+5. Give a letter grade (A+ to F)
+
+**Please respond in this exact JSON format:**
+{
+  "score": [numerical score out of 10],
+  "maxScore": 10,
+  "feedback": "[2-3 paragraph overall assessment]",
+  "strengths": ["strength 1", "strength 2", "strength 3"],
+  "improvements": ["improvement 1", "improvement 2", "improvement 3"],
+  "grade": "[letter grade like A+, A, B+, etc.]"
+}`;
+
+    try {
+      const response = await this.makeRequest(prompt);
+      
+      // Clean response and extract JSON
+      let cleanResponse = response.trim();
+      if (cleanResponse.startsWith('```json')) {
+        cleanResponse = cleanResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanResponse.startsWith('```')) {
+        cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      const gradingResult = JSON.parse(cleanResponse);
+      
+      // Validate the response format
+      if (typeof gradingResult.score !== 'number' || 
+          !gradingResult.feedback || 
+          !Array.isArray(gradingResult.strengths) ||
+          !Array.isArray(gradingResult.improvements)) {
+        throw new Error('Invalid grading response format');
+      }
+      
+      // Ensure score is within valid range
+      gradingResult.score = Math.max(0, Math.min(10, gradingResult.score));
+      
+      return gradingResult;
+    } catch (error) {
+      console.error('Essay grading failed:', error);
+      
+      // Fallback grading when AI fails
+      const wordCount = studentAnswer.trim().split(/\s+/).length;
+      const fallbackScore = Math.min(10, Math.max(1, Math.floor(wordCount / 20))); // Rough scoring based on length
+      
+      return {
+        score: fallbackScore,
+        maxScore: 10,
+        feedback: `I couldn't process this essay with AI grading, but I can see you've written ${wordCount} words. This shows effort! For a complete grade, please ensure your essay addresses the key concepts in the question with clear examples and explanations.`,
+        strengths: [
+          wordCount > 50 ? "Good length and effort" : "Shows initial effort",
+          "Attempted to answer the question",
+          "Demonstrates engagement with the topic"
+        ],
+        improvements: [
+          "Consider adding more specific examples",
+          "Expand on key concepts and definitions", 
+          "Structure your response with clear introduction and conclusion"
+        ],
+        grade: fallbackScore >= 8 ? "B+" : fallbackScore >= 6 ? "B" : fallbackScore >= 4 ? "C" : "D"
+      };
+    }
   }
 
   // Save new API key and refresh provider

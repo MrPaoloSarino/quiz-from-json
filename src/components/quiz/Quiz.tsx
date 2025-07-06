@@ -599,25 +599,10 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
           }
         }));
         
-        // For essays, auto-proceed after showing AI feedback
+        // For essays, DO NOT auto-proceed. Let the user decide when to move on.
+        // Optionally, you can show a message/toast: "You may proceed when ready."
         if (currentQ.type === 'essay') {
-          setTimeout(() => {
-            if (state.currentQuestion < state.questions.length - 1) {
-              setState(prevState => ({
-                ...prevState,
-                currentQuestion: prevState.currentQuestion + 1,
-                feedback: null
-              }));
-              setSelectedOption(null);
-              setShowFeedback(false);
-            } else {
-              // Finish quiz
-              setState(prevState => ({
-                ...prevState,
-                showResults: true
-              }));
-            }
-          }, 3000); // 3 second delay to allow reading AI feedback
+          toast.info('You may proceed to the next question when ready.');
         }
       } catch (error) {
       console.error('AI evaluation failed:', error);
@@ -632,26 +617,9 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
         }
       }));
       
-      // For essays without AI, automatically proceed after a short delay
+      // For essays without AI, DO NOT auto-proceed. Let the user decide when to move on.
       if (currentQ.type === 'essay' && !hasApiKey) {
-        toast.info('No AI configured. Moving to next question automatically...');
-        setTimeout(() => {
-          if (state.currentQuestion < state.questions.length - 1) {
-            setState(prevState => ({
-              ...prevState,
-              currentQuestion: prevState.currentQuestion + 1,
-              feedback: null
-            }));
-            setSelectedOption(null);
-            setShowFeedback(false);
-          } else {
-            // Finish quiz
-            setState(prevState => ({
-              ...prevState,
-              showResults: true
-            }));
-          }
-        }, 1500); // 1.5 second delay to show the feedback briefly
+        toast.info('No AI configured. You may proceed to the next question when ready.');
       }
     }
     } else {
@@ -667,24 +635,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       }));
       
       if (currentQ.type === 'essay') {
-        toast.info('No AI configured. Moving to next question automatically...');
-        setTimeout(() => {
-          if (state.currentQuestion < state.questions.length - 1) {
-            setState(prevState => ({
-              ...prevState,
-              currentQuestion: prevState.currentQuestion + 1,
-              feedback: null
-            }));
-            setSelectedOption(null);
-            setShowFeedback(false);
-          } else {
-            // Finish quiz
-            setState(prevState => ({
-              ...prevState,
-              showResults: true
-            }));
-          }
-        }, 1500); // 1.5 second delay for essays
+        toast.info('No AI configured. You may proceed to the next question when ready.');
       } else {
         // For multiple choice, also auto-proceed after brief feedback
         setTimeout(() => {

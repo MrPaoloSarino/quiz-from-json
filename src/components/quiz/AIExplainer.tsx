@@ -8,6 +8,7 @@ import { Send, Brain, MessageCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import aiManager, { AIExplanationContext } from '@/utils/aiManager';
 import ReactMarkdown from 'react-markdown';
+import AIEssayGrader from './AIEssayGrader';
 
 interface AIExplainerProps {
   context: AIExplanationContext;
@@ -28,6 +29,14 @@ const AIExplainer: React.FC<AIExplainerProps> = ({ context }) => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoadingChat, setIsLoadingChat] = useState(false);
+  const [essayGrade, setEssayGrade] = useState<{
+    score: number;
+    maxScore: number;
+    feedback: string;
+    strengths: string[];
+    improvements: string[];
+    grade: string;
+  } | null>(null);
 
   const providerInfo = aiManager.getProviderInfo();
   const isAIAvailable = aiManager.isAvailable();
@@ -72,7 +81,19 @@ const AIExplainer: React.FC<AIExplainerProps> = ({ context }) => {
     
     try {
       console.log('💬 Sending chat message...', newMessage);
-      const response = await aiManager.generateChatResponse(newMessage.trim(), context);
+      
+      // Create enhanced context for essay questions with grading info
+      const enhancedContext = {
+        ...context,
+        essayGrade: context.questionType === 'essay' && essayGrade ? {
+          score: essayGrade.score,
+          maxScore: essayGrade.maxScore,
+          grade: essayGrade.grade,
+          feedback: essayGrade.feedback
+        } : undefined
+      };
+      
+      const response = await aiManager.generateChatResponse(newMessage.trim(), enhancedContext);
       
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -107,6 +128,19 @@ const AIExplainer: React.FC<AIExplainerProps> = ({ context }) => {
     }
   };
 
+  const handleEssayGradingComplete = (grade: {
+    score: number;
+    maxScore: number;
+    feedback: string;
+    strengths: string[];
+    improvements: string[];
+    grade: string;
+  }) => {
+    setEssayGrade(grade);
+    // Update the context with the graded score for chat
+    console.log('📝 Essay grading completed:', grade);
+  };
+
   if (!isAIAvailable) {
     return (
       <Card className="mt-4 border-orange-200 bg-orange-50">
@@ -124,6 +158,15 @@ const AIExplainer: React.FC<AIExplainerProps> = ({ context }) => {
 
   return (
     <div className="mt-4 space-y-4">
+      {/* AI Essay Grader for Essay Questions */}
+      {context.questionType === 'essay' && (
+        <AIEssayGrader
+          question={context.question}
+          studentAnswer={context.userAnswer}
+          onGradingComplete={handleEssayGradingComplete}
+        />
+      )}
+      
       {/* Main AI Explainer Card */}
       <Card className="border-blue-200 bg-blue-50">
         <CardHeader>
@@ -275,7 +318,12 @@ const AIExplainer: React.FC<AIExplainerProps> = ({ context }) => {
             </div>
             
             <div className="text-xs text-gray-600 mt-2">
-              💡 AI remembers: Question, your answer ("{context.userAnswer}"), and correct answer ("{context.correctAnswer}")
+              💡 AI remembers: Question, your answer ("{context.userAnswer}"), 
+              {context.questionType === 'essay' && essayGrade ? (
+                <span>AI grade ({essayGrade.grade}: {essayGrade.score}/{essayGrade.maxScore})</span>
+              ) : (
+                <span>and correct answer ("{context.correctAnswer}")</span>
+              )}
             </div>
           </CardContent>
         </Card>
