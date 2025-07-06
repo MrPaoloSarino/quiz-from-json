@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { exportQuizToFile, importQuizFromFile } from "@/utils/quizFileHandler";
 import StorageManager from '@/utils/storageManager';
 import AiFeedback from "./AiFeedback";
+import aiService from '@/utils/aiService';
 
 interface JsonInputProps {
   onQuizStart: (questions: QuizQuestion[]) => void;
@@ -302,66 +303,34 @@ const JsonInput: React.FC<JsonInputProps> = ({ onQuizStart }) => {
     setAiLoading(true);
     setAiError(null);
     setAiFeedback(null);
+    
+    // Get current API key
+    const currentApiKey = aiProvider === 'openrouter' ? openRouterKey : 
+                         aiProvider === 'gemini' ? geminiKey : 
+                         aiProvider === 'openai' ? openAIKey : '';
+    
+    if (!currentApiKey) {
+      setAiError('Please provide an API key for the selected provider');
+      setAiLoading(false);
+      return;
+    }
+    
     try {
+      // Update aiService with current settings
+      const currentModel = aiProvider === 'gemini' ? geminiModel : 
+                          aiProvider === 'openrouter' ? 'deepseek/deepseek-chat-v3-0324:free' :
+                          'gpt-3.5-turbo';
+      
+      await aiService.updateSettings(aiProvider, currentApiKey, currentModel);
+      
+      // Use aiService to get feedback
       const prompt = `Review this quiz for clarity, coverage, and difficulty. Suggest improvements.\n\nQuiz JSON:\n${jsonInput}`;
-      let response, data, feedbackText = '';
-      if (aiProvider === 'openrouter' && openRouterKey) {
-        response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${openRouterKey}`,
-          },
-          body: JSON.stringify({
-            model: 'deepseek/deepseek-chat-v3-0324:free',
-            messages: [
-              { role: 'system', content: 'You are an expert quiz designer. Provide clear, actionable feedback for quiz authors.' },
-              { role: 'user', content: prompt }
-            ],
-            max_tokens: 600,
-            temperature: 0.7
-          })
-        });
-        data = await response.json();
-        feedbackText = data.choices?.[0]?.message?.content || '';
-      } else if (aiProvider === 'gemini' && geminiKey) {
-        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: { maxOutputTokens: 600, temperature: 0.7 }
-            })
-          });
-        data = await response.json();
-        if (data.error) throw new Error(data.error.message || 'Gemini API error');
-        feedbackText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      } else if (aiProvider === 'openai' && openAIKey) {
-        response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${openAIKey}`,
-          },
-          body: JSON.stringify({
-            model: 'gpt-3.5-turbo',
-            messages: [
-              { role: 'system', content: 'You are an expert quiz designer. Provide clear, actionable feedback for quiz authors.' },
-              { role: 'user', content: prompt }
-            ],
-            max_tokens: 600,
-            temperature: 0.7
-          })
-        });
-        data = await response.json();
-        feedbackText = data.choices?.[0]?.message?.content || '';
-      } else {
-        throw new Error('No valid API key for selected provider');
-      }
+      const feedbackText = await aiService.generateFeedback('Quiz Review', prompt, 'N/A');
+      
       if (!feedbackText) throw new Error('AI response missing expected content');
       setAiFeedback(feedbackText);
     } catch (err: any) {
+      console.error('AI Feedback Error:', err);
       setAiError(err?.message || 'Failed to get AI feedback');
     } finally {
       setAiLoading(false);
@@ -370,63 +339,29 @@ const JsonInput: React.FC<JsonInputProps> = ({ onQuizStart }) => {
 
   const handleSendChatMessage = async (message: string) => {
     try {
-      let response, data, aiReply = '';
-      if (aiProvider === 'openrouter' && openRouterKey) {
-        response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${openRouterKey}`,
-          },
-          body: JSON.stringify({
-            model: 'deepseek/deepseek-chat-v3-0324:free',
-            messages: [
-              { role: 'system', content: 'You are a helpful quiz design assistant.' },
-              { role: 'user', content: message }
-            ],
-            max_tokens: 400,
-            temperature: 0.7
-          })
-        });
-        data = await response.json();
-        aiReply = data.choices?.[0]?.message?.content || '';
-      } else if (aiProvider === 'gemini' && geminiKey) {
-        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: message }] }],
-              generationConfig: { maxOutputTokens: 400, temperature: 0.7 }
-            })
-          });
-        data = await response.json();
-        aiReply = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      } else if (aiProvider === 'openai' && openAIKey) {
-        response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${openAIKey}`,
-          },
-          body: JSON.stringify({
-            model: 'gpt-3.5-turbo',
-            messages: [
-              { role: 'system', content: 'You are a helpful quiz design assistant.' },
-              { role: 'user', content: message }
-            ],
-            max_tokens: 400,
-            temperature: 0.7
-          })
-        });
-        data = await response.json();
-        aiReply = data.choices?.[0]?.message?.content || '';
-      } else {
+      // Get current API key
+      const currentApiKey = aiProvider === 'openrouter' ? openRouterKey : 
+                           aiProvider === 'gemini' ? geminiKey : 
+                           aiProvider === 'openai' ? openAIKey : '';
+      
+      if (!currentApiKey) {
         throw new Error('No valid API key for selected provider');
       }
+      
+      // Update aiService with current settings
+      const currentModel = aiProvider === 'gemini' ? geminiModel : 
+                          aiProvider === 'openrouter' ? 'deepseek/deepseek-chat-v3-0324:free' :
+                          'gpt-3.5-turbo';
+      
+      await aiService.updateSettings(aiProvider, currentApiKey, currentModel);
+      
+      // Use aiService to generate response
+      const aiReply = await aiService.generateFeedback('Chat message', message, 'Assistant response');
+      
       if (!aiReply) throw new Error('AI response missing expected content');
       return aiReply;
     } catch (err: any) {
+      console.error('Chat Message Error:', err);
       return err?.message || 'Failed to get AI reply';
     }
   };

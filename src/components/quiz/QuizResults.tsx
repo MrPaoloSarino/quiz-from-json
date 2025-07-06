@@ -90,21 +90,23 @@ const QuizResults: React.FC<QuizResultsProps> = ({
   }, []);
 
   React.useEffect(() => {
-    async function fetchSummary() {
-      try {
-        const results = questions.map((q, i) => ({
-          question: q.question,
-          userAnswer: userAnswers[i],
-          correct: (userAnswers[i] === q.answer),
-          feedback: ''
-        }));
-        const summary = await aiService.summarizeResults(results);
-        setAiSummary(summary);
-      } catch (e) {
-        setAiSummary('');
-      }
+    // Generate a simple summary based on the results
+    const correctAnswers = questions.filter((q, i) => userAnswers[i] === q.answer).length;
+    const totalQuestions = questions.length;
+    const percentage = Math.round((correctAnswers / totalQuestions) * 100);
+    
+    let summary = '';
+    if (percentage === 100) {
+      summary = 'Perfect! You got every question correct. Excellent understanding! 🎉';
+    } else if (percentage >= 80) {
+      summary = `Great job! You scored ${percentage}% - you have a strong grasp of the material. 🌟`;
+    } else if (percentage >= 60) {
+      summary = `Good effort! You scored ${percentage}%. Review the missed questions to improve. 💪`;
+    } else {
+      summary = `You scored ${percentage}%. Don't worry - practice makes perfect! Keep studying. 📚`;
     }
-    fetchSummary();
+    
+    setAiSummary(summary);
   }, [questions, userAnswers]);
 
   return (

@@ -364,17 +364,35 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
 
   const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-  // Load API key from localStorage on component mount
+  // Load API keys from AI settings system on component mount
   useEffect(() => {
     let isMounted = true;
     
-    const savedKey = localStorage.getItem("quiz-openrouter-api-key");
-    if (savedKey) {
-      const decryptedKey = decryptData(savedKey);
-      if (decryptedKey && isMounted) {
-        setOpenRouterKey(decryptedKey);
+    const loadApiKeys = async () => {
+      try {
+        // Load all API keys from secure storage
+        const openRouterApiKey = await secureStorage.getApiKey('openrouter');
+        const geminiApiKey = await secureStorage.getApiKey('gemini');
+        const openAIApiKey = await secureStorage.getApiKey('openai');
+        
+        if (isMounted) {
+          setOpenRouterKey(openRouterApiKey || '');
+          setGeminiKey(geminiApiKey || '');
+          setOpenAIKey(openAIApiKey || '');
+          
+          // Debug logging
+          console.log('🔑 [DEBUG] API Keys loaded:', {
+            openRouter: !!openRouterApiKey,
+            gemini: !!geminiApiKey,
+            openAI: !!openAIApiKey
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load API keys:', error);
       }
-    }
+    };
+    
+    loadApiKeys();
     
     return () => {
       isMounted = false;
@@ -455,167 +473,241 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
   // Track question start time
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   
+  // Function to update learning state based on answer
+  const updateLearningState = (questionId: string, isCorrect: boolean) => {
+    const timeSpent = (Date.now() - questionStartTime) / 1000; // in seconds
+    const performance = isCorrect ? 1 : 0;
+    
+    // Update analytics
+    learningDispatch({
+      type: 'UPDATE_ANALYTICS',
+      payload: {
+        performance,
+        timeSpent
+      }
+    });
+    
+    // Update mastery based on performance
+    learningDispatch({
+      type: 'UPDATE_MASTERY',
+      payload: {
+        accuracy: performance,
+        speed: timeSpent,
+        timeSpent
+      }
+    });
+    
+    // Update cognitive load
+    learningDispatch({
+      type: 'UPDATE_COGNITIVE_LOAD',
+      payload: {
+        timeSpent,
+        performance
+      }
+    });
+    
+    // Update spaced repetition based on performance
+    const spacedRepetitionPerformance = isCorrect 
+      ? (timeSpent < 10 ? 'perfect' : 'good') 
+      : (timeSpent > 30 ? 'hard' : 'medium');
+    
+    learningDispatch({
+      type: 'UPDATE_SPACED_REPETITION',
+      payload: {
+        performance: spacedRepetitionPerformance
+      }
+    });
+    
+    // Update adaptive settings
+    learningDispatch({
+      type: 'UPDATE_ADAPTIVE_SETTINGS',
+      payload: {
+        performance,
+        timeSpent,
+        confidence: isCorrect ? 5 : 3 // Basic confidence scoring
+      }
+    });
+  };
+  
   // Update question start time when question changes
   useEffect(() => {
     setQuestionStartTime(Date.now());
   }, [state.currentQuestion]);
 
   const handleAnswer = async (selectedOption: string) => {
-    const answerStartTime = performance.now();
-    const timeSpent = (Date.now() - questionStartTime) / 1000; // Convert to seconds
+    const currentQ = state.questions[state.currentQuestion];
+    // Check if any AI service is available at the start
+    const hasApiKey = await aiService.isApiKeyConfigured();
+    console.log('🤖 [DEBUG] AI Service API key check:', hasApiKey);
+    // Immediate basic validation
+    const isCorrectBasic = selectedOption === currentQ.answer;
+    setShowFeedback(true);
+    setSelectedOption(selectedOption);
+    
+    // Lock the answer immediately after submission
+    const updatedQuestions = [...state.questions];
+    updatedQuestions[state.currentQuestion] = {
+      ...currentQ,
+      isAnswerLocked: true,
+      submissionTime: new Date(),
+      answerHistory: [...(currentQ.answerHistory || []), {
+        answer: selectedOption,
+        isCorrect: isCorrectBasic,
+        timestamp: new Date(),
+        timeSpent: (Date.now() - questionStartTime) / 1000
+      }]
+    };
+    
+    // Update user answers array
+    const updatedUserAnswers = [...state.userAnswers];
+    updatedUserAnswers[state.currentQuestion] = selectedOption;
+    
+    // Update score for non-essay questions
+    const scoreIncrement = currentQ.type !== 'essay' && isCorrectBasic ? 1 : 0;
+    
+    setState(prev => ({
+      ...prev,
+      questions: updatedQuestions,
+      userAnswers: updatedUserAnswers,
+      score: prev.score + scoreIncrement,
+      feedback: {
+        correct: isCorrectBasic,
+        feedback: isCorrectBasic ? 'Correct! ✅' : 'Checking...',
+        explanation: 'Basic validation complete'
+      }
+    }));
 
-    try {
-      setIsLoading(true);
-      let updatedQuestion: EnhancedQuizQuestion | null = null;
-      let aiEvalResult: { correct: boolean; feedback: string } = { correct: false, feedback: '' };
-      let aiFeedbackMsg: string = '';
-      const currentQ = state.questions[state.currentQuestion];
-      if (!currentQ) {
-        throw new Error('Current question is undefined in handleAnswer');
-      }
-      // Check if answer is already locked
-      if (currentQ.isAnswerLocked || state.lockedAnswers[currentQ.id]) {
-        toast.error("This question has been answered and cannot be changed");
-        setIsLoading(false);
-        return;
-      }
-      const isEssay = currentQ.type === 'essay';
-      // Validate content length for essay answers
-      if (isEssay && !validateContentLength(selectedOption)) {
-        throw new Error('Answer exceeds maximum length limit');
-      }
-      // --- AI EVALUATION ---
-      aiEvalResult = await aiService.evaluateAnswer(
-        currentQ.question || '',
-        selectedOption || '',
-        currentQ.answer || ''
-      );
-      aiFeedbackMsg = await aiService.generateFeedback(
-        currentQ.question || '',
-        selectedOption || '',
-        currentQ.answer || ''
-      );
-      const isCorrect = aiEvalResult.correct;
-      // --- END AI EVALUATION ---
-      // Update learning state
-      learningDispatch({
-        type: 'UPDATE_ANALYTICS',
-        payload: {
-          performance: isCorrect ? 1 : 0,
-          timeSpent
-        }
-      });
-      learningDispatch({
-        type: 'UPDATE_COGNITIVE_LOAD',
-        payload: {
-          performance: isCorrect ? 1 : 0,
-          timeSpent
-        }
-      });
-      learningDispatch({
-        type: 'UPDATE_MASTERY',
-        payload: {
-          accuracy: isCorrect ? 1 : 0,
-          speed: timeSpent / currentQ.estimatedTime,
-          timeSpent
-        }
-      });
-      learningDispatch({
-        type: 'UPDATE_ADAPTIVE_SETTINGS',
-        payload: {
-          performance: isCorrect ? 1 : 0,
-          timeSpent,
-          confidence: 3 // TODO: Add confidence rating
-        }
-      });
-      learningDispatch({
-        type: 'UPDATE_SPACED_REPETITION',
-        payload: {
-          performance: isCorrect ? 'good' : 
-                      timeSpent < currentQ.estimatedTime ? 'perfect' :
-                      timeSpent > currentQ.estimatedTime * 1.5 ? 'hard' : 'medium'
-        }
-      });
-      // Update spaced repetition
-      const performanceRating = isCorrect ? 'good' : 'again';
-      const updatedSpacedRepetition = calculateNextReview(
-        currentQ.spacedRepetition,
-        performanceRating
-      );
-      // Update analytics
-      const updatedAnalytics = updateLearningAnalytics(
-        currentQ.analytics,
-        isCorrect,
-        timeSpent,
-        state.isInterleaved
-      );
-      // Generate active recall prompts
-      let activeRecallPrompts: string[] = [];
-      if (!isCorrect && !isEssay) {
-        activeRecallPrompts = generateActiveRecallPrompts(currentQ);
-      }
-      // Update the current question with new data
-      const updatedQuestions = [...state.questions];
-      updatedQuestion = {
-        ...currentQ,
-        isAnswerLocked: true,
-        submissionTime: Date.now(),
-        answerHistory: [
-          ...(currentQ.answerHistory || []),
-          {
-            answer: selectedOption,
-            timestamp: Date.now(),
-            isCorrect
+    // Use AI service if available
+    if (hasApiKey) {
+      try {
+        // Use AI service to evaluate the answer
+        const aiResult = await aiService.evaluateAnswer(
+          currentQ.question,
+          selectedOption,
+          currentQ.answer
+        );
+        
+        // Update state with AI evaluation
+        setState(prev => ({
+          ...prev,
+          feedback: {
+            correct: aiResult.correct,
+            feedback: aiResult.feedback,
+            explanation: aiResult.explanation || 'No explanation available',
+            detailsLink: `/ai-details/${currentQ.id}`
           }
-        ],
-        spacedRepetition: updatedSpacedRepetition,
-        analytics: updatedAnalytics,
-        activeRecallPrompts
-      };
-      updatedQuestions[state.currentQuestion] = updatedQuestion;
-      // Update locked answers state
-      const updatedLockedAnswers = {
-        ...state.lockedAnswers,
-        [currentQ.id]: {
-          answer: selectedOption,
-          timestamp: Date.now(),
-          isCorrect
+        }));
+        
+        // For essays, auto-proceed after showing AI feedback
+        if (currentQ.type === 'essay') {
+          setTimeout(() => {
+            if (state.currentQuestion < state.questions.length - 1) {
+              setState(prevState => ({
+                ...prevState,
+                currentQuestion: prevState.currentQuestion + 1,
+                feedback: null
+              }));
+              setSelectedOption(null);
+              setShowFeedback(false);
+            } else {
+              // Finish quiz
+              setState(prevState => ({
+                ...prevState,
+                showResults: true
+              }));
+            }
+          }, 3000); // 3 second delay to allow reading AI feedback
         }
-      };
-      setState(prevState => ({
-        ...prevState,
-        questions: updatedQuestions,
-        score: isEssay ? prevState.score : (isCorrect ? prevState.score + 1 : prevState.score),
-        userAnswers: (() => {
-          const newUserAnswers = [...prevState.userAnswers];
-          newUserAnswers[prevState.currentQuestion] = selectedOption;
-          return newUserAnswers;
-        })(),
-        feedback: aiFeedbackMsg,
-        essayRatings: [...prevState.essayRatings],
-        activeRecallPrompts: activeRecallPrompts,
-        showActiveRecall: activeRecallPrompts.length > 0,
-        showConfirmation: activeRecallPrompts.length === 0,
-        lockedAnswers: updatedLockedAnswers
+      } catch (error) {
+      console.error('AI evaluation failed:', error);
+      // Fallback to basic validation if AI fails
+      setState(prev => ({
+        ...prev,
+        feedback: {
+          correct: isCorrectBasic,
+          feedback: isCorrectBasic ? 'Correct! ✅' : 'Incorrect ❌',
+          explanation: 'AI evaluation unavailable, using basic validation',
+          detailsLink: `/ai-details/${currentQ.id}`
+        }
       }));
-      setSelectedOption(selectedOption);
-      // Show feedback
-      if (!isEssay) {
-        playSound(isCorrect ? 'correct' : 'incorrect');
-        if (isCorrect) {
-          toast.success(aiEvalResult.feedback || aiFeedbackMsg || "Correct answer!");
-        } else {
-          toast.error(aiEvalResult.feedback || aiFeedbackMsg || "Incorrect answer! Try explaining this concept in your own words.");
-        }
-      } else {
-        toast.success("Answer submitted for AI evaluation!");
+      
+      // For essays without AI, automatically proceed after a short delay
+      if (currentQ.type === 'essay' && !hasApiKey) {
+        toast.info('No AI configured. Moving to next question automatically...');
+        setTimeout(() => {
+          if (state.currentQuestion < state.questions.length - 1) {
+            setState(prevState => ({
+              ...prevState,
+              currentQuestion: prevState.currentQuestion + 1,
+              feedback: null
+            }));
+            setSelectedOption(null);
+            setShowFeedback(false);
+          } else {
+            // Finish quiz
+            setState(prevState => ({
+              ...prevState,
+              showResults: true
+            }));
+          }
+        }, 1500); // 1.5 second delay to show the feedback briefly
       }
-      setIsLoading(false);
-    } catch (error) {
-      debugError('handleAnswer', error as Error);
-      toast.error('Failed to process answer.');
-      setIsLoading(false);
     }
+    } else {
+      // No AI available - immediately proceed for essays, show basic feedback for others
+      setState(prev => ({
+        ...prev,
+        feedback: {
+          correct: isCorrectBasic,
+          feedback: isCorrectBasic ? 'Correct! ✅' : 'Incorrect ❌',
+          explanation: 'Basic validation - no AI feedback available',
+          detailsLink: `/ai-details/${currentQ.id}`
+        }
+      }));
+      
+      if (currentQ.type === 'essay') {
+        toast.info('No AI configured. Moving to next question automatically...');
+        setTimeout(() => {
+          if (state.currentQuestion < state.questions.length - 1) {
+            setState(prevState => ({
+              ...prevState,
+              currentQuestion: prevState.currentQuestion + 1,
+              feedback: null
+            }));
+            setSelectedOption(null);
+            setShowFeedback(false);
+          } else {
+            // Finish quiz
+            setState(prevState => ({
+              ...prevState,
+              showResults: true
+            }));
+          }
+        }, 1500); // 1.5 second delay for essays
+      } else {
+        // For multiple choice, also auto-proceed after brief feedback
+        setTimeout(() => {
+          if (state.currentQuestion < state.questions.length - 1) {
+            setState(prevState => ({
+              ...prevState,
+              currentQuestion: prevState.currentQuestion + 1,
+              feedback: null
+            }));
+            setSelectedOption(null);
+            setShowFeedback(false);
+          } else {
+            // Finish quiz
+            setState(prevState => ({
+              ...prevState,
+              showResults: true
+            }));
+          }
+        }, 2000); // 2 second delay for multiple choice
+      }
+    }
+    
+    // Update learning metrics
+    updateLearningState(currentQ.id, isCorrectBasic);
   };
 
   const handleActiveRecallSubmit = (explanation: string) => {
@@ -914,7 +1006,14 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       if ((!externalQuestions || externalQuestions.length === 0) && state.questions.length === 0) {
         setIsLoading(true);
         try {
-          // You can customize topic/numQuestions as needed
+          // Check if API key is configured
+          const isApiKeyConfigured = await aiService.isApiKeyConfigured();
+          if (!isApiKeyConfigured) {
+            // Show a notification but continue with fallback functionality
+            toast.info('API key not configured. Using basic quiz functionality.');
+          }
+          
+          // Generate questions - aiService will use fallback if no API key is configured
           const aiQuestions = await aiService.generateQuestions('General Knowledge', 5);
           const enhancedQuestions = initializeQuizState(aiQuestions).questions;
           setState(prevState => ({
@@ -930,7 +1029,8 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
           }));
           setShowInput(false);
         } catch (error) {
-          toast.error('Failed to generate questions with AI');
+          debugError('fetchQuestionsIfNeeded', error as Error);
+          toast.error('Failed to generate questions');
         } finally {
           setIsLoading(false);
         }

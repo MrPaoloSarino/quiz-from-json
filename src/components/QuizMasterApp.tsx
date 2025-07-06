@@ -9,11 +9,63 @@ import QuizDashboard from '@/components/dashboard/QuizDashboard';
 import StorageManager from '@/utils/storageManager';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User, Plus, BookOpen, Cloud, HardDrive, Settings } from 'lucide-react';
+import { aiService, AIProvider } from '@/utils/aiService';
+import { ArrowLeft, User, Settings } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 
 type AppView = 'dashboard' | 'quiz' | 'create' | 'profile';
+
+const providerModels = {
+  openrouter: [
+    { value: 'deepseek-chat-v3', label: 'deepseek-chat-v3' },
+    { value: 'gpt-3.5-turbo', label: 'gpt-3.5-turbo' },
+    { value: 'gpt-4', label: 'gpt-4' }
+  ],
+  openai: [
+    { value: 'gpt-3.5-turbo', label: 'gpt-3.5-turbo' },
+    { value: 'gpt-4', label: 'gpt-4' }
+  ],
+  gemini: [
+    // Gemini 2.5 Models
+    { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+    { value: 'gemini-2.5-flash-lite-preview-06-17', label: 'Gemini 2.5 Flash Lite' },
+    { value: 'gemini-2.5-flash-preview-native-audio-dialog', label: 'Gemini 2.5 Flash Audio Dialog' },
+    { value: 'gemini-2.5-flash-exp-native-audio-thinking-dialog', label: 'Gemini 2.5 Flash Audio Thinking' },
+    { value: 'gemini-2.5-flash-preview-tts', label: 'Gemini 2.5 Flash TTS' },
+    { value: 'gemini-2.5-pro-preview-tts', label: 'Gemini 2.5 Pro TTS' },
+    
+    // Gemini 2.0 Models
+    { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+    { value: 'gemini-2.0-flash-preview-image-generation', label: 'Gemini 2.0 Flash Image Gen' },
+    { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite' },
+    { value: 'gemini-2.0-flash-live-001', label: 'Gemini 2.0 Flash Live' },
+    
+    // Gemini 1.5 Models
+    { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
+    { value: 'gemini-1.5-flash-8b', label: 'Gemini 1.5 Flash 8B' },
+    { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+    { value: 'gemini-1.5-pro-vision', label: 'Gemini 1.5 Pro Vision' },
+    { value: 'gemini-1.5-pro-latest', label: 'Gemini 1.5 Pro Latest' },
+    
+    // Gemini 1.0 Models
+    { value: 'gemini-pro', label: 'Gemini 1.0 Pro' },
+    { value: 'gemini-pro-vision', label: 'Gemini 1.0 Pro Vision' },
+    
+    // Specialized Models
+    { value: 'gemini-embedding-exp', label: 'Gemini Embedding Exp' },
+    { value: 'gemini-live-2.5-flash-preview', label: 'Gemini Live 2.5 Flash' },
+    
+    // Imagen Models
+    { value: 'imagen-4.0-generate-preview-06-06', label: 'Imagen 4.0' },
+    { value: 'imagen-4.0-ultra-generate-preview-06-06', label: 'Imagen 4.0 Ultra' },
+    { value: 'imagen-3.0-generate-002', label: 'Imagen 3.0' },
+    
+    // Veo Models
+    { value: 'veo-2.0-generate-001', label: 'Veo 2.0' },
+  ]
+};
 
 const QuizMasterApp: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -22,22 +74,22 @@ const QuizMasterApp: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const dashboardRef = useRef<{ refreshQuizzes: () => void }>(null);
   const [apiModalOpen, setApiModalOpen] = React.useState(false);
-  const [globalProvider, setGlobalProvider] = React.useState('openrouter');
+  const [globalProvider, setGlobalProvider] = React.useState<AIProvider>('openrouter');
   const [globalApiKey, setGlobalApiKey] = React.useState('');
   const [globalModel, setGlobalModel] = React.useState('deepseek-chat-v3');
 
   // Enhanced state tracking with useEffect
   useEffect(() => {
-    console.log('🔄 [STATE] currentQuiz state changed:', currentQuiz);
-    console.log('🔄 [STATE] currentQuiz length:', currentQuiz?.length || 'null/undefined');
-    console.log('🔄 [STATE] Stack trace:', new Error().stack);
+    console.log(' [STATE] currentQuiz state changed:', currentQuiz);
+    console.log(' [STATE] currentQuiz length:', currentQuiz?.length || 'null/undefined');
+    console.log(' [STATE] Stack trace:', new Error().stack);
   }, [currentQuiz]);
 
   useEffect(() => {
-    console.log('🔄 [STATE] currentView state changed:', currentView);
+    console.log(' [STATE] currentView state changed:', currentView);
     // If we're returning to dashboard, refresh the quiz list
     if (currentView === 'dashboard') {
-      console.log('🔄 [DEBUG] Back to dashboard, refreshing quizzes...');
+      console.log(' [DEBUG] Back to dashboard, refreshing quizzes...');
       dashboardRef.current?.refreshQuizzes();
     }
   }, [currentView]);
@@ -60,7 +112,7 @@ const QuizMasterApp: React.FC = () => {
       // Show storage mode info
       const storageInfo = StorageManager.getStorageInfo();
       const modeText = storageInfo.mode === 'local_storage' ? 'Offline Mode' : 'Cloud Mode';
-      console.log(`🚀 QuizMaster initialized in ${modeText}`);
+      console.log(` QuizMaster initialized in ${modeText}`);
     } catch (error) {
       console.error('Failed to initialize app:', error);
       toast.error('Failed to initialize application');
@@ -92,11 +144,11 @@ const QuizMasterApp: React.FC = () => {
   };
 
   const handleStartQuiz = (questions: QuizQuestion[]) => {
-    console.log('🎯 [DEBUG] QuizMasterApp.handleStartQuiz called');
-    console.log('🎯 [DEBUG] Received questions:', questions);
-    console.log('🎯 [DEBUG] Questions count:', questions.length);
-    console.log('🎯 [DEBUG] Current view before:', currentView);
-    console.log('🎯 [DEBUG] Current quiz before:', currentQuiz);
+    console.log(' [DEBUG] QuizMasterApp.handleStartQuiz called');
+    console.log(' [DEBUG] Received questions:', questions);
+    console.log(' [DEBUG] Questions count:', questions.length);
+    console.log(' [DEBUG] Current view before:', currentView);
+    console.log(' [DEBUG] Current quiz before:', currentQuiz);
     
     // Use React's batched state updates
     React.startTransition(() => {
@@ -104,40 +156,20 @@ const QuizMasterApp: React.FC = () => {
       setCurrentView('quiz');
     });
     
-    console.log('🎯 [DEBUG] State updates batched and dispatched');
+    console.log(' [DEBUG] State updates batched and dispatched');
   };
 
   const handleCreateQuiz = () => {
-    console.log('📝 [DEBUG] QuizMasterApp.handleCreateQuiz called');
-    console.log('📝 [DEBUG] Current view before:', currentView);
+    console.log(' [DEBUG] QuizMasterApp.handleCreateQuiz called');
+    console.log(' [DEBUG] Current view before:', currentView);
     setCurrentView('create');
-    console.log('📝 [DEBUG] setCurrentView("create") called');
-  };
-
-  const handleQuizCreated = async (questions: QuizQuestion[]) => {
-    console.log('✨ [DEBUG] QuizMasterApp.handleQuizCreated called');
-    console.log('✨ [DEBUG] Received questions:', questions);
-    console.log('✨ [DEBUG] Questions count:', questions.length);
-    console.log('✨ [DEBUG] Current view before:', currentView);
-    
-    // Reset quiz state and navigate back to dashboard
-    setCurrentQuiz(null);
-    console.log('✨ [DEBUG] setCurrentQuiz(null) called');
-    
-    // Navigate back to dashboard and show success message
-    setCurrentView('dashboard');
-    console.log('✨ [DEBUG] setCurrentView("dashboard") called');
-    
-    // Give the dashboard a moment to mount before showing success message
-    setTimeout(() => {
-      toast.success('Quiz created successfully! 🎉');
-      console.log('✨ [DEBUG] Success toast shown');
-    }, 100);
+    console.log(' [DEBUG] setCurrentView("create") called');
   };
 
   const handleBackToDashboard = () => {
-    console.log('🔙 [DEBUG] handleBackToDashboard called');
-    console.log('🔙 [DEBUG] Current view before:', currentView);
+    console.log(' [DEBUG] handleBackToDashboard called');
+    console.log(' [DEBUG] Current view before:', currentView);
+    console.log(' [DEBUG] Current quiz before:', currentQuiz);
     console.log('🔙 [DEBUG] Current quiz before:', currentQuiz);
     
     // Use React's batched state updates
@@ -154,58 +186,31 @@ const QuizMasterApp: React.FC = () => {
   };
 
   React.useEffect(() => {
-    const savedProvider = localStorage.getItem('global-provider');
-    const savedKey = localStorage.getItem('global-api-key');
-    const savedModel = localStorage.getItem('global-model');
-    if (savedProvider) setGlobalProvider(savedProvider);
-    if (savedKey) setGlobalApiKey(savedKey);
-    if (savedModel) setGlobalModel(savedModel);
+    const settingsStr = localStorage.getItem('ai_settings');
+    if (settingsStr) {
+      try {
+        const settings = JSON.parse(settingsStr);
+        if (settings.provider) setGlobalProvider(settings.provider);
+        if (settings.apiKey) setGlobalApiKey(settings.apiKey);
+        if (settings.model) setGlobalModel(settings.model);
+      } catch (e) {
+        console.error("Failed to parse AI settings from localStorage", e);
+      }
+    }
   }, []);
 
-  const handleSaveApiSettings = () => {
-    localStorage.setItem('global-provider', globalProvider);
-    localStorage.setItem('global-api-key', globalApiKey);
-    localStorage.setItem('global-model', globalModel);
-    setApiModalOpen(false);
-    toast.success('API settings saved!');
+  const handleSaveApiSettings = async () => {
+    try {
+      await aiService.updateSettings(globalProvider, globalApiKey, globalModel);
+      setApiModalOpen(false);
+      toast.success('API settings saved!');
+    } catch (error) {
+      console.error('Failed to save API settings:', error);
+      toast.error(`Failed to save API settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
-  const providerModels = {
-    openrouter: [
-      { value: 'deepseek-chat-v3', label: 'deepseek-chat-v3' },
-      { value: 'gpt-3.5-turbo', label: 'gpt-3.5-turbo' },
-      { value: 'gpt-4', label: 'gpt-4' }
-    ],
-    openai: [
-      { value: 'gpt-3.5-turbo', label: 'gpt-3.5-turbo' },
-      { value: 'gpt-4', label: 'gpt-4' }
-    ],
-    gemini: [
-      { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
-      { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-      { value: 'gemini-2.5-flash-lite-preview-06-17', label: 'Gemini 2.5 Flash-Lite Preview' },
-      { value: 'gemini-2.5-flash-preview-native-audio-dialog', label: 'Gemini 2.5 Flash Native Audio Dialog' },
-      { value: 'gemini-2.5-flash-exp-native-audio-thinking-dialog', label: 'Gemini 2.5 Flash Exp Native Audio Thinking Dialog' },
-      { value: 'gemini-2.5-flash-preview-tts', label: 'Gemini 2.5 Flash Preview TTS' },
-      { value: 'gemini-2.5-pro-preview-tts', label: 'Gemini 2.5 Pro Preview TTS' },
-      { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
-      { value: 'gemini-2.0-flash-preview-image-generation', label: 'Gemini 2.0 Flash Preview Image Generation' },
-      { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash-Lite' },
-      { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
-      { value: 'gemini-1.5-flash-8b', label: 'Gemini 1.5 Flash-8B' },
-      { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
-      { value: 'gemini-embedding-exp', label: 'Gemini Embedding' },
-      { value: 'imagen-4.0-generate-preview-06-06', label: 'Imagen 4.0 Generate Preview' },
-      { value: 'imagen-4.0-ultra-generate-preview-06-06', label: 'Imagen 4.0 Ultra Generate Preview' },
-      { value: 'imagen-3.0-generate-002', label: 'Imagen 3.0 Generate' },
-      { value: 'veo-2.0-generate-001', label: 'Veo 2.0 Generate' },
-      { value: 'gemini-live-2.5-flash-preview', label: 'Gemini 2.5 Flash Live' },
-      { value: 'gemini-2.0-flash-live-001', label: 'Gemini 2.0 Flash Live' },
-      { value: 'gemini-pro', label: 'Gemini 1.0 Pro' },
-      { value: 'gemini-ultra', label: 'Gemini Ultra' },
-      { value: 'gemini-nano', label: 'Gemini Nano' }
-    ]
-  };
+  
 
   if (isLoading) {
     return (
@@ -389,4 +394,4 @@ const QuizMasterApp: React.FC = () => {
   );
 };
 
-export default QuizMasterApp; 
+export default QuizMasterApp;

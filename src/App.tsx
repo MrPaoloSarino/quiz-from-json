@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Index from "@/pages/Index";
 import NotFound from "@/pages/NotFound";
+import Settings from "@/pages/Settings";
+import AIDebugPanel from "@/components/debug/AIDebugPanel";
 import { LearningProvider } from "@/contexts/LearningContext";
 
 const queryClient = new QueryClient();
@@ -20,6 +22,8 @@ function App() {
           <Router>
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/debug" element={<AIDebugPanel />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

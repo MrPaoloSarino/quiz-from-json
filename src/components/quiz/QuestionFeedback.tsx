@@ -123,8 +123,9 @@ Be clear, educational, and ${isCorrect ? 'congratulatory' : 'encouraging'}.`;
           })
         });
       } else if (provider === 'gemini') {
-        const geminiModelId = (selectedModel || 'gemini-pro').split('/').pop();
-        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModelId}:generateContent?key=${apiKey}`, {
+        // Fix Gemini model ID handling - don't split, use the full model name
+        const geminiModel = selectedModel || 'gemini-pro';
+        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -243,8 +244,9 @@ Please provide a helpful, concise response that addresses their specific questio
           })
         });
       } else if (provider === 'gemini') {
-        const geminiModelId = (selectedModel || 'gemini-pro').split('/').pop();
-        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModelId}:generateContent?key=${apiKey}`, {
+        // Fix Gemini model ID handling - don't split, use the full model name
+        const geminiModel = selectedModel || 'gemini-pro';
+        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
