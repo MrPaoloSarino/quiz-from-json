@@ -9,7 +9,9 @@ import QuizDashboard from '@/components/dashboard/QuizDashboard';
 import StorageManager from '@/utils/storageManager';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User, Plus, BookOpen, Cloud, HardDrive } from 'lucide-react';
+import { ArrowLeft, User, Plus, BookOpen, Cloud, HardDrive, Settings } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 
 type AppView = 'dashboard' | 'quiz' | 'create' | 'profile';
 
@@ -19,6 +21,10 @@ const QuizMasterApp: React.FC = () => {
   const [currentQuiz, setCurrentQuiz] = useState<QuizQuestion[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const dashboardRef = useRef<{ refreshQuizzes: () => void }>(null);
+  const [apiModalOpen, setApiModalOpen] = React.useState(false);
+  const [globalProvider, setGlobalProvider] = React.useState('openrouter');
+  const [globalApiKey, setGlobalApiKey] = React.useState('');
+  const [globalModel, setGlobalModel] = React.useState('deepseek-chat-v3');
 
   // Enhanced state tracking with useEffect
   useEffect(() => {
@@ -147,6 +153,60 @@ const QuizMasterApp: React.FC = () => {
     setCurrentView('profile');
   };
 
+  React.useEffect(() => {
+    const savedProvider = localStorage.getItem('global-provider');
+    const savedKey = localStorage.getItem('global-api-key');
+    const savedModel = localStorage.getItem('global-model');
+    if (savedProvider) setGlobalProvider(savedProvider);
+    if (savedKey) setGlobalApiKey(savedKey);
+    if (savedModel) setGlobalModel(savedModel);
+  }, []);
+
+  const handleSaveApiSettings = () => {
+    localStorage.setItem('global-provider', globalProvider);
+    localStorage.setItem('global-api-key', globalApiKey);
+    localStorage.setItem('global-model', globalModel);
+    setApiModalOpen(false);
+    toast.success('API settings saved!');
+  };
+
+  const providerModels = {
+    openrouter: [
+      { value: 'deepseek-chat-v3', label: 'deepseek-chat-v3' },
+      { value: 'gpt-3.5-turbo', label: 'gpt-3.5-turbo' },
+      { value: 'gpt-4', label: 'gpt-4' }
+    ],
+    openai: [
+      { value: 'gpt-3.5-turbo', label: 'gpt-3.5-turbo' },
+      { value: 'gpt-4', label: 'gpt-4' }
+    ],
+    gemini: [
+      { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+      { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+      { value: 'gemini-2.5-flash-lite-preview-06-17', label: 'Gemini 2.5 Flash-Lite Preview' },
+      { value: 'gemini-2.5-flash-preview-native-audio-dialog', label: 'Gemini 2.5 Flash Native Audio Dialog' },
+      { value: 'gemini-2.5-flash-exp-native-audio-thinking-dialog', label: 'Gemini 2.5 Flash Exp Native Audio Thinking Dialog' },
+      { value: 'gemini-2.5-flash-preview-tts', label: 'Gemini 2.5 Flash Preview TTS' },
+      { value: 'gemini-2.5-pro-preview-tts', label: 'Gemini 2.5 Pro Preview TTS' },
+      { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+      { value: 'gemini-2.0-flash-preview-image-generation', label: 'Gemini 2.0 Flash Preview Image Generation' },
+      { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash-Lite' },
+      { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
+      { value: 'gemini-1.5-flash-8b', label: 'Gemini 1.5 Flash-8B' },
+      { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+      { value: 'gemini-embedding-exp', label: 'Gemini Embedding' },
+      { value: 'imagen-4.0-generate-preview-06-06', label: 'Imagen 4.0 Generate Preview' },
+      { value: 'imagen-4.0-ultra-generate-preview-06-06', label: 'Imagen 4.0 Ultra Generate Preview' },
+      { value: 'imagen-3.0-generate-002', label: 'Imagen 3.0 Generate' },
+      { value: 'veo-2.0-generate-001', label: 'Veo 2.0 Generate' },
+      { value: 'gemini-live-2.5-flash-preview', label: 'Gemini 2.5 Flash Live' },
+      { value: 'gemini-2.0-flash-live-001', label: 'Gemini 2.0 Flash Live' },
+      { value: 'gemini-pro', label: 'Gemini 1.0 Pro' },
+      { value: 'gemini-ultra', label: 'Gemini Ultra' },
+      { value: 'gemini-nano', label: 'Gemini Nano' }
+    ]
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
@@ -185,6 +245,16 @@ const QuizMasterApp: React.FC = () => {
           </div>
           
           <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setApiModalOpen(true)}
+              className="flex items-center gap-2"
+              aria-label="AI/API Setup"
+            >
+              <Settings className="w-4 h-4" />
+              <span className="hidden sm:block">AI/API Setup</span>
+            </Button>
             <span className="text-sm text-gray-600 hidden sm:block">Welcome, {user.name.split(' ')[0]}!</span>
             <Button 
               variant="ghost" 
@@ -198,6 +268,53 @@ const QuizMasterApp: React.FC = () => {
           </div>
         </div>
       </div>
+      <Dialog open={apiModalOpen} onOpenChange={setApiModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>AI/API Setup</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <label className="block text-sm font-medium">Provider</label>
+            <select
+              value={globalProvider}
+              onChange={e => {
+                setGlobalProvider(e.target.value);
+                // Set default model for provider
+                const models = providerModels[e.target.value as keyof typeof providerModels];
+                if (models && models.length > 0) setGlobalModel(models[0].value);
+              }}
+              className="w-full border rounded p-2"
+            >
+              <option value="openrouter">OpenRouter</option>
+              <option value="openai">OpenAI</option>
+              <option value="gemini">Gemini</option>
+            </select>
+            <label className="block text-sm font-medium">API Key</label>
+            <Input
+              value={globalApiKey}
+              onChange={e => setGlobalApiKey(e.target.value)}
+              placeholder={`Enter your ${globalProvider} API key`}
+              type="password"
+            />
+            <label className="block text-sm font-medium">Model</label>
+            <select
+              value={globalModel}
+              onChange={e => setGlobalModel(e.target.value)}
+              className="w-full border rounded p-2"
+            >
+              {providerModels[globalProvider as keyof typeof providerModels].map(m => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button onClick={handleSaveApiSettings} className="bg-blue-600 text-white">Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </nav>
   );
 

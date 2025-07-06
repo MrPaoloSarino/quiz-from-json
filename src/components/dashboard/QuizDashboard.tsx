@@ -20,6 +20,8 @@ import {
   List
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 
 interface QuizDashboardProps {
   onStartQuiz: (questions: QuizQuestion[]) => void;
@@ -36,6 +38,12 @@ const QuizDashboard = forwardRef<QuizDashboardRef, QuizDashboardProps>(({ onStar
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [quizBeingEdited, setQuizBeingEdited] = useState<UserQuiz | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editQuestions, setEditQuestions] = useState<any[]>([]);
+  const [editJson, setEditJson] = useState('');
 
   useEffect(() => {
     console.log('📊 [DEBUG] QuizDashboard mounted');
@@ -88,6 +96,15 @@ const QuizDashboard = forwardRef<QuizDashboardRef, QuizDashboardProps>(({ onStar
       console.error('❌ [DEBUG] Failed to delete quiz:', error);
       toast.error('Failed to delete quiz');
     }
+  };
+
+  const handleEditQuiz = (quiz: UserQuiz) => {
+    setQuizBeingEdited(quiz);
+    setEditTitle(quiz.title);
+    setEditDescription(quiz.description || '');
+    setEditQuestions(quiz.questions.map(q => ({ ...q, options: q.options ? [...q.options] : [] })));
+    setEditJson(JSON.stringify(quiz, null, 2));
+    setEditModalOpen(true);
   };
 
   const filteredQuizzes = quizzes.filter(quiz => {
@@ -300,7 +317,7 @@ const QuizDashboard = forwardRef<QuizDashboardRef, QuizDashboardProps>(({ onStar
                   </Button>
                   
                   <div className="flex gap-1">
-                    <Button variant="outline" size="sm" className="p-2">
+                    <Button variant="outline" size="sm" className="p-2" onClick={() => handleEditQuiz(quiz)}>
                       <Edit className="w-4 h-4" />
                     </Button>
                     <Button 
@@ -318,6 +335,29 @@ const QuizDashboard = forwardRef<QuizDashboardRef, QuizDashboardProps>(({ onStar
           ))}
         </div>
       )}
+
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Quiz (JSON)</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+            <label className="block text-sm font-medium">Quiz JSON</label>
+            <Textarea
+              value={editJson}
+              onChange={e => setEditJson(e.target.value)}
+              rows={20}
+              className="font-mono text-xs"
+            />
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button onClick={() => setEditModalOpen(false)} className="bg-blue-600 text-white">Save (Not Implemented)</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 });
