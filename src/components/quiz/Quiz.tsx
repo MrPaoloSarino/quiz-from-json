@@ -240,6 +240,9 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
   const [openAIKey, setOpenAIKey] = useState<string>("");
   const [geminiKey, setGeminiKey] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [aiFeedback, setAiFeedback] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState<boolean>(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   // Add AbortController ref for API calls
   const abortControllerRef = React.useRef<AbortController>(new AbortController());
@@ -779,6 +782,164 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
     }
   };
 
+  // Helper to fetch AI feedback
+  const fetchAiFeedback = async (question: EnhancedQuizQuestion, userAnswer: string) => {
+    setAiLoading(true);
+    setAiError(null);
+    setAiFeedback(null);
+    try {
+      let prompt = '';
+      if (question.type === 'essay') {
+        prompt = `You are an expert tutor providing detailed feedback on an essay answer.\n\n**Question:** ${question.question}\n**Student's Answer:** ${userAnswer}\n\nPlease provide:\n1. What was done well\n2. Areas for improvement\n3. How to improve next time`;
+      } else {
+        prompt = `You are an expert tutor explaining a quiz question.\n\n**Question:** ${question.question}\n**Options:** ${question.options?.join(', ')}\n**Correct Answer:** ${question.answer}\n**Student's Answer:** ${userAnswer}\n\nPlease provide:\n1. Why the correct answer is right\n2. Why the student's answer is wrong (if applicable)\n3. Key concept to remember`;
+      }
+      let response, data, feedbackText = '';
+      if (provider === 'openrouter' && openRouterKey) {
+        response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openRouterKey}`,
+          },
+          body: JSON.stringify({
+            model: selectedModel || 'deepseek/deepseek-chat-v3-0324:free',
+            messages: [
+              { role: 'system', content: 'You are an expert educational tutor. Provide clear, structured explanations that help students learn effectively.' },
+              { role: 'user', content: prompt }
+            ],
+            max_tokens: 400,
+            temperature: 0.7
+          })
+        });
+        data = await response.json();
+        feedbackText = data.choices?.[0]?.message?.content || '';
+      } else if (provider === 'gemini' && geminiKey) {
+        const geminiModelId = (selectedModel || 'gemini-pro').split('/').pop();
+        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModelId}:generateContent?key=${geminiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { maxOutputTokens: 400, temperature: 0.7 }
+          })
+        });
+        data = await response.json();
+        feedbackText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      } else if (provider === 'openai' && openAIKey) {
+        response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openAIKey}`,
+          },
+          body: JSON.stringify({
+            model: 'gpt-3.5-turbo',
+            messages: [
+              { role: 'system', content: 'You are an expert educational tutor. Provide clear, structured explanations that help students learn effectively.' },
+              { role: 'user', content: prompt }
+            ],
+            max_tokens: 400,
+            temperature: 0.7
+          })
+        });
+        data = await response.json();
+        feedbackText = data.choices?.[0]?.message?.content || '';
+      } else {
+        throw new Error('No valid API key for selected provider');
+      }
+      if (!feedbackText) throw new Error('AI response missing expected content');
+      setAiFeedback(feedbackText);
+    } catch (err: any) {
+      setAiError(err?.message || 'Failed to get AI feedback');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  // Handler for AI chat (argument)
+  const handleSendChatMessage = async (message: string) => {
+    // Use the same provider logic as above, but with the message as the prompt
+    try {
+      let response, data, aiReply = '';
+      if (provider === 'openrouter' && openRouterKey) {
+        response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openRouterKey}`,
+          },
+          body: JSON.stringify({
+            model: selectedModel || 'deepseek/deepseek-chat-v3-0324:free',
+            messages: [
+              { role: 'system', content: 'You are a helpful educational assistant. Provide concise, clear answers to student questions.' },
+              { role: 'user', content: message }
+            ],
+            max_tokens: 300,
+            temperature: 0.7
+          })
+        });
+        data = await response.json();
+        aiReply = data.choices?.[0]?.message?.content || '';
+      } else if (provider === 'gemini' && geminiKey) {
+        const geminiModelId = (selectedModel || 'gemini-pro').split('/').pop();
+        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModelId}:generateContent?key=${geminiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: message }] }],
+            generationConfig: { maxOutputTokens: 300, temperature: 0.7 }
+          })
+        });
+        data = await response.json();
+        aiReply = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      } else if (provider === 'openai' && openAIKey) {
+        response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openAIKey}`,
+          },
+          body: JSON.stringify({
+            model: 'gpt-3.5-turbo',
+            messages: [
+              { role: 'system', content: 'You are a helpful educational assistant. Provide concise, clear answers to student questions.' },
+              { role: 'user', content: message }
+            ],
+            max_tokens: 300,
+            temperature: 0.7
+          })
+        });
+        data = await response.json();
+        aiReply = data.choices?.[0]?.message?.content || '';
+      } else {
+        throw new Error('No valid API key for selected provider');
+      }
+      if (!aiReply) throw new Error('AI response missing expected content');
+      return aiReply;
+    } catch (err: any) {
+      return err?.message || 'Failed to get AI reply';
+    }
+  };
+
+  // Trigger AI feedback after answering and locking a question
+  useEffect(() => {
+    const currentQ = state.questions[state.currentQuestion];
+    if (
+      currentQ &&
+      currentQ.isAnswerLocked &&
+      selectedOption &&
+      (openRouterKey || geminiKey || openAIKey)
+    ) {
+      fetchAiFeedback(currentQ, selectedOption);
+    } else {
+      setAiFeedback(null);
+      setAiError(null);
+      setAiLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.currentQuestion, state.questions[state.currentQuestion]?.isAnswerLocked, selectedOption, openRouterKey, geminiKey, openAIKey, provider, selectedModel]);
+
   return (
     <div className="container mx-auto p-4">
       {showInput ? (
@@ -822,16 +983,26 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
           
           {/* Show feedback after answering */}
           {selectedOption && state.questions[state.currentQuestion]?.isAnswerLocked && (
-            <QuestionFeedback
-              question={state.questions[state.currentQuestion]}
-              userAnswer={selectedOption}
-              isCorrect={selectedOption === state.questions[state.currentQuestion]?.answer}
-              questionNumber={state.currentQuestion + 1}
-              provider={provider}
-              apiKey={openRouterKey}
-              selectedModel={selectedModel}
-              essayRating={state.essayRatings[state.currentQuestion]}
-            />
+            <>
+              <QuestionFeedback
+                question={state.questions[state.currentQuestion]}
+                userAnswer={selectedOption}
+                isCorrect={selectedOption === state.questions[state.currentQuestion]?.answer}
+                questionNumber={state.currentQuestion + 1}
+                provider={provider}
+                apiKey={openRouterKey}
+                selectedModel={selectedModel}
+                essayRating={state.essayRatings[state.currentQuestion]}
+              />
+              {(openRouterKey || geminiKey || openAIKey) && (
+                <AiFeedback
+                  feedback={aiFeedback}
+                  loading={aiLoading}
+                  error={aiError}
+                  onSendChatMessage={handleSendChatMessage}
+                />
+              )}
+            </>
           )}
           
           {/* Always visible navigation */}
@@ -862,11 +1033,9 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
           
           {showConfirmation && (
             <div className="flex justify-between">
-              {state.currentQuestion > 0 && (
-                <Button onClick={handleBack} variant="outline">
-                  Previous
-                </Button>
-              )}
+              <Button onClick={handleBack} variant="outline">
+                Previous
+              </Button>
               <Button 
                 onClick={moveToNextQuestion}
                 className={state.currentQuestion === state.questions.length - 1 ? 
