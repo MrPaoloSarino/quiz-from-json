@@ -28,6 +28,7 @@ import { Debug, debugSpacedRepetition, debugActiveRecall, debugInterleaving, deb
 import ActiveRecallPrompt from './ActiveRecallPrompt';
 import { useLearning } from '@/contexts/LearningContext';
 import { generateFeedback } from '@/utils/learningEngine';
+import aiService from '@/utils/aiService';
 
 const API_URLS = {
   OPENROUTER: "https://openrouter.ai/api/v1/chat/completions",
@@ -462,189 +463,157 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
   const handleAnswer = async (selectedOption: string) => {
     const answerStartTime = performance.now();
     const timeSpent = (Date.now() - questionStartTime) / 1000; // Convert to seconds
-    
+
     try {
       setIsLoading(true);
-      
-      // Update state and get the updated question
       let updatedQuestion: EnhancedQuizQuestion | null = null;
-      
-      setState(prevState => {
-        const currentQ = prevState.questions[prevState.currentQuestion];
-        if (!currentQ) {
-          throw new Error('Current question is undefined in handleAnswer');
+      let aiEvalResult: { correct: boolean; feedback: string } = { correct: false, feedback: '' };
+      let aiFeedbackMsg: string = '';
+      const currentQ = state.questions[state.currentQuestion];
+      if (!currentQ) {
+        throw new Error('Current question is undefined in handleAnswer');
+      }
+      // Check if answer is already locked
+      if (currentQ.isAnswerLocked || state.lockedAnswers[currentQ.id]) {
+        toast.error("This question has been answered and cannot be changed");
+        setIsLoading(false);
+        return;
+      }
+      const isEssay = currentQ.type === 'essay';
+      // Validate content length for essay answers
+      if (isEssay && !validateContentLength(selectedOption)) {
+        throw new Error('Answer exceeds maximum length limit');
+      }
+      // --- AI EVALUATION ---
+      aiEvalResult = await aiService.evaluateAnswer(
+        currentQ.question || '',
+        selectedOption || '',
+        currentQ.answer || ''
+      );
+      aiFeedbackMsg = await aiService.generateFeedback(
+        currentQ.question || '',
+        selectedOption || '',
+        currentQ.answer || ''
+      );
+      const isCorrect = aiEvalResult.correct;
+      // --- END AI EVALUATION ---
+      // Update learning state
+      learningDispatch({
+        type: 'UPDATE_ANALYTICS',
+        payload: {
+          performance: isCorrect ? 1 : 0,
+          timeSpent
         }
-        
-        // Check if answer is already locked
-        if (currentQ.isAnswerLocked || prevState.lockedAnswers[currentQ.id]) {
-          toast.error("This question has been answered and cannot be changed");
-          return prevState;
+      });
+      learningDispatch({
+        type: 'UPDATE_COGNITIVE_LOAD',
+        payload: {
+          performance: isCorrect ? 1 : 0,
+          timeSpent
         }
-        
-        const isEssay = currentQ.type === 'essay';
-        
-        // Validate content length for essay answers
-        if (isEssay && !validateContentLength(selectedOption)) {
-          throw new Error('Answer exceeds maximum length limit');
+      });
+      learningDispatch({
+        type: 'UPDATE_MASTERY',
+        payload: {
+          accuracy: isCorrect ? 1 : 0,
+          speed: timeSpent / currentQ.estimatedTime,
+          timeSpent
         }
-        
-        const isCorrect = selectedOption === currentQ.answer;
-        
-        // Update learning state
-        learningDispatch({
-          type: 'UPDATE_ANALYTICS',
-          payload: {
-            performance: isCorrect ? 1 : 0,
-            timeSpent
-          }
-        });
-
-        learningDispatch({
-          type: 'UPDATE_COGNITIVE_LOAD',
-          payload: {
-            performance: isCorrect ? 1 : 0,
-            timeSpent
-          }
-        });
-
-        learningDispatch({
-          type: 'UPDATE_MASTERY',
-          payload: {
-            accuracy: isCorrect ? 1 : 0,
-            speed: timeSpent / currentQ.estimatedTime,
-            timeSpent
-          }
-        });
-
-        learningDispatch({
-          type: 'UPDATE_ADAPTIVE_SETTINGS',
-          payload: {
-            performance: isCorrect ? 1 : 0,
-            timeSpent,
-            confidence: 3 // TODO: Add confidence rating
-          }
-        });
-
-        learningDispatch({
-          type: 'UPDATE_SPACED_REPETITION',
-          payload: {
-            performance: isCorrect ? 'good' : 
-                        timeSpent < currentQ.estimatedTime ? 'perfect' :
-                        timeSpent > currentQ.estimatedTime * 1.5 ? 'hard' : 'medium'
-          }
-        });
-        
-        // Update spaced repetition
-        const performanceRating = isCorrect ? 'good' : 'again';
-        const updatedSpacedRepetition = calculateNextReview(
-          currentQ.spacedRepetition,
-          performanceRating
-        );
-        
-        // Update analytics
-        const updatedAnalytics = updateLearningAnalytics(
-          currentQ.analytics,
-          isCorrect,
+      });
+      learningDispatch({
+        type: 'UPDATE_ADAPTIVE_SETTINGS',
+        payload: {
+          performance: isCorrect ? 1 : 0,
           timeSpent,
-          prevState.isInterleaved
-        );
-        
-        // Generate active recall prompts
-        let activeRecallPrompts: string[] = [];
-        if (!isCorrect && !isEssay) {
-          activeRecallPrompts = generateActiveRecallPrompts(currentQ);
+          confidence: 3 // TODO: Add confidence rating
         }
-        
-        // Update the current question with new data
-        const updatedQuestions = [...prevState.questions];
-        updatedQuestion = {
-          ...currentQ,
-          isAnswerLocked: true,
-          submissionTime: Date.now(),
-          answerHistory: [
-            ...(currentQ.answerHistory || []),
-            {
-              answer: selectedOption,
-              timestamp: Date.now(),
-              isCorrect
-            }
-          ],
-          spacedRepetition: updatedSpacedRepetition,
-          analytics: updatedAnalytics,
-          activeRecallPrompts
-        };
-        updatedQuestions[prevState.currentQuestion] = updatedQuestion;
-        
-        // Update locked answers state
-        const updatedLockedAnswers = {
-          ...prevState.lockedAnswers,
-          [currentQ.id]: {
+      });
+      learningDispatch({
+        type: 'UPDATE_SPACED_REPETITION',
+        payload: {
+          performance: isCorrect ? 'good' : 
+                      timeSpent < currentQ.estimatedTime ? 'perfect' :
+                      timeSpent > currentQ.estimatedTime * 1.5 ? 'hard' : 'medium'
+        }
+      });
+      // Update spaced repetition
+      const performanceRating = isCorrect ? 'good' : 'again';
+      const updatedSpacedRepetition = calculateNextReview(
+        currentQ.spacedRepetition,
+        performanceRating
+      );
+      // Update analytics
+      const updatedAnalytics = updateLearningAnalytics(
+        currentQ.analytics,
+        isCorrect,
+        timeSpent,
+        state.isInterleaved
+      );
+      // Generate active recall prompts
+      let activeRecallPrompts: string[] = [];
+      if (!isCorrect && !isEssay) {
+        activeRecallPrompts = generateActiveRecallPrompts(currentQ);
+      }
+      // Update the current question with new data
+      const updatedQuestions = [...state.questions];
+      updatedQuestion = {
+        ...currentQ,
+        isAnswerLocked: true,
+        submissionTime: Date.now(),
+        answerHistory: [
+          ...(currentQ.answerHistory || []),
+          {
             answer: selectedOption,
             timestamp: Date.now(),
             isCorrect
           }
-        };
-        
-        return {
-          ...prevState,
-          questions: updatedQuestions,
-          score: isEssay ? prevState.score : (isCorrect ? prevState.score + 1 : prevState.score),
-          userAnswers: (() => {
-            const newUserAnswers = [...prevState.userAnswers];
-            newUserAnswers[prevState.currentQuestion] = selectedOption;
-            return newUserAnswers;
-          })(),
-          feedback: null,
-          essayRatings: [...prevState.essayRatings],
-          activeRecallPrompts: activeRecallPrompts,
-          showActiveRecall: activeRecallPrompts.length > 0,
-          showConfirmation: activeRecallPrompts.length === 0,
-          lockedAnswers: updatedLockedAnswers
-        };
-      });
-      
-      // Set selected option AFTER state update to trigger re-render with updated analytics
+        ],
+        spacedRepetition: updatedSpacedRepetition,
+        analytics: updatedAnalytics,
+        activeRecallPrompts
+      };
+      updatedQuestions[state.currentQuestion] = updatedQuestion;
+      // Update locked answers state
+      const updatedLockedAnswers = {
+        ...state.lockedAnswers,
+        [currentQ.id]: {
+          answer: selectedOption,
+          timestamp: Date.now(),
+          isCorrect
+        }
+      };
+      setState(prevState => ({
+        ...prevState,
+        questions: updatedQuestions,
+        score: isEssay ? prevState.score : (isCorrect ? prevState.score + 1 : prevState.score),
+        userAnswers: (() => {
+          const newUserAnswers = [...prevState.userAnswers];
+          newUserAnswers[prevState.currentQuestion] = selectedOption;
+          return newUserAnswers;
+        })(),
+        feedback: aiFeedbackMsg,
+        essayRatings: [...prevState.essayRatings],
+        activeRecallPrompts: activeRecallPrompts,
+        showActiveRecall: activeRecallPrompts.length > 0,
+        showConfirmation: activeRecallPrompts.length === 0,
+        lockedAnswers: updatedLockedAnswers
+      }));
       setSelectedOption(selectedOption);
-
-      // Generate feedback based on learning state
-      const feedbackMessages = generateFeedback(
-        learningState.feedback,
-        learningState.analytics.performance.accuracy,
-        timeSpent,
-        learningState.mastery.currentLevel
-      );
-
       // Show feedback
-      const currentQ = state.questions[state.currentQuestion];
-      const isEssay = currentQ?.type === 'essay';
-      const isCorrect = selectedOption === currentQ?.answer;
-      
       if (!isEssay) {
         playSound(isCorrect ? 'correct' : 'incorrect');
         if (isCorrect) {
-          toast.success(feedbackMessages[0] || "Correct answer!");
+          toast.success(aiEvalResult.feedback || aiFeedbackMsg || "Correct answer!");
         } else {
-          toast.error(feedbackMessages[0] || "Incorrect answer! Try explaining this concept in your own words.");
+          toast.error(aiEvalResult.feedback || aiFeedbackMsg || "Incorrect answer! Try explaining this concept in your own words.");
         }
       } else {
         toast.success("Answer submitted for AI evaluation!");
       }
-
-      // Show additional feedback if available
-      if (feedbackMessages.length > 1) {
-        setTimeout(() => {
-          feedbackMessages.slice(1).forEach((message: string, index: number) => {
-            setTimeout(() => {
-              toast.info(message);
-            }, index * 1000);
-          });
-        }, 1000);
-      }
-
+      setIsLoading(false);
     } catch (error) {
-      debugError('Answer Processing', error as Error);
-      toast.error("An error occurred while processing your answer");
-    } finally {
+      debugError('handleAnswer', error as Error);
+      toast.error('Failed to process answer.');
       setIsLoading(false);
     }
   };
@@ -939,6 +908,37 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.currentQuestion, state.questions[state.currentQuestion]?.isAnswerLocked, selectedOption, openRouterKey, geminiKey, openAIKey, provider, selectedModel]);
+
+  useEffect(() => {
+    async function fetchQuestionsIfNeeded() {
+      if ((!externalQuestions || externalQuestions.length === 0) && state.questions.length === 0) {
+        setIsLoading(true);
+        try {
+          // You can customize topic/numQuestions as needed
+          const aiQuestions = await aiService.generateQuestions('General Knowledge', 5);
+          const enhancedQuestions = initializeQuizState(aiQuestions).questions;
+          setState(prevState => ({
+            ...prevState,
+            questions: enhancedQuestions,
+            userAnswers: Array(enhancedQuestions.length).fill(""),
+            essayRatings: Array(enhancedQuestions.length).fill(null),
+            startTime: new Date(),
+            isInterleaved: false,
+            activeRecallPrompts: [],
+            showActiveRecall: false,
+            showConfirmation: false
+          }));
+          setShowInput(false);
+        } catch (error) {
+          toast.error('Failed to generate questions with AI');
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    }
+    fetchQuestionsIfNeeded();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="container mx-auto p-4">

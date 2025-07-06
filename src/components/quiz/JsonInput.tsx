@@ -8,6 +8,7 @@ import { QuizQuestion } from "@/types/quiz";
 import { toast } from "sonner";
 import { exportQuizToFile, importQuizFromFile } from "@/utils/quizFileHandler";
 import StorageManager from '@/utils/storageManager';
+import AiFeedback from "./AiFeedback";
 
 interface JsonInputProps {
   onQuizStart: (questions: QuizQuestion[]) => void;
@@ -40,6 +41,14 @@ const JsonInput: React.FC<JsonInputProps> = ({ onQuizStart }) => {
   const [quizTitle, setQuizTitle] = useState<string>('');
   const [quizDescription, setQuizDescription] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [aiFeedback, setAiFeedback] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState<boolean>(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiProvider, setAiProvider] = useState<'openrouter' | 'gemini' | 'openai'>('openrouter');
+  const [openRouterKey, setOpenRouterKey] = useState<string>("");
+  const [geminiKey, setGeminiKey] = useState<string>("");
+  const [openAIKey, setOpenAIKey] = useState<string>("");
+  const [geminiModel, setGeminiModel] = useState<string>('gemini-pro');
 
   const validateQuestions = (questions: unknown[]): questions is QuizQuestion[] => {
     console.log('🔍 [DEBUG] validateQuestions called with:', questions);
@@ -289,6 +298,139 @@ const JsonInput: React.FC<JsonInputProps> = ({ onQuizStart }) => {
     }
   };
 
+  const fetchAiFeedback = async () => {
+    setAiLoading(true);
+    setAiError(null);
+    setAiFeedback(null);
+    try {
+      const prompt = `Review this quiz for clarity, coverage, and difficulty. Suggest improvements.\n\nQuiz JSON:\n${jsonInput}`;
+      let response, data, feedbackText = '';
+      if (aiProvider === 'openrouter' && openRouterKey) {
+        response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openRouterKey}`,
+          },
+          body: JSON.stringify({
+            model: 'deepseek/deepseek-chat-v3-0324:free',
+            messages: [
+              { role: 'system', content: 'You are an expert quiz designer. Provide clear, actionable feedback for quiz authors.' },
+              { role: 'user', content: prompt }
+            ],
+            max_tokens: 600,
+            temperature: 0.7
+          })
+        });
+        data = await response.json();
+        feedbackText = data.choices?.[0]?.message?.content || '';
+      } else if (aiProvider === 'gemini' && geminiKey) {
+        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { maxOutputTokens: 600, temperature: 0.7 }
+            })
+          });
+        data = await response.json();
+        if (data.error) throw new Error(data.error.message || 'Gemini API error');
+        feedbackText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      } else if (aiProvider === 'openai' && openAIKey) {
+        response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openAIKey}`,
+          },
+          body: JSON.stringify({
+            model: 'gpt-3.5-turbo',
+            messages: [
+              { role: 'system', content: 'You are an expert quiz designer. Provide clear, actionable feedback for quiz authors.' },
+              { role: 'user', content: prompt }
+            ],
+            max_tokens: 600,
+            temperature: 0.7
+          })
+        });
+        data = await response.json();
+        feedbackText = data.choices?.[0]?.message?.content || '';
+      } else {
+        throw new Error('No valid API key for selected provider');
+      }
+      if (!feedbackText) throw new Error('AI response missing expected content');
+      setAiFeedback(feedbackText);
+    } catch (err: any) {
+      setAiError(err?.message || 'Failed to get AI feedback');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleSendChatMessage = async (message: string) => {
+    try {
+      let response, data, aiReply = '';
+      if (aiProvider === 'openrouter' && openRouterKey) {
+        response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openRouterKey}`,
+          },
+          body: JSON.stringify({
+            model: 'deepseek/deepseek-chat-v3-0324:free',
+            messages: [
+              { role: 'system', content: 'You are a helpful quiz design assistant.' },
+              { role: 'user', content: message }
+            ],
+            max_tokens: 400,
+            temperature: 0.7
+          })
+        });
+        data = await response.json();
+        aiReply = data.choices?.[0]?.message?.content || '';
+      } else if (aiProvider === 'gemini' && geminiKey) {
+        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: message }] }],
+              generationConfig: { maxOutputTokens: 400, temperature: 0.7 }
+            })
+          });
+        data = await response.json();
+        aiReply = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      } else if (aiProvider === 'openai' && openAIKey) {
+        response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openAIKey}`,
+          },
+          body: JSON.stringify({
+            model: 'gpt-3.5-turbo',
+            messages: [
+              { role: 'system', content: 'You are a helpful quiz design assistant.' },
+              { role: 'user', content: message }
+            ],
+            max_tokens: 400,
+            temperature: 0.7
+          })
+        });
+        data = await response.json();
+        aiReply = data.choices?.[0]?.message?.content || '';
+      } else {
+        throw new Error('No valid API key for selected provider');
+      }
+      if (!aiReply) throw new Error('AI response missing expected content');
+      return aiReply;
+    } catch (err: any) {
+      return err?.message || 'Failed to get AI reply';
+    }
+  };
+
   return (
     <Card className="w-full max-w-xl mx-auto animate-fade-in">
       <CardHeader>
@@ -384,6 +526,83 @@ const JsonInput: React.FC<JsonInputProps> = ({ onQuizStart }) => {
           className="hidden"
         />
       </CardFooter>
+      <Card className="mb-4">
+        <CardHeader>
+          <CardTitle>AI Provider</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <select
+            className="mb-2 border rounded p-2"
+            value={aiProvider}
+            onChange={e => setAiProvider(e.target.value as any)}
+          >
+            <option value="openrouter">OpenRouter</option>
+            <option value="gemini">Gemini</option>
+            <option value="openai">OpenAI</option>
+          </select>
+          {aiProvider === 'openrouter' && (
+            <Input
+              type="password"
+              placeholder="Enter your OpenRouter API key"
+              value={openRouterKey}
+              onChange={e => setOpenRouterKey(e.target.value)}
+              className="mb-2"
+            />
+          )}
+          {aiProvider === 'gemini' && (
+            <Input
+              type="password"
+              placeholder="Enter your Gemini API key"
+              value={geminiKey}
+              onChange={e => setGeminiKey(e.target.value)}
+              className="mb-2"
+            />
+          )}
+          {aiProvider === 'openai' && (
+            <Input
+              type="password"
+              placeholder="Enter your OpenAI API key"
+              value={openAIKey}
+              onChange={e => setOpenAIKey(e.target.value)}
+              className="mb-2"
+            />
+          )}
+          <div className="text-xs text-gray-500">Your key is used only in your browser.</div>
+          {aiProvider === 'gemini' && (
+            <div className="mb-2">
+              <label className="block text-xs mb-1">Gemini Model</label>
+              <select
+                className="border rounded p-2 w-full"
+                value={geminiModel}
+                onChange={e => setGeminiModel(e.target.value)}
+              >
+                <option value="gemini-pro">gemini-pro</option>
+                <option value="gemini-pro-vision">gemini-pro-vision</option>
+                <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+                <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite</option>
+                <option value="gemini-2.0-pro-experimental">gemini-2.0-pro-experimental</option>
+                <option value="gemini-2.0-flash-thinking-experimental">gemini-2.0-flash-thinking-experimental</option>
+                <option value="learnlm-1.5-pro-experimental">learnlm-1.5-pro-experimental</option>
+              </select>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      <Button
+        className="mt-4"
+        onClick={fetchAiFeedback}
+        disabled={aiLoading || (aiProvider === 'openrouter' && !openRouterKey) || (aiProvider === 'gemini' && !geminiKey) || (aiProvider === 'openai' && !openAIKey)}
+      >
+        {aiLoading ? 'Getting AI Feedback...' : 'Get AI Feedback on Quiz'}
+      </Button>
+      {(aiFeedback || aiLoading || aiError) && (
+        <AiFeedback
+          feedback={aiFeedback}
+          loading={aiLoading}
+          error={aiError}
+          onSendChatMessage={handleSendChatMessage}
+        />
+      )}
     </Card>
   );
 };

@@ -9,6 +9,7 @@ import LearningDashboard from '../analytics/LearningDashboard';
 import StorageManager from '@/utils/storageManager';
 import { toast } from 'sonner';
 import { EnhancedQuizQuestion, QuizSession } from '@/types/user';
+import aiService from '@/utils/aiService';
 
 interface QuizResultsProps {
   questions: EnhancedQuizQuestion[];
@@ -39,6 +40,7 @@ const QuizResults: React.FC<QuizResultsProps> = ({
   const [loading, setLoading] = useState(false);
   const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(new Set());
   const [showDetails, setShowDetails] = useState(true);
+  const [aiSummary, setAiSummary] = useState<string>('');
 
   const totalPossible = questions.reduce((total, question) => {
     return total + (question.type === 'essay' ? 10 : 1);
@@ -87,8 +89,34 @@ const QuizResults: React.FC<QuizResultsProps> = ({
     loadSessions();
   }, []);
 
+  React.useEffect(() => {
+    async function fetchSummary() {
+      try {
+        const results = questions.map((q, i) => ({
+          question: q.question,
+          userAnswer: userAnswers[i],
+          correct: (userAnswers[i] === q.answer),
+          feedback: ''
+        }));
+        const summary = await aiService.summarizeResults(results);
+        setAiSummary(summary);
+      } catch (e) {
+        setAiSummary('');
+      }
+    }
+    fetchSummary();
+  }, [questions, userAnswers]);
+
   return (
     <div className="space-y-6">
+      {/* AI Summary */}
+      {aiSummary && (
+        <Card className="p-6 bg-blue-50 border-blue-200">
+          <div className="text-center text-blue-900 font-semibold text-lg">
+            {aiSummary}
+          </div>
+        </Card>
+      )}
       {/* Results Summary */}
       <Card className="p-6">
         <div className="text-center space-y-4">

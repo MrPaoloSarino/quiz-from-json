@@ -172,12 +172,13 @@ const QuizCard: React.FC<QuizCardProps> = ({
                   variant={buttonVariant}
                   className={buttonClasses}
                   disabled={showFeedback || question.isAnswerLocked}
+                  aria-label={`Option ${String.fromCharCode(65 + index)}: ${option}`}
                 >
-                  <div className="flex items-start gap-3 w-full">
-                    <span className="font-bold text-lg min-w-[24px]">
+                  <div className="grid grid-cols-[40px_1fr_auto] items-center w-full gap-2">
+                    <span className="font-bold text-lg text-left" style={{ width: 32, display: 'inline-block' }}>
                       {String.fromCharCode(65 + index)}.
                     </span>
-                    <span className="flex-1 font-medium">{option}</span>
+                    <span className="font-medium break-words text-left">{option}</span>
                     {question.isAnswerLocked && (
                       <span className="ml-2 flex items-center gap-1">
                         {isCorrectAnswer ? (
