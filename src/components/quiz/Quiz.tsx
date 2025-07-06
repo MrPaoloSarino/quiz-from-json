@@ -4,6 +4,7 @@ import QuizCard from "./QuizCard";
 import QuizResults from "./QuizResults";
 import AiFeedback from "./AiFeedback";
 import QuestionFeedback from "./QuestionFeedback";
+import AIExplainer from "./AIExplainer";
 import { QuizQuestion, QuizState, GeminiResponse } from "@/types/quiz";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -1081,28 +1082,18 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
             />
           )}
           
-          {/* Show feedback after answering */}
+          {/* Show AI Explainer after answering */}
           {selectedOption && state.questions[state.currentQuestion]?.isAnswerLocked && (
-            <>
-              <QuestionFeedback
-                question={state.questions[state.currentQuestion]}
-                userAnswer={selectedOption}
-                isCorrect={selectedOption === state.questions[state.currentQuestion]?.answer}
-                questionNumber={state.currentQuestion + 1}
-                provider={provider}
-                apiKey={openRouterKey}
-                selectedModel={selectedModel}
-                essayRating={state.essayRatings[state.currentQuestion]}
-              />
-              {(openRouterKey || geminiKey || openAIKey) && (
-                <AiFeedback
-                  feedback={aiFeedback}
-                  loading={aiLoading}
-                  error={aiError}
-                  onSendChatMessage={handleSendChatMessage}
-                />
-              )}
-            </>
+            <AIExplainer
+              context={{
+                question: state.questions[state.currentQuestion]?.question || '',
+                userAnswer: selectedOption,
+                correctAnswer: state.questions[state.currentQuestion]?.answer || '',
+                isCorrect: selectedOption === state.questions[state.currentQuestion]?.answer,
+                questionType: state.questions[state.currentQuestion]?.type || 'multiple',
+                options: state.questions[state.currentQuestion]?.options
+              }}
+            />
           )}
           
           {/* Always visible navigation */}

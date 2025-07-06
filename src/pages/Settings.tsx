@@ -1,6 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-
+import SimpleAISettings from '@/components/settings/SimpleAISettings';
 
 export default function Settings() {
   return (
@@ -22,19 +22,7 @@ export default function Settings() {
           </TabsList>
 
           <TabsContent value="ai" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>AI Configuration</CardTitle>
-                <CardDescription>
-                  Configure your AI provider and API settings for quiz generation and evaluation.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-muted-foreground">
-                  AI settings are now managed via the "AI/API Setup" button in the main header.
-                </div>
-              </CardContent>
-            </Card>
+            <SimpleAISettings />
           </TabsContent>
 
           <TabsContent value="account">

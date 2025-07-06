@@ -13,8 +13,9 @@ import { aiService, AIProvider } from '@/utils/aiService';
 import { ArrowLeft, User, Settings } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import SettingsPage from '@/pages/Settings';
 
-type AppView = 'dashboard' | 'quiz' | 'create' | 'profile';
+type AppView = 'dashboard' | 'quiz' | 'create' | 'profile' | 'settings';
 
 const providerModels = {
   openrouter: [
@@ -185,6 +186,10 @@ const QuizMasterApp: React.FC = () => {
     setCurrentView('profile');
   };
 
+  const handleViewSettings = () => {
+    setCurrentView('settings');
+  };
+
   React.useEffect(() => {
     const settingsStr = localStorage.getItem('ai_settings');
     if (settingsStr) {
@@ -253,12 +258,12 @@ const QuizMasterApp: React.FC = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setApiModalOpen(true)}
+              onClick={handleViewSettings}
               className="flex items-center gap-2"
-              aria-label="AI/API Setup"
+              aria-label="Settings"
             >
               <Settings className="w-4 h-4" />
-              <span className="hidden sm:block">AI/API Setup</span>
+              <span className="hidden sm:block">Settings</span>
             </Button>
             <span className="text-sm text-gray-600 hidden sm:block">Welcome, {user.name.split(' ')[0]}!</span>
             <Button 
@@ -377,6 +382,10 @@ const QuizMasterApp: React.FC = () => {
             <UserProfileComponent onSignOut={handleSignOut} />
           </div>
         );
+      
+      case 'settings':
+        console.log('🖥️ [DEBUG] Rendering settings view');
+        return <SettingsPage />;
       
       default:
         console.error('🖥️ [DEBUG] Unknown view:', currentView);
