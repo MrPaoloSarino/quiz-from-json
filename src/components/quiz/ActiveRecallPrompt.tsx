@@ -26,16 +26,16 @@ const ActiveRecallPrompt: React.FC<ActiveRecallPromptProps> = ({
   };
 
   return (
-    <Card className="p-6 space-y-6 bg-blue-50">
+    <Card className="p-6 space-y-6" style={{ background: 'var(--cerebrum-bg-secondary)' }}>
       <div className="flex items-center gap-3">
-        <Brain className="w-6 h-6 text-blue-600" />
-        <h3 className="text-lg font-semibold text-blue-900">
+        <Brain className="w-6 h-6" style={{ color: 'var(--cerebrum-secondary)' }} />
+        <h3 className="text-lg font-semibold" style={{ color: 'var(--cerebrum-primary)' }}>
           Active Recall Practice
         </h3>
       </div>
 
       <div className="space-y-4">
-        <p className="text-blue-800 font-medium">
+        <p style={{ color: 'var(--cerebrum-primary)', fontWeight: 500 }}>
           {prompts[currentPrompt]}
         </p>
 
@@ -47,13 +47,13 @@ const ActiveRecallPrompt: React.FC<ActiveRecallPromptProps> = ({
         />
 
         <div className="flex justify-between items-center">
-          <span className="text-sm text-blue-700">
+          <span className="text-sm" style={{ color: 'var(--cerebrum-secondary)' }}>
             Prompt {currentPrompt + 1} of {prompts.length}
           </span>
 
           <Button
             onClick={handleNext}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            style={{ background: 'var(--cerebrum-secondary)', color: '#fff', borderRadius: '0.375rem', padding: '0.5rem 1rem' }}
             disabled={!explanation.trim()}
           >
             {currentPrompt < prompts.length - 1 ? (

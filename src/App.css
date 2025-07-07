@@ -1,3 +1,94 @@
+/* Cerebrum Neural Blue Theme */
+:root {
+  --cerebrum-primary: #1E3A8A;
+  --cerebrum-secondary: #3B82F6;
+  --cerebrum-accent: #F59E0B;
+  --cerebrum-bg-primary: #FFFFFF;
+  --cerebrum-bg-secondary: #F8FAFC;
+  --cerebrum-bg-tertiary: #F1F5F9;
+  --cerebrum-text-primary: #1F2937;
+  --cerebrum-text-secondary: #6B7280;
+  --cerebrum-text-muted: #9CA3AF;
+  --cerebrum-hover: #2563EB;
+  --cerebrum-active: #1D4ED8;
+  --cerebrum-focus: #3B82F6;
+  --cerebrum-success: #10B981;
+  --cerebrum-warning: #F59E0B;
+  --cerebrum-error: #EF4444;
+  --cerebrum-info: #3B82F6;
+}
+
+body {
+  background: var(--cerebrum-bg-primary);
+  color: var(--cerebrum-text-primary);
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--cerebrum-primary);
+}
+
+a {
+  color: var(--cerebrum-secondary);
+  transition: color 0.2s;
+}
+
+a:hover {
+  color: var(--cerebrum-hover);
+}
+
+button, .btn {
+  background: #191919;
+  color: #fff;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  border: none;
+  box-shadow: 0 2px 8px 0 rgba(0,0,0,0.04);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+button:hover, .btn:hover {
+  background: #111111;
+  box-shadow: 0 4px 16px 0 rgba(0,0,0,0.08);
+}
+
+.card, .Card, .shadcn-card {
+  background: var(--cerebrum-bg-secondary);
+  border: 1px solid var(--cerebrum-bg-tertiary);
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 8px 0 rgba(30,58,138,0.04);
+}
+
+input, textarea, select {
+  background: var(--cerebrum-bg-tertiary);
+  color: var(--cerebrum-text-primary);
+  border: 1px solid var(--cerebrum-bg-secondary);
+  border-radius: 0.375rem;
+  padding: 0.5rem 1rem;
+  transition: border 0.2s;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--cerebrum-focus);
+  outline: none;
+}
+
+/* Status colors */
+.success {
+  color: var(--cerebrum-success);
+}
+.warning {
+  color: var(--cerebrum-warning);
+}
+.error {
+  color: var(--cerebrum-error);
+}
+.info {
+  color: var(--cerebrum-info);
+}
+
 #root {
   max-width: 1280px;
   margin: 0 auto;
@@ -31,10 +122,6 @@
   a:nth-of-type(2) .logo {
     animation: logo-spin infinite 20s linear;
   }
-}
-
-.card {
-  padding: 2em;
 }
 
 .read-the-docs {

@@ -69,36 +69,36 @@ const QuizCard: React.FC<QuizCardProps> = ({
           Question {questionNumber} of {totalQuestions}
         </h3>
         <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-gray-500" />
-          <span className="text-sm text-gray-500">
+          <Clock className="w-4 h-4" style={{ color: 'var(--cerebrum-text-muted)' }} />
+          <span className="text-sm" style={{ color: 'var(--cerebrum-text-muted)' }}>
             {timeAllowed}s
           </span>
         </div>
       </div>
 
       {/* Learning Analytics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4" style={{ background: 'var(--cerebrum-bg-secondary)', borderRadius: '0.5rem' }}>
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Brain className="w-4 h-4 text-blue-500" />
+            <Brain className="w-4 h-4" style={{ color: 'var(--cerebrum-secondary)' }} />
             <span className="text-sm font-medium">Mastery</span>
           </div>
           <Progress value={strengthScore} className="h-2" />
-          <span className="text-xs text-gray-500">{strengthScore}%</span>
+          <span className="text-xs" style={{ color: 'var(--cerebrum-text-muted)' }}>{strengthScore}%</span>
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Zap className="w-4 h-4 text-yellow-500" />
+            <Zap className="w-4 h-4" style={{ color: 'var(--cerebrum-accent)' }} />
             <span className="text-sm font-medium">Recall</span>
           </div>
           <Progress value={recallRate} className="h-2" />
-          <span className="text-xs text-gray-500">{recallRate}%</span>
+          <span className="text-xs" style={{ color: 'var(--cerebrum-text-muted)' }}>{recallRate}%</span>
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-green-500" />
+            <Clock className="w-4 h-4" style={{ color: 'var(--cerebrum-success)' }} />
             <span className="text-sm font-medium">Speed</span>
           </div>
           <Progress 
@@ -110,7 +110,7 @@ const QuizCard: React.FC<QuizCardProps> = ({
 
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <History className="w-4 h-4 text-purple-500" />
+            <History className="w-4 h-4" style={{ color: 'var(--cerebrum-focus)' }} />
             <span className="text-sm font-medium">Next Review</span>
           </div>
           <span className="text-sm">{daysUntilReview} days</span>
@@ -122,7 +122,7 @@ const QuizCard: React.FC<QuizCardProps> = ({
         <div className="flex justify-between items-start">
           <p className="text-lg flex-1">{question.question}</p>
           {question.isAnswerLocked && (
-            <div className="flex items-center gap-2 text-gray-500">
+            <div className="flex items-center gap-2" style={{ color: 'var(--cerebrum-text-muted)' }}>
               <Lock className="w-4 h-4" />
               <span className="text-sm">Answer Locked</span>
             </div>
@@ -145,19 +145,25 @@ const QuizCard: React.FC<QuizCardProps> = ({
               }
               
               // Determine styling based on state
-              let buttonVariant: "default" | "destructive" | "outline" | "secondary" = "outline";
+              let buttonStyle: React.CSSProperties = {};
               let buttonClasses = "w-full min-h-[44px] h-auto whitespace-normal p-4 justify-start text-left border-2 transition-all duration-200";
               
               if (isAnswerLocked) {
                 if (isCorrectAnswer) {
                   // Always highlight the correct answer in green when locked
-                  buttonClasses += " bg-green-50 border-green-200 text-green-800 hover:bg-green-100";
+                  buttonStyle.background = 'var(--cerebrum-success, #10B981)';
+                  buttonStyle.color = '#fff';
+                  buttonStyle.border = '1px solid var(--cerebrum-success, #10B981)';
                 } else if (isSelected && wasSelectedWrong) {
                   // Highlight the wrong selected answer in red
-                  buttonClasses += " bg-red-50 border-red-200 text-red-800 hover:bg-red-100";
+                  buttonStyle.background = 'var(--cerebrum-error, #EF4444)';
+                  buttonStyle.color = '#fff';
+                  buttonStyle.border = '1px solid var(--cerebrum-error, #EF4444)';
                 } else {
                   // Other options remain neutral
-                  buttonClasses += " bg-gray-50 border-gray-200 text-gray-600";
+                  buttonStyle.background = 'var(--cerebrum-bg-secondary)';
+                  buttonStyle.color = 'var(--cerebrum-text-muted)';
+                  buttonStyle.border = '1px solid var(--cerebrum-bg-tertiary)';
                 }
                 buttonClasses += " cursor-not-allowed";
               } else if (isSelected) {
@@ -169,8 +175,9 @@ const QuizCard: React.FC<QuizCardProps> = ({
                 <Button
                   key={index}
                   onClick={() => onAnswer(option)}
-                  variant={buttonVariant}
+                  variant="outline"
                   className={buttonClasses}
+                  style={buttonStyle}
                   disabled={showFeedback || question.isAnswerLocked}
                   aria-label={`Option ${String.fromCharCode(65 + index)}: ${option}`}
                 >

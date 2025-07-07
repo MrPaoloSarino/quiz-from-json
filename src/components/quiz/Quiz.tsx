@@ -643,9 +643,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       }));
       
       // For essays without AI, DO NOT auto-proceed. Let the user decide when to move on.
-      if (currentQ.type === 'essay' && !hasApiKey) {
-        toast.info('No AI configured. You may proceed to the next question when ready.');
-      }
+      toast.info('No AI configured. You may proceed to the next question when ready.');
     }
     } else {
       // No AI available - immediately proceed for essays, show basic feedback for others
@@ -659,28 +657,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
         }
       }));
       
-      if (currentQ.type === 'essay') {
-        toast.info('No AI configured. You may proceed to the next question when ready.');
-      } else {
-        // For multiple choice, also auto-proceed after brief feedback
-        setTimeout(() => {
-          if (state.currentQuestion < state.questions.length - 1) {
-            setState(prevState => ({
-              ...prevState,
-              currentQuestion: prevState.currentQuestion + 1,
-              feedback: null
-            }));
-            setSelectedOption(null);
-            setShowFeedback(false);
-          } else {
-            // Finish quiz
-            setState(prevState => ({
-              ...prevState,
-              showResults: true
-            }));
-          }
-        }, 2000); // 2 second delay for multiple choice
-      }
+      toast.info('No AI configured. You may proceed to the next question when ready.');
     }
     
     // Update learning metrics
@@ -1113,17 +1090,14 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
               Previous
             </Button>
             
-            <div className="text-sm text-gray-500">
+            <div className="text-sm" style={{ color: 'var(--cerebrum-text-muted)' }}>
               Question {state.currentQuestion + 1} of {state.questions.length}
             </div>
             
             <Button 
               onClick={moveToNextQuestion}
               disabled={!selectedOption && !state.questions[state.currentQuestion]?.isAnswerLocked}
-              className={state.currentQuestion === state.questions.length - 1 ? 
-                "bg-green-600 hover:bg-green-700 text-white font-semibold" : 
-                "bg-blue-600 hover:bg-blue-700 text-white"
-              }
+              className="bg-black hover:bg-neutral-900 text-white"
             >
               {state.currentQuestion < state.questions.length - 1 ? 'Next' : 'Finish Quiz 🎉'}
             </Button>
@@ -1136,10 +1110,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
               </Button>
               <Button 
                 onClick={moveToNextQuestion}
-                className={state.currentQuestion === state.questions.length - 1 ? 
-                  "bg-green-600 hover:bg-green-700 text-white font-semibold" : 
-                  "bg-blue-600 hover:bg-blue-700 text-white"
-                }
+                className="bg-black hover:bg-neutral-900 text-white"
               >
                 {state.currentQuestion < state.questions.length - 1 ? 'Next' : 'Finish Quiz 🎉'}
               </Button>
@@ -1149,13 +1120,13 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
           {isLoading && (
             <div className="flex justify-center my-4" aria-busy="true" aria-live="polite">
               <Spinner />
-              <span className="ml-2 text-blue-600">Waiting for AI...</span>
+              <span className="ml-2" style={{ color: 'var(--cerebrum-secondary)' }}>Waiting for AI...</span>
             </div>
           )}
         </div>
       ) : (
         <div className="text-center">
-          <p className="text-gray-500">No questions available</p>
+          <p style={{ color: 'var(--cerebrum-text-muted)' }}>No questions available</p>
           <Button onClick={() => setShowInput(true)} className="mt-4">
             Create Quiz
           </Button>

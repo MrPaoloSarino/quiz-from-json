@@ -69,7 +69,7 @@ const providerModels = {
   ]
 };
 
-const QuizMasterApp: React.FC = () => {
+const CerebrumApp: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [currentView, setCurrentView] = useState<AppView>('dashboard');
   const [currentQuiz, setCurrentQuiz] = useState<QuizQuestion[] | null>(null);
@@ -120,7 +120,7 @@ const QuizMasterApp: React.FC = () => {
       // Show storage mode info
       const storageInfo = StorageManager.getStorageInfo();
       const modeText = storageInfo.mode === 'local_storage' ? 'Offline Mode' : 'Cloud Mode';
-      console.log(` QuizMaster initialized in ${modeText}`);
+      console.log(` Cerebrum initialized in ${modeText}`);
     } catch (error) {
       console.error('Failed to initialize app:', error);
       toast.error('Failed to initialize application');
@@ -152,7 +152,7 @@ const QuizMasterApp: React.FC = () => {
   };
 
   const handleStartQuiz = (questions: QuizQuestion[]) => {
-    console.log(' [DEBUG] QuizMasterApp.handleStartQuiz called');
+    console.log(' [DEBUG] CerebrumApp.handleStartQuiz called');
     console.log(' [DEBUG] Received questions:', questions);
     console.log(' [DEBUG] Questions count:', questions.length);
     console.log(' [DEBUG] Current view before:', currentView);
@@ -168,7 +168,7 @@ const QuizMasterApp: React.FC = () => {
   };
 
   const handleCreateQuiz = () => {
-    console.log(' [DEBUG] QuizMasterApp.handleCreateQuiz called');
+    console.log(' [DEBUG] CerebrumApp.handleCreateQuiz called');
     console.log(' [DEBUG] Current view before:', currentView);
     setCurrentView('create');
     console.log(' [DEBUG] setCurrentView("create") called');
@@ -229,7 +229,7 @@ const QuizMasterApp: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Initializing QuizMaster AI...</p>
+          <p className="text-gray-600">Initializing Cerebrum...</p>
         </div>
       </div>
     );
@@ -256,8 +256,8 @@ const QuizMasterApp: React.FC = () => {
                 Back
               </Button>
             )}
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              QuizMaster AI
+            <h1 className="text-2xl font-bold text-black">
+              Cerebrum
             </h1>
           </div>
           
@@ -283,10 +283,10 @@ const QuizMasterApp: React.FC = () => {
             </TooltipProvider>
             <span className="text-sm text-gray-600 hidden sm:block">Welcome, {user.name.split(' ')[0]}!</span>
             <Button 
-              variant="ghost" 
-              size="sm" 
+              variant="ghost"
+              size="sm"
               onClick={handleViewProfile}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 hover:bg-black/70 hover:text-white"
             >
               <User className="w-4 h-4" />
               <span className="hidden sm:block">Profile</span>
@@ -419,4 +419,4 @@ const QuizMasterApp: React.FC = () => {
   );
 };
 
-export default QuizMasterApp;
+export default CerebrumApp;

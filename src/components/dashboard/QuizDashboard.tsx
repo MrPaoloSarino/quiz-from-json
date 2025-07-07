@@ -168,7 +168,7 @@ const QuizDashboard = forwardRef<QuizDashboardRef, QuizDashboardProps>(({ onStar
           </p>
         </div>
         
-        <Button onClick={onCreateQuiz} className="bg-blue-600 hover:bg-blue-700 text-white">
+        <Button onClick={onCreateQuiz} className="bg-black hover:bg-neutral-900 text-white">
           <Plus className="w-4 h-4 mr-2" />
           Create New Quiz
         </Button>
@@ -235,7 +235,7 @@ const QuizDashboard = forwardRef<QuizDashboardRef, QuizDashboardProps>(({ onStar
               }
             </p>
             {(!searchTerm && selectedCategory === 'all') && (
-              <Button onClick={onCreateQuiz} className="bg-blue-600 hover:bg-blue-700 text-white">
+              <Button onClick={onCreateQuiz} className="bg-black hover:bg-neutral-900 text-white">
                 <Plus className="w-4 h-4 mr-2" />
                 Create Your First Quiz
               </Button>
@@ -309,7 +309,7 @@ const QuizDashboard = forwardRef<QuizDashboardRef, QuizDashboardProps>(({ onStar
                 <div className={`flex gap-2 ${viewMode === 'list' ? 'flex-col min-w-[120px]' : ''}`}>
                   <Button 
                     onClick={() => handleStartQuiz(quiz)}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                    className="flex-1 bg-black hover:bg-neutral-900 text-white"
                     size="sm"
                   >
                     <Play className="w-4 h-4 mr-1" />
@@ -354,7 +354,7 @@ const QuizDashboard = forwardRef<QuizDashboardRef, QuizDashboardProps>(({ onStar
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </DialogClose>
-            <Button onClick={() => setEditModalOpen(false)} className="bg-blue-600 text-white">Save (Not Implemented)</Button>
+            <Button onClick={() => setEditModalOpen(false)} className="bg-black text-white">Save (Not Implemented)</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

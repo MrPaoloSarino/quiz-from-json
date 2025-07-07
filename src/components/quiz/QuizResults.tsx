@@ -113,8 +113,8 @@ const QuizResults: React.FC<QuizResultsProps> = ({
     <div className="space-y-6">
       {/* AI Summary */}
       {aiSummary && (
-        <Card className="p-6 bg-blue-50 border-blue-200">
-          <div className="text-center text-blue-900 font-semibold text-lg">
+        <Card className="p-6" style={{ background: 'var(--cerebrum-bg-secondary)', border: '1px solid var(--cerebrum-secondary)' }}>
+          <div className="text-center" style={{ color: 'var(--cerebrum-primary)', fontWeight: 600, fontSize: '1.125rem' }}>
             {aiSummary}
           </div>
         </Card>
@@ -123,10 +123,10 @@ const QuizResults: React.FC<QuizResultsProps> = ({
       <Card className="p-6">
         <div className="text-center space-y-4">
           <h2 className="text-2xl font-bold">Quiz Complete!</h2>
-          <div className="text-4xl font-bold text-blue-600">
+          <div className="text-4xl font-bold" style={{ color: 'var(--cerebrum-secondary)' }}>
             {score} / {questions.length}
           </div>
-          <p className="text-gray-600">
+          <p style={{ color: 'var(--cerebrum-text-secondary)' }}>
             {score === questions.length
               ? "Perfect score! 🎉"
               : score >= questions.length * 0.8
@@ -143,7 +143,7 @@ const QuizResults: React.FC<QuizResultsProps> = ({
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-xl font-semibold flex items-center gap-2">
-              <Brain className="w-5 h-5 text-blue-500" />
+              <Brain className="w-5 h-5" style={{ color: 'var(--cerebrum-secondary)' }} />
               Learning Analytics
             </h3>
             <Button
@@ -173,7 +173,7 @@ const QuizResults: React.FC<QuizResultsProps> = ({
         <Card className="p-6">
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <Brain className="w-5 h-5 text-blue-500" />
+              <Brain className="w-5 h-5" style={{ color: 'var(--cerebrum-secondary)' }} />
               <h3 className="font-semibold">AI Learning Prescription</h3>
             </div>
 
@@ -213,7 +213,7 @@ const QuizResults: React.FC<QuizResultsProps> = ({
         </Button>
         <Button
           onClick={onNewQuiz}
-          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+          className="flex-1" style={{ background: 'var(--cerebrum-secondary)', color: '#fff' }}
         >
           <Plus className="w-4 h-4 mr-2" />
           New Quiz

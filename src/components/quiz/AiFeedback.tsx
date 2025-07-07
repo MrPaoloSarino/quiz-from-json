@@ -27,7 +27,7 @@ const AiFeedback: React.FC<AiFeedbackProps> = ({
         <CardContent className="pt-4">
           <div className="flex items-center justify-center p-4">
             <Spinner className="h-8 w-8 text-quiz-primary" />
-            <span className="ml-2 text-sm text-green-500">Getting AI feedback...</span>
+            <span className="ml-2 text-sm" style={{ color: 'var(--cerebrum-success)' }}>Getting AI feedback...</span>
           </div>
         </CardContent>
       </Card>
@@ -36,14 +36,14 @@ const AiFeedback: React.FC<AiFeedbackProps> = ({
 
   if (error) {
     return (
-      <Card className="mt-4 bg-red-50 border-red-200">
+      <Card className="mt-4" style={{ background: 'var(--cerebrum-error, #EF4444)10', border: '1px solid var(--cerebrum-error, #EF4444)' }}>
         <CardContent className="pt-4">
           <div className="flex items-start">
-            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 mr-2" />
+            <AlertCircle className="h-5 w-5 mt-0.5 mr-2" style={{ color: 'var(--cerebrum-error)' }} />
             <div>
               <h3 className="text-sm font-medium mb-1">AI Feedback Error</h3>
-              <p className="text-sm text-red-600">{error}</p>
-              <p className="text-xs text-green-500 mt-2">Please check your API key or try again later.</p>
+              <p className="text-sm" style={{ color: 'var(--cerebrum-error)' }}>{error}</p>
+              <p className="text-xs mt-2" style={{ color: 'var(--cerebrum-success)' }}>Please check your API key or try again later.</p>
             </div>
           </div>
         </CardContent>
@@ -55,7 +55,7 @@ const AiFeedback: React.FC<AiFeedbackProps> = ({
 
   return (
     <>
-      <Card className="mt-4 bg-green-50 border-green-200">
+      <Card className="mt-4" style={{ background: 'var(--cerebrum-success, #10B981)10', border: '1px solid var(--cerebrum-success, #10B981)' }}>
         <CardContent className="pt-4">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-medium flex items-center">
@@ -79,7 +79,7 @@ const AiFeedback: React.FC<AiFeedbackProps> = ({
               </Button>
             )}
           </div>
-          <div className="text-sm text-green-700">
+          <div className="text-sm" style={{ color: 'var(--cerebrum-success)' }}>
             <ReactMarkdown>{feedback}</ReactMarkdown>
           </div>
         </CardContent>

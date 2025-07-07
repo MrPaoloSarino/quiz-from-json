@@ -1,8 +1,8 @@
 import React from "react";
-import QuizMasterApp from "@/components/QuizMasterApp";
+import CerebrumApp from "@/components/QuizMasterApp";
 
 const Index = () => {
-  return <QuizMasterApp />;
+  return <CerebrumApp />;
 };
 
 export default Index;

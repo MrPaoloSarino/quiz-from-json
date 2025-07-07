@@ -39,7 +39,7 @@ const GoogleSignIn: React.FC<GoogleSignInProps> = ({ onSignIn }) => {
               <AlertCircle className="w-10 h-10 text-white" />
             </div>
             <CardTitle className="text-3xl font-bold bg-gradient-to-r from-orange-600 via-red-600 to-pink-600 bg-clip-text text-transparent">
-              QuizMaster AI
+              Cerebrum
             </CardTitle>
             <p className="text-gray-600 mt-3 text-lg">
               Google APIs not configured - Running in Local Mode
@@ -183,7 +183,7 @@ const GoogleSignIn: React.FC<GoogleSignInProps> = ({ onSignIn }) => {
             <Brain className="w-10 h-10 text-white" />
           </div>
           <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-            QuizMaster AI
+            Cerebrum
           </CardTitle>
           <p className="text-gray-600 mt-3 text-lg">
             Your personal AI-powered learning companion

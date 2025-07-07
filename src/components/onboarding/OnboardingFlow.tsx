@@ -155,7 +155,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onSkip }) =
               <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Brain className="w-10 h-10 text-white" />
               </div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-3">Welcome to QuizMaster AI!</h2>
+              <h2 className="text-3xl font-bold text-gray-900 mb-3">Welcome to Cerebrum!</h2>
               <p className="text-gray-600 text-lg">Let's personalize your learning experience</p>
             </div>
             
