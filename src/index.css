@@ -13,7 +13,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 144 61% 20%;
 
-    --primary: 142 76% 36%;
+    --primary: 0 0% 0%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 143 64% 94%;
@@ -61,7 +61,7 @@
     --popover: 144 61% 10%;
     --popover-foreground: 143 64% 94%;
 
-    --primary: 142 76% 36%;
+    --primary: 0 0% 0%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 142 50% 20%;

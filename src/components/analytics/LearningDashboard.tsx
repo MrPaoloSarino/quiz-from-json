@@ -290,7 +290,7 @@ const LearningDashboard: React.FC<LearningDashboardProps> = ({
     beginner: 'bg-red-100 text-red-700 border-red-200',
     intermediate: 'bg-yellow-100 text-yellow-700 border-yellow-200',
     advanced: 'bg-blue-100 text-blue-700 border-blue-200',
-    expert: 'bg-green-100 text-green-700 border-green-200'
+    expert: 'bg-blue-100 text-blue-700 border-blue-200'
   };
 
   const insightIcons = {
@@ -301,7 +301,7 @@ const LearningDashboard: React.FC<LearningDashboardProps> = ({
   };
 
   const insightColors = {
-    strength: 'text-green-600 bg-green-50',
+    strength: 'text-blue-600 bg-blue-50',
     weakness: 'text-red-600 bg-red-50',
     improvement: 'text-blue-600 bg-blue-50',
     recommendation: 'text-purple-600 bg-purple-50'
@@ -355,7 +355,7 @@ const LearningDashboard: React.FC<LearningDashboardProps> = ({
 
             <Card className="p-4 space-y-2">
               <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-green-500" />
+                <Clock className="w-5 h-5 text-blue-500" />
                 <h3 className="font-medium">Avg Response</h3>
               </div>
               <span className="text-2xl font-semibold">{analytics_data.avgResponseTime}s</span>
@@ -392,7 +392,7 @@ const LearningDashboard: React.FC<LearningDashboardProps> = ({
 
             <Card className="p-4">
               <div className="flex items-center gap-2 mb-4">
-                <Activity className="w-5 h-5 text-green-500" />
+                <Activity className="w-5 h-5 text-blue-500" />
                 <h3 className="font-medium">Consistency</h3>
               </div>
               <div className="space-y-2">
@@ -415,7 +415,7 @@ const LearningDashboard: React.FC<LearningDashboardProps> = ({
                 <div className="flex items-center gap-2">
                   <span className="text-3xl font-bold">{Math.abs(analytics_data.improvementTrend)}%</span>
                   {analytics_data.improvementTrend > 0 ? (
-                    <TrendingUp className="w-5 h-5 text-green-500" />
+                    <TrendingUp className="w-5 h-5 text-blue-500" />
                   ) : analytics_data.improvementTrend < 0 ? (
                     <TrendingDown className="w-5 h-5 text-red-500" />
                   ) : (
@@ -572,7 +572,7 @@ const LearningDashboard: React.FC<LearningDashboardProps> = ({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-green-500" />
+                  <Calendar className="w-5 h-5 text-blue-500" />
                   Upcoming Reviews
                 </CardTitle>
               </CardHeader>
@@ -587,7 +587,7 @@ const LearningDashboard: React.FC<LearningDashboardProps> = ({
                       <div key={i} className={`p-3 rounded-lg border ${isOverdue ? 'border-red-200 bg-red-50' : isToday ? 'border-orange-200 bg-orange-50' : 'border-gray-200 bg-gray-50'}`}>
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
-                            <p className="font-medium text-sm truncate">{q.question}</p>
+                            <p className="font-medium text-sm break-words whitespace-normal">{q.question}</p>
                             <p className="text-xs text-gray-500 mt-1">{q.category}</p>
                           </div>
                           <div className="text-right ml-2">
@@ -602,7 +602,7 @@ const LearningDashboard: React.FC<LearningDashboardProps> = ({
                   
                   {upcomingReviews.length === 0 && (
                     <div className="text-center py-8">
-                      <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-2" />
+                      <CheckCircle2 className="w-12 h-12 text-blue-500 mx-auto mb-2" />
                       <p className="text-gray-500">No reviews scheduled for the next 7 days!</p>
                     </div>
                   )}

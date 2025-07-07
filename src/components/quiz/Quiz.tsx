@@ -1097,7 +1097,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
             <Button 
               onClick={moveToNextQuestion}
               disabled={!selectedOption && !state.questions[state.currentQuestion]?.isAnswerLocked}
-              className="bg-black hover:bg-black/10 text-black"
+              variant="default"
             >
               {state.currentQuestion < state.questions.length - 1 ? 'Next' : 'Finish Quiz 🎉'}
             </Button>
@@ -1110,7 +1110,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
               </Button>
               <Button 
                 onClick={moveToNextQuestion}
-                className="bg-black hover:bg-black/10 text-black"
+                variant="default"
               >
                 {state.currentQuestion < state.questions.length - 1 ? 'Next' : 'Finish Quiz 🎉'}
               </Button>
