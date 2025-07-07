@@ -168,7 +168,7 @@ const QuizDashboard = forwardRef<QuizDashboardRef, QuizDashboardProps>(({ onStar
           </p>
         </div>
         
-        <Button onClick={onCreateQuiz} className="bg-black hover:bg-black/10 text-black">
+        <Button onClick={onCreateQuiz} variant="default">
           <Plus className="w-4 h-4 mr-2" />
           Create New Quiz
         </Button>
@@ -235,7 +235,7 @@ const QuizDashboard = forwardRef<QuizDashboardRef, QuizDashboardProps>(({ onStar
               }
             </p>
             {(!searchTerm && selectedCategory === 'all') && (
-              <Button onClick={onCreateQuiz} className="bg-black hover:bg-black/10 text-black">
+              <Button onClick={onCreateQuiz} variant="default">
                 <Plus className="w-4 h-4 mr-2" />
                 Create Your First Quiz
               </Button>
@@ -309,8 +309,9 @@ const QuizDashboard = forwardRef<QuizDashboardRef, QuizDashboardProps>(({ onStar
                 <div className={`flex gap-2 ${viewMode === 'list' ? 'flex-col min-w-[120px]' : ''}`}>
                   <Button 
                     onClick={() => handleStartQuiz(quiz)}
-                    className="flex-1 bg-black hover:bg-black/10 text-black"
+                    className="flex-1"
                     size="sm"
+                    variant="default"
                   >
                     <Play className="w-4 h-4 mr-1" />
                     Start
@@ -323,7 +324,7 @@ const QuizDashboard = forwardRef<QuizDashboardRef, QuizDashboardProps>(({ onStar
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="p-2 text-black hover:text-black hover:bg-black/10"
+                      className="p-2"
                       onClick={() => handleDeleteQuiz(quiz.id, quiz.title)}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -354,7 +355,7 @@ const QuizDashboard = forwardRef<QuizDashboardRef, QuizDashboardProps>(({ onStar
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </DialogClose>
-            <Button onClick={() => setEditModalOpen(false)} className="bg-black text-white">Save (Not Implemented)</Button>
+            <Button onClick={() => setEditModalOpen(false)} variant="default">Save (Not Implemented)</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
