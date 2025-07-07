@@ -51,8 +51,7 @@ const QuestionFeedback: React.FC<QuestionFeedbackProps> = ({
     if (!explanation && !loadingExplanation && apiKey) {
       getExplanation();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    }, []);
 
   const getExplanation = async () => {
     if (!apiKey) {

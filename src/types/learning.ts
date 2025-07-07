@@ -125,6 +125,16 @@ export interface LearningAnalytics {
   };
 }
 
+// Add this type for assumptions
+export interface Assumption {
+  id: string;
+  text: string;
+  source?: string;
+  confidence?: number;
+  createdAt: Date;
+  tags?: string[];
+}
+
 // Learning State Management
 export interface LearningState {
   spacedRepetition: SpacedRepetitionConfig;
@@ -134,4 +144,5 @@ export interface LearningState {
   adaptive: AdaptiveSettings;
   feedback: FeedbackConfig;
   analytics: LearningAnalytics;
+  assumptions?: Assumption[];
 } 

@@ -14,6 +14,7 @@ import { ArrowLeft, User, Settings } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import SettingsPage from '@/pages/Settings';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 
 type AppView = 'dashboard' | 'quiz' | 'create' | 'profile' | 'settings';
 
@@ -97,6 +98,12 @@ const QuizMasterApp: React.FC = () => {
 
   useEffect(() => {
     initializeApp();
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setApiModalOpen(true);
+    window.addEventListener('open-ai-api-setup', handler);
+    return () => window.removeEventListener('open-ai-api-setup', handler);
   }, []);
 
   const initializeApp = async () => {
@@ -255,16 +262,25 @@ const QuizMasterApp: React.FC = () => {
           </div>
           
           <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleViewSettings}
-              className="flex items-center gap-2"
-              aria-label="Settings"
-            >
-              <Settings className="w-4 h-4" />
-              <span className="hidden sm:block">Settings</span>
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setApiModalOpen(true)}
+                    className="flex items-center gap-2"
+                    aria-label="AI/API Setup"
+                  >
+                    <Settings className="w-4 h-4" />
+                    <span className="hidden sm:block">AI/API Setup</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Configure your AI provider, API key, and model for quiz generation and feedback.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <span className="text-sm text-gray-600 hidden sm:block">Welcome, {user.name.split(' ')[0]}!</span>
             <Button 
               variant="ghost" 

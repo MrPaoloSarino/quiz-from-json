@@ -1,12 +1,13 @@
 // Centralized AI Service for Quiz System
 import { API_CONFIG, PROVIDERS, AIProvider, GeminiModel } from './aiConfig';
 import { loadSettings, saveSettings } from './aiSettings';
+import { secureStorage } from './secureStorage';
 
 class AIService {
   private static instance: AIService;
   private rateLimitCalls = 0;
   private lastRateLimitReset = Date.now();
-  private readonly RATE_LIMIT = { windowMs: 60000, maxCalls: 20 };
+  private readonly RATE_LIMIT = { windowMs: 60000, maxCalls: 40 };
   private currentProvider: AIProvider = 'openrouter';
   private currentModel: string = 'deepseek-chat-v3';
   private apiKey: string = '';
@@ -41,6 +42,9 @@ class AIService {
   }
 
   private async ensureSettingsLoaded(): Promise<void> {
+    // Always reload API key from secureStorage before each request
+    const secureApiKey = await secureStorage.getApiKey(this.currentProvider);
+    this.apiKey = secureApiKey || '';
     if (!this.settingsLoaded) {
       await this.loadSettings();
     }

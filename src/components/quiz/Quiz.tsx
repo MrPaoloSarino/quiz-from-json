@@ -30,6 +30,9 @@ import ActiveRecallPrompt from './ActiveRecallPrompt';
 import { useLearning } from '@/contexts/LearningContext';
 import { generateFeedback } from '@/utils/learningEngine';
 import aiService from '@/utils/aiService';
+import { Spinner } from '@/components/ui/spinner';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { analytics } from '@/utils/saasAnalytics';
 
 const API_URLS = {
   OPENROUTER: "https://openrouter.ai/api/v1/chat/completions",
@@ -209,6 +212,15 @@ const initializeQuizState = (externalQuestions?: QuizQuestion[]): QuizState => {
   };
 };
 
+function shuffleArray<T>(array: T[]): T[] {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQuestions }) => {
   const [state, setState] = useState<QuizState>(() => initializeQuizState(externalQuestions));
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
@@ -245,6 +257,9 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
   const [aiFeedback, setAiFeedback] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState<boolean>(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [showApiKeyAlert, setShowApiKeyAlert] = useState(false);
+  const [retryAction, setRetryAction] = useState<(() => void) | null>(null);
+  const [isApiKeyConfigured, setIsApiKeyConfigured] = useState(true);
 
   // Add AbortController ref for API calls
   const abortControllerRef = React.useRef<AbortController>(new AbortController());
@@ -416,8 +431,10 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
   };
 
   const prepareQuiz = (questions: QuizQuestion[]) => {
-    const enhancedQuestions = initializeQuizState(questions).questions;
-    setLoadedQuestions(questions);
+    // Shuffle questions before starting the quiz
+    const shuffledQuestions = shuffleArray(questions);
+    const enhancedQuestions = initializeQuizState(shuffledQuestions).questions;
+    setLoadedQuestions(shuffledQuestions);
     setShowInput(false);
     setState(prevState => ({
       ...prevState,
@@ -425,16 +442,24 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       currentQuestion: 0,
       score: 0,
       showResults: false,
-      userAnswers: Array(questions.length).fill(""),
+      userAnswers: Array(shuffledQuestions.length).fill(""),
       feedback: null,
-      essayRatings: Array(questions.length).fill(null),
-      isInterleaved: false,
+      essayRatings: Array(shuffledQuestions.length).fill(null),
       startTime: new Date(),
+      isInterleaved: false,
       activeRecallPrompts: [],
       showActiveRecall: false,
       showConfirmation: false
     }));
     setShowGeminiInput(false);
+    
+    // Track quiz start analytics
+    analytics.trackQuizStart({
+      title: `Quiz Session ${Date.now()}`,
+      questionCount: shuffledQuestions.length,
+      difficulty: calculateSessionDifficulty(enhancedQuestions),
+      category: 'Mixed Topics'
+    });
   };
 
   const randomizeQuestions = () => {
@@ -950,8 +975,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       setAiError(null);
       setAiLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.currentQuestion, state.questions[state.currentQuestion]?.isAnswerLocked, selectedOption, openRouterKey, geminiKey, openAIKey, provider, selectedModel]);
+    }, [state.currentQuestion, state.questions[state.currentQuestion]?.isAnswerLocked, selectedOption, openRouterKey, geminiKey, openAIKey, provider, selectedModel]);
 
   useEffect(() => {
     async function fetchQuestionsIfNeeded() {
@@ -989,11 +1013,43 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       }
     }
     fetchQuestionsIfNeeded();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+  useEffect(() => {
+    // Check if API key is configured
+    aiService.isApiKeyConfigured().then(setIsApiKeyConfigured);
   }, []);
 
   return (
     <div className="container mx-auto p-4">
+      {!isApiKeyConfigured && showApiKeyAlert && (
+        <Alert aria-live="assertive" className="mb-4">
+          <AlertTitle>API Key Required</AlertTitle>
+          <AlertDescription>
+            To use AI-powered explanations and feedback, please set up your API key.
+            <Button className="ml-2" onClick={() => window.dispatchEvent(new CustomEvent('open-ai-api-setup'))}>
+              Open AI/API Setup
+            </Button>
+            <Button className="ml-2" variant="ghost" onClick={() => setShowApiKeyAlert(false)}>
+              Dismiss
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      {aiError && (
+        <Alert aria-live="assertive" className="mb-4" variant="destructive">
+          <AlertTitle>AI Error</AlertTitle>
+          <AlertDescription>
+            {aiError}
+            {retryAction && (
+              <Button className="ml-2" onClick={retryAction}>Retry</Button>
+            )}
+            <Button className="ml-2" variant="ghost" onClick={() => setAiError(null)}>
+              Dismiss
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
       {showInput ? (
         <JsonInput onQuizStart={prepareQuiz} />
       ) : state.showResults ? (
@@ -1087,6 +1143,13 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
               >
                 {state.currentQuestion < state.questions.length - 1 ? 'Next' : 'Finish Quiz 🎉'}
               </Button>
+            </div>
+          )}
+          
+          {isLoading && (
+            <div className="flex justify-center my-4" aria-busy="true" aria-live="polite">
+              <Spinner />
+              <span className="ml-2 text-blue-600">Waiting for AI...</span>
             </div>
           )}
         </div>

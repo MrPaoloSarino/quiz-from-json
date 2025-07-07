@@ -1,15 +1,15 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { LearningState } from '@/types/learning';
+import { LearningState, Assumption } from '@/types/learning';
 import {
   calculateNextReview,
   assessCognitiveLoad,
   determineMasteryLevel,
   adjustDifficulty,
-  generateFeedback,
   updateAnalytics
 } from '@/utils/learningEngine';
 
 // Initial state
+// Add to initial state
 const initialLearningState: LearningState = {
   spacedRepetition: {
     initialInterval: 24,  // hours
@@ -129,13 +129,28 @@ const initialLearningState: LearningState = {
 };
 
 // Action types
+// Add new action types
 type LearningAction =
+  | { type: 'ADD_AI_EXPLANATION'; payload: { questionId: string; explanation: AIExplanation } }
+  | { type: 'QUEUE_EXPLANATION'; payload: { questionId: string; question: string; userAnswer: string } }
+  | { type: 'SET_EXPLANATION_STATUS'; payload: { isProcessing: boolean; currentQuestionId: string | null; error: string | null } }
   | { type: 'UPDATE_SPACED_REPETITION'; payload: { performance: 'perfect' | 'good' | 'medium' | 'hard' } }
   | { type: 'UPDATE_COGNITIVE_LOAD'; payload: { timeSpent: number; performance: number } }
   | { type: 'UPDATE_MASTERY'; payload: { accuracy: number; speed: number; timeSpent: number } }
   | { type: 'UPDATE_ADAPTIVE_SETTINGS'; payload: { performance: number; timeSpent: number; confidence: number } }
   | { type: 'UPDATE_ANALYTICS'; payload: { performance: number; timeSpent: number } }
-  | { type: 'RESET_STATE' };
+  | { type: 'RESET_STATE' }
+  | { type: 'ADD_ASSUMPTION'; payload: { assumption: Assumption } }
+  | { type: 'UPDATE_ASSUMPTION'; payload: { id: string; updates: Partial<Assumption> } }
+  | { type: 'REMOVE_ASSUMPTION'; payload: { id: string } };
+
+// Add this type definition at the top or near the action types
+// If you want to move it to types/learning.ts later, you can
+export type AIExplanation = {
+  text: string;
+  source?: string;
+  confidence?: number;
+};
 
 // Reducer
 const learningReducer = (state: LearningState, action: LearningAction): LearningState => {
@@ -217,6 +232,24 @@ const learningReducer = (state: LearningState, action: LearningAction): Learning
 
     case 'RESET_STATE':
       return initialLearningState;
+
+    case 'ADD_ASSUMPTION':
+      return {
+        ...state,
+        assumptions: [...(state.assumptions || []), action.payload.assumption]
+      };
+    case 'UPDATE_ASSUMPTION':
+      return {
+        ...state,
+        assumptions: (state.assumptions || []).map(a =>
+          a.id === action.payload.id ? { ...a, ...action.payload.updates } : a
+        )
+      };
+    case 'REMOVE_ASSUMPTION':
+      return {
+        ...state,
+        assumptions: (state.assumptions || []).filter(a => a.id !== action.payload.id)
+      };
 
     default:
       return state;
@@ -314,4 +347,4 @@ export const useLearning = () => {
     throw new Error('useLearning must be used within a LearningProvider');
   }
   return context;
-}; 
+};
