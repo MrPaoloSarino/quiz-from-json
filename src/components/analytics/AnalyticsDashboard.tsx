@@ -737,7 +737,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ userId, onUpgra
                       </li>
                     </ul>
                     {onUpgrade && (
-                      <Button onClick={onUpgrade} className="bg-blue-600 hover:bg-blue-700">
+                      <Button onClick={onUpgrade} className="bg-black hover:bg-black/10 text-black">
                         Upgrade to Pro
                       </Button>
                     )}

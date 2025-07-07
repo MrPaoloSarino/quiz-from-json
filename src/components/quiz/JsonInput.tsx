@@ -423,14 +423,14 @@ const JsonInput: React.FC<JsonInputProps> = ({ onQuizStart }) => {
         <div className="flex gap-2 w-full">
           <Button 
             onClick={handleStartQuiz}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+            className="flex-1 bg-black hover:bg-black/10 text-black"
           >
             Start Quiz
           </Button>
           <Button
             onClick={handleSaveToCloud}
             variant="outline"
-            className="flex-1 border-green-500 text-green-600 hover:bg-green-50"
+            className="flex-1 border-black text-black hover:bg-black/10"
           >
             Save to Cloud
           </Button>

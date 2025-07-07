@@ -190,7 +190,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ onSignOut }) => {
           
           <Button 
             variant="outline" 
-            className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+            className="w-full justify-start text-black hover:text-black hover:bg-black/10"
             onClick={handleSignOut}
           >
             <LogOut className="w-4 h-4 mr-2" />

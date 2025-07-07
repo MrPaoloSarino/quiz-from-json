@@ -87,7 +87,7 @@ const GoogleSignIn: React.FC<GoogleSignInProps> = ({ onSignIn }) => {
                 <Button 
                   variant="outline" 
                   size="sm"
-                  className="text-blue-700 border-blue-300 hover:bg-blue-100"
+                  className="text-black border-black hover:bg-black/10"
                   onClick={() => window.open('https://console.cloud.google.com/', '_blank')}
                 >
                   <ExternalLink className="w-4 h-4 mr-2" />
@@ -96,7 +96,7 @@ const GoogleSignIn: React.FC<GoogleSignInProps> = ({ onSignIn }) => {
                 <Button 
                   variant="outline" 
                   size="sm"
-                  className="text-blue-700 border-blue-300 hover:bg-blue-100"
+                  className="text-black border-black hover:bg-black/10"
                   onClick={() => window.open('/GOOGLE_SETUP.md', '_blank')}
                 >
                   <Settings className="w-4 h-4 mr-2" />
@@ -122,7 +122,7 @@ const GoogleSignIn: React.FC<GoogleSignInProps> = ({ onSignIn }) => {
               
               <Button 
                 variant="outline" 
-                className="h-14 border-2 border-blue-300 text-blue-700 hover:bg-blue-50 font-medium"
+                className="h-14 border-2 border-black text-black hover:bg-black/10 font-medium"
                 onClick={() => window.open('https://github.com/yourusername/quiz-from-json#setup', '_blank')}
               >
                 <ExternalLink className="w-5 h-5 mr-2" />
@@ -242,7 +242,7 @@ const GoogleSignIn: React.FC<GoogleSignInProps> = ({ onSignIn }) => {
           <Button 
             onClick={handleSignIn}
             disabled={loading}
-            className="w-full bg-white text-gray-700 border-2 border-gray-200 hover:bg-gray-50 hover:border-gray-300 flex items-center justify-center gap-3 h-14 text-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
+            className="w-full bg-white text-black border-2 border-black hover:bg-black/10 hover:border-black flex items-center justify-center gap-3 h-14 text-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
             size="lg"
           >
             {loading ? (

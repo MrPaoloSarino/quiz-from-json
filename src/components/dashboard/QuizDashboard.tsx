@@ -168,7 +168,7 @@ const QuizDashboard = forwardRef<QuizDashboardRef, QuizDashboardProps>(({ onStar
           </p>
         </div>
         
-        <Button onClick={onCreateQuiz} className="bg-black hover:bg-neutral-900 text-white">
+        <Button onClick={onCreateQuiz} className="bg-black hover:bg-black/10 text-black">
           <Plus className="w-4 h-4 mr-2" />
           Create New Quiz
         </Button>
@@ -235,7 +235,7 @@ const QuizDashboard = forwardRef<QuizDashboardRef, QuizDashboardProps>(({ onStar
               }
             </p>
             {(!searchTerm && selectedCategory === 'all') && (
-              <Button onClick={onCreateQuiz} className="bg-black hover:bg-neutral-900 text-white">
+              <Button onClick={onCreateQuiz} className="bg-black hover:bg-black/10 text-black">
                 <Plus className="w-4 h-4 mr-2" />
                 Create Your First Quiz
               </Button>
@@ -309,7 +309,7 @@ const QuizDashboard = forwardRef<QuizDashboardRef, QuizDashboardProps>(({ onStar
                 <div className={`flex gap-2 ${viewMode === 'list' ? 'flex-col min-w-[120px]' : ''}`}>
                   <Button 
                     onClick={() => handleStartQuiz(quiz)}
-                    className="flex-1 bg-black hover:bg-neutral-900 text-white"
+                    className="flex-1 bg-black hover:bg-black/10 text-black"
                     size="sm"
                   >
                     <Play className="w-4 h-4 mr-1" />
@@ -323,7 +323,7 @@ const QuizDashboard = forwardRef<QuizDashboardRef, QuizDashboardProps>(({ onStar
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="p-2 text-black hover:text-black hover:bg-black/10"
                       onClick={() => handleDeleteQuiz(quiz.id, quiz.title)}
                     >
                       <Trash2 className="w-4 h-4" />
