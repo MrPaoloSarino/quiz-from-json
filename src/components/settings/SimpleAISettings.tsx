@@ -134,18 +134,23 @@ const SimpleAISettings: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             🤖 AI Settings
-            {activeProvider && (
+            {aiManager.isAvailable() ? (
               <Badge variant="default" className="bg-success/10 text-success">
-                Active: {activeProvider}
+                Active: {aiManager.getProviderInfo()?.name}
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-muted-foreground">
+                Disabled - No valid API key
               </Badge>
             )}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {!activeProvider && (
+          {!aiManager.getUserConsentStatus() && (
             <Alert className="mb-6">
               <AlertDescription>
-                💡 Add an API key below to enable AI explanations and chat features. The first valid key you save will be automatically used.
+                🔒 AI features require explicit user consent.
+                <Button onClick={() => aiManager.giveUserConsent()} className="ml-2">Enable AI Features</Button>
               </AlertDescription>
             </Alert>
           )}

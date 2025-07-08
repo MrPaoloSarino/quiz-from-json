@@ -22,9 +22,10 @@ class AIManager {
   private activeProvider: AIProvider | null = null;
   private activeApiKey: string | null = null;
   private activeModel: string | null = null;
+  private userConsentGiven: boolean = false;
 
   private constructor() {
-    this.autoDetectProvider();
+    this.checkUserConsent();
   }
 
   public static getInstance(): AIManager {
@@ -34,69 +35,116 @@ class AIManager {
     return AIManager.instance;
   }
 
-  // Auto-detect which provider has a saved API key
-  private async autoDetectProvider(): Promise<void> {
+  private async checkUserConsent(): Promise<void> {
+    const consent = localStorage.getItem('ai-user-consent');
+    this.userConsentGiven = consent === 'true';
+    if (!this.userConsentGiven) {
+      console.log('🔒 AI Manager: User consent not given - AI features disabled');
+      return;
+    }
+    await this.validateSavedProvider();
+  }
+
+  private async validateSavedProvider(): Promise<void> {
     try {
-      // Check each provider for saved API keys
       for (const provider of Object.keys(PROVIDERS) as AIProvider[]) {
         const apiKey = await secureStorage.getApiKey(provider);
         if (apiKey) {
-          console.log(`🔍 Found API key for ${provider}, setting as active provider`);
-          this.activeProvider = provider;
-          this.activeApiKey = apiKey;
-          this.activeModel = PROVIDERS[provider].models[0].id;
-          break; // Use the first one found
+          console.log(`🔍 Found saved API key for ${provider}`);
+          const isValid = await this.validateApiKey(provider, apiKey);
+          if (isValid) {
+            console.log(`✅ Validated saved API key for ${provider}`);
+            this.activeProvider = provider;
+            this.activeApiKey = apiKey;
+            this.activeModel = PROVIDERS[provider].models[0].id;
+            break;
+          } else {
+            console.log(`❌ Invalid saved API key for ${provider} - removing`);
+            secureStorage.removeApiKey(provider);
+          }
         }
       }
-      
       if (!this.activeProvider) {
-        console.log('⚠️ No API keys found. Please configure in settings.');
+        console.log('⚠️ No valid API keys found. User must configure in settings.');
       } else {
         console.log(`✅ Active AI Provider: ${PROVIDERS[this.activeProvider].name}`);
       }
     } catch (error) {
-      console.error('Failed to auto-detect AI provider:', error);
+      console.error('Failed to validate saved AI provider:', error);
+      this.clearAllApiKeys();
     }
   }
 
-  // Refresh provider detection (call this after saving new API keys)
+  private async validateApiKey(provider: AIProvider, apiKey: string): Promise<boolean> {
+    try {
+      const testPrompt = 'Test connection';
+      const response = await this.makeRequestWithProvider(provider, apiKey, testPrompt);
+      return response.length > 0;
+    } catch (error) {
+      console.error(`API key validation failed for ${provider}:`, error);
+      return false;
+    }
+  }
+
+  private clearAllApiKeys(): void {
+    Object.keys(PROVIDERS).forEach(provider => {
+      secureStorage.removeApiKey(provider as AIProvider);
+    });
+    this.activeProvider = null;
+    this.activeApiKey = null;
+    this.activeModel = null;
+  }
+
+  public async giveUserConsent(): Promise<void> {
+    this.userConsentGiven = true;
+    localStorage.setItem('ai-user-consent', 'true');
+    console.log('🔒 User consent given for AI features');
+    await this.validateSavedProvider();
+  }
+
+  public revokeUserConsent(): void {
+    this.userConsentGiven = false;
+    localStorage.removeItem('ai-user-consent');
+    this.clearAllApiKeys();
+    console.log('🔒 User consent revoked - AI features disabled');
+  }
+
   public async refreshProvider(): Promise<void> {
-    await this.autoDetectProvider();
+    if (!this.userConsentGiven) {
+      console.log('🔒 Cannot refresh provider - user consent not given');
+      return;
+    }
+    await this.validateSavedProvider();
   }
 
-  // Check if AI is available
   public isAvailable(): boolean {
-    return !!(this.activeProvider && this.activeApiKey);
+    return this.userConsentGiven && !!(this.activeProvider && this.activeApiKey);
   }
 
-  // Get current provider info
   public getProviderInfo(): { name: string; model: string } | null {
-    if (!this.activeProvider) return null;
+    if (!this.isAvailable()) return null;
     return {
-      name: PROVIDERS[this.activeProvider].name,
+      name: PROVIDERS[this.activeProvider!].name,
       model: this.activeModel || 'default'
     };
   }
 
-  // Make API request with current provider
-  private async makeRequest(prompt: string): Promise<string> {
-    if (!this.activeProvider || !this.activeApiKey) {
-      throw new Error('No AI provider configured. Please add an API key in settings.');
-    }
+  public getUserConsentStatus(): boolean {
+    return this.userConsentGiven;
+  }
 
-    const provider = PROVIDERS[this.activeProvider];
+  private async makeRequestWithProvider(provider: AIProvider, apiKey: string, prompt: string): Promise<string> {
+    const providerConfig = PROVIDERS[provider];
     let url: string;
     let requestBody: any;
     let headers: Record<string, string>;
-
-    if (this.activeProvider === 'gemini') {
-      url = `${provider.baseUrl}/${this.activeModel}:generateContent?key=${this.activeApiKey}`;
-      headers = provider.headers(this.activeApiKey);
-      requestBody = provider.formatRequest!(prompt, this.activeModel!);
+    if (provider === 'gemini') {
+      url = `${providerConfig.baseUrl}/${this.activeModel}:generateContent?key=${apiKey}`;
+      headers = providerConfig.headers(apiKey);
+      requestBody = providerConfig.formatRequest!(prompt, this.activeModel!);
     } else {
-      // OpenRouter and OpenAI
-      url = provider.baseUrl;
-      headers = provider.headers(this.activeApiKey);
+      url = providerConfig.baseUrl;
+      headers = providerConfig.headers(apiKey);
       requestBody = {
         model: this.activeModel,
         messages: [
@@ -107,28 +155,32 @@ class AIManager {
         temperature: 0.7
       };
     }
-
-    console.log(`🤖 Making ${this.activeProvider} request...`);
-    
+    console.log(`🤖 Making ${provider} request...`);
     const response = await fetch(url, {
       method: 'POST',
       headers,
       body: JSON.stringify(requestBody)
     });
-
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`AI request failed: ${response.status} - ${errorText}`);
     }
-
     const data = await response.json();
-    
-    // Parse response based on provider
-    if (this.activeProvider === 'gemini') {
-      return provider.parseResponse!(data);
+    if (provider === 'gemini') {
+      return providerConfig.parseResponse!(data);
     } else {
       return data.choices?.[0]?.message?.content || 'No response received';
     }
+  }
+
+  private async makeRequest(prompt: string): Promise<string> {
+    if (!this.userConsentGiven) {
+      throw new Error('User consent not given for AI features. Please enable AI in settings.');
+    }
+    if (!this.activeProvider || !this.activeApiKey) {
+      throw new Error('No AI provider configured. Please add an API key in settings.');
+    }
+    return this.makeRequestWithProvider(this.activeProvider, this.activeApiKey, prompt);
   }
 
   // Generate AI explanation based on quiz context
@@ -214,6 +266,9 @@ Please provide a helpful, educational response that addresses their question whi
     improvements: string[];
     grade: string;
   }> {
+    if (!this.userConsentGiven) {
+      throw new Error('User consent not given for AI features. Please enable AI in settings.');
+    }
     if (!this.activeProvider || !this.activeApiKey) {
       throw new Error('No AI provider configured for essay grading.');
     }

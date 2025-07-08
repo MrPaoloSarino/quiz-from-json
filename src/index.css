@@ -1,3 +1,7 @@
+/*
+  NOTE: @tailwind and @apply are Tailwind CSS directives, not standard CSS. 
+  If your editor shows 'Unknown at rule' warnings, you can safely ignore them as long as Tailwind is set up correctly.
+*/
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

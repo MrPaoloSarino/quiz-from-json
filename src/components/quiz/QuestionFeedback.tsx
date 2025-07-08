@@ -12,7 +12,6 @@ interface QuestionFeedbackProps {
   question: QuizQuestion;
   userAnswer: string;
   isCorrect: boolean;
-  questionNumber: number;
   provider: 'openrouter' | 'gemini' | 'openai';
   apiKey: string;
   selectedModel?: string;
@@ -31,7 +30,6 @@ const QuestionFeedback: React.FC<QuestionFeedbackProps> = ({
   question,
   userAnswer,
   isCorrect,
-  questionNumber,
   provider,
   apiKey,
   selectedModel,
@@ -157,6 +155,8 @@ Be clear, educational, and ${isCorrect ? 'congratulatory' : 'encouraging'}.`;
         });
       }
 
+      if (!response) throw new Error('No response received from AI API');
+
       if (!response?.ok) {
         let detail = '';
         try { const errJson = await response.json(); detail = errJson?.error?.message ? ` – ${errJson.error.message}` : ''; } catch {}
@@ -274,6 +274,8 @@ Please provide a helpful, concise response that addresses their specific questio
           })
         });
       }
+
+      if (!response) throw new Error('No response received from AI API');
 
       if (!response?.ok) {
         let detail = '';

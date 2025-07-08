@@ -7,7 +7,6 @@ import LocalStorageBackup from './localStorageBackup';
 import { UserProfile, UserData, UserQuiz, QuizSession } from '@/types/user';
 import { QuizQuestion } from '@/types/quiz';
 import { importLegacyQuiz } from './legacyQuizImport';
-import debugLogger from './debugLogger';
 
 export enum StorageMode {
   GOOGLE_DRIVE = 'google_drive',
