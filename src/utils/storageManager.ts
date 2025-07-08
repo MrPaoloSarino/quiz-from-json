@@ -6,6 +6,8 @@ import { GoogleDriveUserStorage } from './googleDriveStorage';
 import LocalStorageBackup from './localStorageBackup';
 import { UserProfile, UserData, UserQuiz, QuizSession } from '@/types/user';
 import { QuizQuestion } from '@/types/quiz';
+import { importLegacyQuiz } from './legacyQuizImport';
+import debugLogger from './debugLogger';
 
 export enum StorageMode {
   GOOGLE_DRIVE = 'google_drive',
@@ -224,55 +226,7 @@ class StorageManager {
 
   // Legacy Quiz Import
   async importLegacyQuiz(title: string, questions: QuizQuestion[], description?: string): Promise<string> {
-    console.log('🗂️ [DEBUG] StorageManager.importLegacyQuiz called');
-    console.log('🗂️ [DEBUG] Parameters:', {
-      title,
-      questionsCount: questions.length,
-      description,
-      storageMode: this.currentMode,
-      isCloudMode: this.isCloudMode()
-    });
-    console.log('🗂️ [DEBUG] Questions:', questions);
-    
-    try {
-      let result: string;
-      
-      if (this.isCloudMode()) {
-        console.log('🗂️ [DEBUG] Using cloud storage (GoogleDriveUserStorage)');
-        result = await GoogleDriveUserStorage.importLegacyQuiz(title, questions, description);
-        console.log('🗂️ [DEBUG] Cloud storage result:', result);
-      } else {
-        console.log('🗂️ [DEBUG] Using local storage (LocalStorageBackup)');
-        result = await LocalStorageBackup.importLegacyQuiz(title, questions, description);
-        console.log('🗂️ [DEBUG] Local storage result:', result);
-      }
-      
-      console.log('✅ [DEBUG] StorageManager.importLegacyQuiz completed successfully');
-      return result;
-      
-    } catch (error) {
-      console.error('❌ [DEBUG] StorageManager.importLegacyQuiz error:', error);
-      console.log('🗂️ [DEBUG] Error details:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : 'No stack available',
-        type: typeof error,
-        isCloudMode: this.isCloudMode()
-      });
-      
-      // Fallback to local storage if cloud fails
-      if (this.isCloudMode()) {
-        console.log('🔄 [DEBUG] Attempting fallback to local storage...');
-        try {
-          const fallbackResult = await LocalStorageBackup.importLegacyQuiz(title, questions, description);
-          console.log('✅ [DEBUG] Fallback to local storage successful:', fallbackResult);
-          return fallbackResult;
-        } catch (fallbackError) {
-          console.error('❌ [DEBUG] Fallback to local storage also failed:', fallbackError);
-          throw fallbackError;
-        }
-      }
-      throw error;
-    }
+    return importLegacyQuiz(this.isCloudMode(), title, questions, description);
   }
 
   // Data Migration

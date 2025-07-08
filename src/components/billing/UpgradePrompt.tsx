@@ -92,15 +92,15 @@ const UpgradePrompt: React.FC<UpgradePromptProps> = ({
   
   if (compact) {
     return (
-      <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-purple-50">
+      <Card className="border-border bg-gradient-to-r from-muted to-accent">
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-              <Crown className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+              <Crown className="w-5 h-5 text-primary-foreground" />
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-gray-900 text-sm">{content.title}</h4>
-              <p className="text-xs text-gray-600 truncate">{content.primaryBenefit}</p>
+              <h4 className="font-medium text-foreground text-sm">{content.title}</h4>
+              <p className="text-xs text-muted-foreground truncate">{content.primaryBenefit}</p>
             </div>
             <Button 
               size="sm" 
@@ -123,35 +123,35 @@ const UpgradePrompt: React.FC<UpgradePromptProps> = ({
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="text-center space-y-4">
-        <div className="w-20 h-20 bg-gradient-to-br from-blue-500 via-purple-600 to-pink-600 rounded-full flex items-center justify-center mx-auto shadow-lg">
-          <Crown className="w-10 h-10 text-white" />
+        <div className="w-20 h-20 bg-gradient-to-br from-primary via-accent to-muted rounded-full flex items-center justify-center mx-auto shadow-lg">
+          <Crown className="w-10 h-10 text-primary-foreground" />
         </div>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">{content.title}</h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">{content.description}</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2">{content.title}</h1>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">{content.description}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="relative border-2 border-blue-500 shadow-lg">
+        <Card className="relative border-2 border-primary shadow-lg">
           <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-            <Badge className="bg-blue-600 text-white px-3 py-1">
+            <Badge className="bg-primary text-primary-foreground px-3 py-1">
               <Sparkles className="w-3 h-3 mr-1" />
               Most Popular
             </Badge>
           </div>
           <CardHeader className="pb-4 pt-6">
             <CardTitle className="text-center">
-              <div className="text-lg font-bold text-gray-900">Pro</div>
-              <div className="text-3xl font-bold text-gray-900 mt-2">$9.99</div>
-              <div className="text-sm text-gray-500">/month</div>
+              <div className="text-lg font-bold text-foreground">Pro</div>
+              <div className="text-3xl font-bold text-foreground mt-2">$9.99</div>
+              <div className="text-sm text-muted-foreground">/month</div>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {PRICING_PLANS[1].features.slice(0, 6).map((feature, index) => (
               <div key={index} className="flex items-center gap-3">
-                <Check className="w-4 h-4 text-green-600" />
-                <span className="text-sm text-gray-600">{feature}</span>
+                <Check className="w-4 h-4 text-success" />
+                <span className="text-sm text-muted-foreground">{feature}</span>
               </div>
             ))}
             <Button 
@@ -168,26 +168,26 @@ const UpgradePrompt: React.FC<UpgradePromptProps> = ({
         <Card>
           <CardHeader className="pb-4">
             <CardTitle className="text-center">
-              <div className="text-lg font-bold text-gray-900">Free</div>
-              <div className="text-sm text-gray-500">Current Plan</div>
-              <div className="text-3xl font-bold text-gray-900 mt-2">$0</div>
-              <div className="text-sm text-gray-500">/month</div>
+              <div className="text-lg font-bold text-foreground">Free</div>
+              <div className="text-sm text-muted-foreground">Current Plan</div>
+              <div className="text-3xl font-bold text-foreground mt-2">$0</div>
+              <div className="text-sm text-muted-foreground">/month</div>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {PRICING_PLANS[0].features.slice(0, 4).map((feature, index) => (
               <div key={index} className="flex items-center gap-3">
-                <Check className="w-4 h-4 text-green-600" />
-                <span className="text-sm text-gray-600">{feature}</span>
+                <Check className="w-4 h-4 text-success" />
+                <span className="text-sm text-muted-foreground">{feature}</span>
               </div>
             ))}
             <div className="flex items-center gap-3 opacity-50">
-              <X className="w-4 h-4 text-gray-400" />
-              <span className="text-sm text-gray-400">Advanced analytics</span>
+              <X className="w-4 h-4 text-muted-foreground/50" />
+              <span className="text-sm text-muted-foreground/50">Advanced analytics</span>
             </div>
             <div className="flex items-center gap-3 opacity-50">
-              <X className="w-4 h-4 text-gray-400" />
-              <span className="text-sm text-gray-400">Cloud sync</span>
+              <X className="w-4 h-4 text-muted-foreground/50" />
+              <span className="text-sm text-muted-foreground/50">Cloud sync</span>
             </div>
           </CardContent>
         </Card>
@@ -203,7 +203,7 @@ const UpgradePrompt: React.FC<UpgradePromptProps> = ({
           size="lg"
           onClick={() => handleUpgrade('pro')}
           disabled={loading}
-          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+          className="bg-gradient-to-r from-primary to-accent hover:from-neutral-900 hover:to-accent"
         >
           {loading ? 'Processing...' : 'Start Pro Trial'}
           <ArrowRight className="w-5 h-5 ml-2" />

@@ -135,7 +135,7 @@ const SimpleAISettings: React.FC = () => {
           <CardTitle className="flex items-center gap-2">
             🤖 AI Settings
             {activeProvider && (
-              <Badge variant="default" className="bg-green-100 text-green-800">
+              <Badge variant="default" className="bg-success/10 text-success">
                 Active: {activeProvider}
               </Badge>
             )}
@@ -162,12 +162,12 @@ const SimpleAISettings: React.FC = () => {
                       <h3 className="font-medium flex items-center gap-2">
                         {config.name}
                         {isSaved && (
-                          <Badge variant="outline" className="text-green-600 border-green-600">
+                          <Badge variant="outline" className="text-success border-success">
                             ✅ Saved
                           </Badge>
                         )}
                       </h3>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-muted-foreground">
                         {config.models.length} models available
                       </p>
                     </div>
@@ -175,7 +175,7 @@ const SimpleAISettings: React.FC = () => {
                       href={config.apiKeyHelpUrl} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:underline"
+                      className="text-sm text-primary hover:underline"
                     >
                       Get API Key →
                     </a>
@@ -220,17 +220,17 @@ const SimpleAISettings: React.FC = () => {
                   
                   {/* Show available models */}
                   <details className="text-xs">
-                    <summary className="cursor-pointer text-gray-600 hover:text-gray-800">
+                    <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
                       Available Models ({config.models.length})
                     </summary>
                     <div className="mt-2 space-y-1">
                       {config.models.slice(0, 5).map(model => (
-                        <div key={model.id} className="bg-gray-100 px-2 py-1 rounded text-xs">
+                        <div key={model.id} className="bg-muted px-2 py-1 rounded text-xs">
                           {model.name}
                         </div>
                       ))}
                       {config.models.length > 5 && (
-                        <div className="text-gray-500 text-xs">
+                        <div className="text-muted-foreground text-xs">
                           +{config.models.length - 5} more models...
                         </div>
                       )}

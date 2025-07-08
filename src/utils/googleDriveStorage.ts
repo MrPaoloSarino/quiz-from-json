@@ -1,6 +1,7 @@
 import { gapi } from 'gapi-script';
 import { QuizQuestion } from '@/types/quiz';
 import { UserProfile, UserData, UserQuiz, QuizSession, EnhancedQuizQuestion } from '@/types/user';
+import debugLogger from './debugLogger';
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || '';
@@ -18,24 +19,60 @@ const SCOPES = [
 let isInitialized = false;
 let currentUser: UserProfile | null = null;
 
+const defaultSpacedRepetition = {
+  lastReviewDate: new Date(),
+  nextReviewDate: new Date(),
+  interval: 1,
+  easeFactor: 2.5,
+  consecutiveCorrect: 0,
+  reviewHistory: [],
+};
+const defaultAnalytics = {
+  strengthScore: 0,
+  lastRecallSuccess: false,
+  recallAttempts: 0,
+  recallSuccesses: 0,
+  averageRecallTime: 0,
+  lastInterleaved: new Date(),
+  relatedConcepts: [],
+};
+const defaultEnhancedFields = {
+  spacedRepetition: { ...defaultSpacedRepetition },
+  analytics: { ...defaultAnalytics },
+  activeRecallPrompts: [],
+  elaborations: [],
+  isAnswerLocked: false,
+  answerHistory: [],
+};
+const defaultLearningStats = {
+  averageRetentionRate: 0.8,
+  optimalReviewIntervals: { easy: 7, medium: 4, hard: 2 },
+  topicsForReview: [],
+  activeRecallSuccess: 0,
+  elaborationQuality: 0,
+  interleavingStrength: 0,
+  retentionTrend: [],
+  masteryProgress: {},
+};
+
 export class GoogleDriveUserStorage {
   
   static async initializeGoogleClient(): Promise<boolean> {
     if (isInitialized) return true;
     
-    console.log('🔧 [DEBUG] Initializing Google Client...');
-    console.log('🔧 [DEBUG] CLIENT_ID configured:', CLIENT_ID ? 'Yes' : 'No');
-    console.log('🔧 [DEBUG] API_KEY configured:', API_KEY ? 'Yes' : 'No');
+    debugLogger.log('🔧 Initializing Google Client...');
+    debugLogger.log('🔧 CLIENT_ID configured:', CLIENT_ID ? 'Yes' : 'No');
+    debugLogger.log('🔧 API_KEY configured:', API_KEY ? 'Yes' : 'No');
     
     if (!CLIENT_ID || !API_KEY) {
-      console.warn('⚠️ Google API credentials not configured - running in offline mode');
-      console.log('ℹ️ To enable cloud features, configure VITE_GOOGLE_CLIENT_ID and VITE_GOOGLE_API_KEY');
+      debugLogger.warn('⚠️ Google API credentials not configured - running in offline mode');
+      debugLogger.log('ℹ️ To enable cloud features, configure VITE_GOOGLE_CLIENT_ID and VITE_GOOGLE_API_KEY');
       return false;
     }
     
     if (CLIENT_ID.includes('your_google_client_id_here') || API_KEY.includes('your_google_api_key_here')) {
-      console.warn('⚠️ Google API credentials are placeholder values - running in offline mode');
-      console.log('ℹ️ Please replace placeholder values with actual Google API credentials');
+      debugLogger.warn('⚠️ Google API credentials are placeholder values - running in offline mode');
+      debugLogger.log('ℹ️ Please replace placeholder values with actual Google API credentials');
       return false;
     }
     
@@ -49,11 +86,11 @@ export class GoogleDriveUserStorage {
             scope: SCOPES,
           });
           isInitialized = true;
-          console.log('🎉 Google Drive Storage initialized successfully');
+          debugLogger.log('🎉 Google Drive Storage initialized successfully');
           resolve(true);
         } catch (error) {
-          console.error('❌ Google API init failed:', error);
-          console.log('🔄 Falling back to offline mode');
+          debugLogger.error('❌ Google API init failed:', error);
+          debugLogger.log('🔄 Falling back to offline mode');
           resolve(false);
         }
       });
@@ -89,10 +126,10 @@ export class GoogleDriveUserStorage {
       // Initialize user's app data folder
       await this.ensureUserDataStructure();
       
-      console.log('✅ User signed in successfully:', currentUser.name);
+      debugLogger.log('✅ User signed in successfully:', currentUser?.name);
       return currentUser;
     } catch (error) {
-      console.error('❌ Sign-in failed:', error);
+      debugLogger.error('❌ Sign-in failed:', error);
       return null;
     }
   }
@@ -102,7 +139,7 @@ export class GoogleDriveUserStorage {
     if (authInstance.isSignedIn.get()) {
       await authInstance.signOut();
       currentUser = null;
-      console.log('👋 User signed out');
+      debugLogger.log('👋 User signed out');
     }
   }
 
@@ -155,15 +192,16 @@ export class GoogleDriveUserStorage {
           achievements: [],
           level: 1,
           xp: 0,
+          learningStats: { ...defaultLearningStats },
         };
 
         await this.saveUserData(initialData);
-        console.log('🎯 Created initial user data structure with sample quizzes');
+        debugLogger.log('🎯 Created initial user data structure with sample quizzes');
       } else {
-        console.log('📁 User data structure already exists');
+        debugLogger.log('📁 User data structure already exists');
       }
     } catch (error) {
-      console.error('❌ Failed to ensure user data structure:', error);
+      debugLogger.error('❌ Failed to ensure user data structure:', error);
     }
   }
 
@@ -192,6 +230,7 @@ export class GoogleDriveUserStorage {
             averageTime: 30,
             commonMistakes: [],
             learningObjectives: ['Basic addition'],
+            ...defaultEnhancedFields,
           },
           {
             id: 'math-2',
@@ -208,6 +247,7 @@ export class GoogleDriveUserStorage {
             averageTime: 30,
             commonMistakes: [],
             learningObjectives: ['Basic multiplication'],
+            ...defaultEnhancedFields,
           }
         ],
         tags: ['math', 'basic', 'arithmetic'],
@@ -238,6 +278,7 @@ export class GoogleDriveUserStorage {
             averageTime: 30,
             commonMistakes: [],
             learningObjectives: ['European capitals'],
+            ...defaultEnhancedFields,
           },
           {
             id: 'geo-2',
@@ -252,6 +293,7 @@ export class GoogleDriveUserStorage {
             averageTime: 300,
             commonMistakes: [],
             learningObjectives: ['Climate systems', 'Environmental science'],
+            ...defaultEnhancedFields,
           }
         ],
         tags: ['geography', 'world', 'capitals'],
@@ -314,9 +356,9 @@ export class GoogleDriveUserStorage {
         });
       }
 
-      console.log('💾 User data saved successfully');
+      debugLogger.log('💾 User data saved successfully');
     } catch (error) {
-      console.error('❌ Failed to save user data:', error);
+      debugLogger.error('❌ Failed to save user data:', error);
       throw error;
     }
   }
@@ -331,7 +373,7 @@ export class GoogleDriveUserStorage {
       });
 
       if (!files.result.files || files.result.files.length === 0) {
-        console.log('📄 No user data found');
+        debugLogger.log('📄 No user data found');
         return null;
       }
 
@@ -342,30 +384,30 @@ export class GoogleDriveUserStorage {
       });
 
       const userData = JSON.parse(response.body) as UserData;
-      console.log('📖 User data loaded successfully');
+      debugLogger.log('📖 User data loaded successfully');
       return userData;
     } catch (error) {
-      console.error('❌ Failed to load user data:', error);
+      debugLogger.error('❌ Failed to load user data:', error);
       return null;
     }
   }
 
   // Quiz-specific methods
   static async saveQuiz(quiz: Omit<UserQuiz, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
-    console.log('☁️ [DEBUG] GoogleDriveUserStorage.saveQuiz called');
-    console.log('☁️ [DEBUG] Quiz to save:', quiz);
+    debugLogger.log('☁️ GoogleDriveUserStorage.saveQuiz called');
+    debugLogger.log('☁️ Quiz to save:', quiz);
     
     try {
-      console.log('☁️ [DEBUG] Loading user data...');
+      debugLogger.log('☁️ Loading user data...');
       const userData = await this.loadUserData();
       
       if (!userData) {
-        console.error('❌ [DEBUG] User data not found');
+        debugLogger.error('❌ User data not found');
         throw new Error('User data not found');
       }
       
-      console.log('☁️ [DEBUG] User data loaded successfully');
-      console.log('☁️ [DEBUG] Current quizzes count:', userData.quizzes.length);
+      debugLogger.log('☁️ User data loaded successfully');
+      debugLogger.log('☁️ Current quizzes count:', userData.quizzes.length);
 
       const now = new Date().toISOString();
       const newQuiz: UserQuiz = {
@@ -375,22 +417,22 @@ export class GoogleDriveUserStorage {
         updatedAt: now,
       };
       
-      console.log('☁️ [DEBUG] New quiz created:', newQuiz);
-      console.log('☁️ [DEBUG] New quiz ID:', newQuiz.id);
+      debugLogger.log('☁️ New quiz created:', newQuiz);
+      debugLogger.log('☁️ New quiz ID:', newQuiz.id);
 
       userData.quizzes.push(newQuiz);
-      console.log('☁️ [DEBUG] Quiz added to user data. New count:', userData.quizzes.length);
+      debugLogger.log('☁️ Quiz added to user data. New count:', userData.quizzes.length);
       
-      console.log('☁️ [DEBUG] Saving updated user data...');
+      debugLogger.log('☁️ Saving updated user data...');
       await this.saveUserData(userData);
-      console.log('☁️ [DEBUG] User data saved successfully');
+      debugLogger.log('☁️ User data saved successfully');
 
-      console.log('✅ Quiz saved:', newQuiz.title);
+      debugLogger.log('✅ Quiz saved:', newQuiz.title);
       return newQuiz.id;
       
     } catch (error) {
-      console.error('❌ [DEBUG] GoogleDriveUserStorage.saveQuiz error:', error);
-      console.log('☁️ [DEBUG] Error details:', {
+      debugLogger.error('❌ GoogleDriveUserStorage.saveQuiz error:', error);
+      debugLogger.log('☁️ Error details:', {
         message: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : 'No stack available',
         type: typeof error
@@ -423,7 +465,7 @@ export class GoogleDriveUserStorage {
     };
 
     await this.saveUserData(userData);
-    console.log('📝 Quiz updated:', userData.quizzes[quizIndex].title);
+    debugLogger.log('📝 Quiz updated:', userData.quizzes[quizIndex].title);
   }
 
   static async deleteQuiz(quizId: string): Promise<boolean> {
@@ -435,7 +477,7 @@ export class GoogleDriveUserStorage {
 
     const deletedQuiz = userData.quizzes.splice(index, 1)[0];
     await this.saveUserData(userData);
-    console.log('🗑️ Quiz deleted:', deletedQuiz.title);
+    debugLogger.log('🗑️ Quiz deleted:', deletedQuiz.title);
     return true;
   }
 
@@ -446,7 +488,7 @@ export class GoogleDriveUserStorage {
 
     userData.settings = { ...userData.settings, ...settings };
     await this.saveUserData(userData);
-    console.log('⚙️ Settings updated');
+    debugLogger.log('⚙️ Settings updated');
   }
 
   // Analytics methods
@@ -461,7 +503,7 @@ export class GoogleDriveUserStorage {
     userData.settings.analytics.totalTime += session.timeSpent;
     
     await this.saveUserData(userData);
-    console.log('📊 Quiz session recorded');
+    debugLogger.log('📊 Quiz session recorded');
   }
 
   // Convert legacy QuizQuestion to EnhancedQuizQuestion
@@ -478,20 +520,21 @@ export class GoogleDriveUserStorage {
       averageTime: q.type === 'essay' ? 300 : 30,
       commonMistakes: [],
       learningObjectives: [],
+      ...defaultEnhancedFields,
     }));
   }
 
   // Import quiz from legacy format
   static async importLegacyQuiz(title: string, questions: QuizQuestion[], description?: string): Promise<string> {
-    console.log('☁️ [DEBUG] GoogleDriveUserStorage.importLegacyQuiz called');
-    console.log('☁️ [DEBUG] Parameters:', { title, questionsCount: questions.length, description });
-    console.log('☁️ [DEBUG] Questions:', questions);
+    debugLogger.log('☁️ GoogleDriveUserStorage.importLegacyQuiz called');
+    debugLogger.log('☁️ Parameters:', { title, questionsCount: questions.length, description });
+    debugLogger.log('☁️ Questions:', questions);
     
     try {
-      console.log('☁️ [DEBUG] Converting legacy questions...');
+      debugLogger.log('☁️ Converting legacy questions...');
       const enhancedQuestions = this.convertLegacyQuestions(questions);
-      console.log('☁️ [DEBUG] Enhanced questions:', enhancedQuestions);
-      console.log('☁️ [DEBUG] Enhanced questions count:', enhancedQuestions.length);
+      debugLogger.log('☁️ Enhanced questions:', enhancedQuestions);
+      debugLogger.log('☁️ Enhanced questions count:', enhancedQuestions.length);
       
       const quizData = {
         title,
@@ -503,17 +546,17 @@ export class GoogleDriveUserStorage {
         estimatedDuration: enhancedQuestions.reduce((total, q) => total + q.estimatedTime, 0),
       };
       
-      console.log('☁️ [DEBUG] Quiz data to save:', quizData);
-      console.log('☁️ [DEBUG] Calling saveQuiz...');
+      debugLogger.log('☁️ Quiz data to save:', quizData);
+      debugLogger.log('☁️ Calling saveQuiz...');
       
       const result = await this.saveQuiz(quizData);
       
-      console.log('✅ [DEBUG] GoogleDriveUserStorage.importLegacyQuiz completed successfully:', result);
+      debugLogger.log('✅ GoogleDriveUserStorage.importLegacyQuiz completed successfully:', result);
       return result;
       
     } catch (error) {
-      console.error('❌ [DEBUG] GoogleDriveUserStorage.importLegacyQuiz error:', error);
-      console.log('☁️ [DEBUG] Error details:', {
+      debugLogger.error('❌ GoogleDriveUserStorage.importLegacyQuiz error:', error);
+      debugLogger.log('☁️ Error details:', {
         message: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : 'No stack available',
         type: typeof error
