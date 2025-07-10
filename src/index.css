@@ -103,3 +103,7 @@
     @apply bg-background text-foreground;
   }
 }
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}

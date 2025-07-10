@@ -58,3 +58,9 @@ pnpm start
 - `pnpm build` - 📦 Build your website for sharing
 
 Happy building! 🎉
+
+## 🧪 Test Coverage & Debug Logging
+
+- Minimal automated test utilities exist (see `src/utils/aiServiceTest.ts`).
+- Debug logging is extensive and gated for development; production builds suppress debug output.
+- Legacy code (e.g., legacy quiz import) is maintained minimally and marked for future review/refactor.

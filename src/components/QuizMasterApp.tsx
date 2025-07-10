@@ -15,8 +15,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { Input } from '@/components/ui/input';
 import SettingsPage from '@/pages/Settings';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
+import Flashcards from '@/pages/Flashcards';
 
-type AppView = 'dashboard' | 'quiz' | 'create' | 'profile' | 'settings';
+type AppView = 'dashboard' | 'quiz' | 'create' | 'profile' | 'settings' | 'flashcards';
 
 const providerModels = {
   openrouter: [
@@ -197,6 +198,10 @@ const CerebrumApp: React.FC = () => {
     setCurrentView('settings');
   };
 
+  const handleViewFlashcards = () => {
+    setCurrentView('flashcards');
+  };
+
   React.useEffect(() => {
     const settingsStr = localStorage.getItem('ai_settings');
     if (settingsStr) {
@@ -246,19 +251,24 @@ const CerebrumApp: React.FC = () => {
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            {currentView !== 'dashboard' && (
-              <Button 
-                variant="ghost" 
-                onClick={handleBackToDashboard}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back
-              </Button>
-            )}
+            {/* Removed Back button for consistent title alignment */}
             <h1 className="text-2xl font-bold text-black">
               Cerebrum
             </h1>
+            <Button
+              variant={currentView === 'dashboard' ? 'default' : 'ghost'}
+              onClick={() => setCurrentView('dashboard')}
+              className="ml-2"
+            >
+              Quizzes
+            </Button>
+            <Button
+              variant={currentView === 'flashcards' ? 'default' : 'ghost'}
+              onClick={handleViewFlashcards}
+              className="ml-2"
+            >
+              Flashcards
+            </Button>
           </div>
           
           <div className="flex items-center gap-3">
@@ -402,6 +412,10 @@ const CerebrumApp: React.FC = () => {
       case 'settings':
         console.log('🖥️ [DEBUG] Rendering settings view');
         return <SettingsPage />;
+      
+      case 'flashcards':
+        console.log('��️ [DEBUG] Rendering flashcards view');
+        return <Flashcards />;
       
       default:
         console.error('🖥️ [DEBUG] Unknown view:', currentView);

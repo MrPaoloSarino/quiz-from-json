@@ -145,4 +145,30 @@ export interface LearningState {
   feedback: FeedbackConfig;
   analytics: LearningAnalytics;
   assumptions?: Assumption[];
+}
+
+// New: Generalized learning activity (not just quizzes)
+export type LearningActivityType = 'quiz' | 'reflection' | 'project' | 'practice' | 'peer-feedback' | 'video' | 'custom';
+
+export interface LearningActivity {
+  id: string;
+  type: LearningActivityType;
+  title: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+  skillIds?: string[];
+  data: Record<string, unknown>; // Activity-specific data (e.g., answers, journal text, file refs)
+  completed: boolean;
+  evidenceUrls?: string[]; // Links to files, videos, etc.
+}
+
+export interface Skill {
+  id: string;
+  name: string;
+  description?: string;
+  dependencies?: string[]; // Prerequisite skills
+  level: number; // 0-5 or 0-10 scale
+  progress: number; // 0-1 mastery
+  evidenceIds?: string[]; // LearningActivity ids that provide evidence
 } 

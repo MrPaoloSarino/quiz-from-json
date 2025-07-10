@@ -56,25 +56,25 @@ class LocalStorageBackup {
 
   // Initialize with offline user
   static initialize(): void {
-    debugLogger.log('🔧 LocalStorageBackup.initialize called');
+    if (process.env.NODE_ENV === 'development') debugLogger.log('🔧 LocalStorageBackup.initialize called');
     if (!this.currentUser) {
-      debugLogger.log('🔧 No current user, creating offline user...');
+      if (process.env.NODE_ENV === 'development') debugLogger.log('🔧 No current user, creating offline user...');
       this.currentUser = this.getOfflineUser();
       this.ensureUserDataStructure();
-      debugLogger.log('✅ Offline user initialized:', this.currentUser);
+      if (process.env.NODE_ENV === 'development') debugLogger.log('✅ Offline user initialized:', this.currentUser);
     } else {
-      debugLogger.log('ℹ️ Current user already exists:', this.currentUser);
+      if (process.env.NODE_ENV === 'development') debugLogger.log('ℹ️ Current user already exists:', this.currentUser);
     }
   }
 
   private static getOfflineUser(): UserProfile {
-    debugLogger.log('🔧 Getting offline user...');
+    if (process.env.NODE_ENV === 'development') debugLogger.log('🔧 Getting offline user...');
     const stored = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
     if (stored) {
       try {
-        debugLogger.log('🔧 Found stored user profile');
+        if (process.env.NODE_ENV === 'development') debugLogger.log('🔧 Found stored user profile');
         const profile = JSON.parse(stored);
-        debugLogger.log('✅ Parsed stored profile:', profile);
+        if (process.env.NODE_ENV === 'development') debugLogger.log('✅ Parsed stored profile:', profile);
         return profile;
       } catch (error) {
         debugLogger.warn('⚠️ Failed to parse stored user profile:', error);
@@ -82,7 +82,7 @@ class LocalStorageBackup {
     }
 
     // Create default offline user
-    debugLogger.log('🔧 Creating new offline user...');
+    if (process.env.NODE_ENV === 'development') debugLogger.log('🔧 Creating new offline user...');
     const offlineUser: UserProfile = {
       id: 'offline-user',
       name: 'Offline User',
@@ -91,7 +91,7 @@ class LocalStorageBackup {
     };
 
     localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(offlineUser));
-    debugLogger.log('✅ New offline user created and stored:', offlineUser);
+    if (process.env.NODE_ENV === 'development') debugLogger.log('✅ New offline user created and stored:', offlineUser);
     return offlineUser;
   }
 
@@ -104,10 +104,10 @@ class LocalStorageBackup {
   }
 
   private static ensureUserDataStructure(): void {
-    debugLogger.log('🔧 Ensuring user data structure...');
+    if (process.env.NODE_ENV === 'development') debugLogger.log('🔧 Ensuring user data structure...');
     const stored = localStorage.getItem(STORAGE_KEYS.USER_DATA);
     if (!stored) {
-      debugLogger.log('🔧 No user data found, creating initial structure...');
+      if (process.env.NODE_ENV === 'development') debugLogger.log('🔧 No user data found, creating initial structure...');
       const initialData: UserData = {
         profile: this.currentUser!,
         settings: {
@@ -131,6 +131,7 @@ class LocalStorageBackup {
           },
         },
         quizzes: this.getDefaultQuizzes(),
+        flashcardDecks: [], // FIX: Add flashcardDecks to initial data
         sessions: [],
         achievements: [],
         level: 1,
@@ -139,9 +140,9 @@ class LocalStorageBackup {
       };
 
       this.saveUserData(initialData);
-      debugLogger.log('✅ Initial user data structure created');
+      if (process.env.NODE_ENV === 'development') debugLogger.log('✅ Initial user data structure created');
     } else {
-      debugLogger.log('ℹ️ User data structure already exists');
+      if (process.env.NODE_ENV === 'development') debugLogger.log('ℹ️ User data structure already exists');
     }
   }
 
@@ -199,11 +200,11 @@ class LocalStorageBackup {
   }
 
   static async saveUserData(userData: UserData): Promise<void> {
-    debugLogger.log('💾 Saving user data...');
-    debugLogger.log('💾 Data to save:', userData);
+    if (process.env.NODE_ENV === 'development') debugLogger.log('💾 Saving user data...');
+    if (process.env.NODE_ENV === 'development') debugLogger.log('💾 Data to save:', userData);
     try {
       localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
-      debugLogger.log('✅ User data saved successfully');
+      if (process.env.NODE_ENV === 'development') debugLogger.log('✅ User data saved successfully');
     } catch (error) {
       debugLogger.error('❌ Failed to save user data:', error);
       throw error;
@@ -211,16 +212,16 @@ class LocalStorageBackup {
   }
 
   static async loadUserData(): Promise<UserData | null> {
-    debugLogger.log('📖 Loading user data...');
+    if (process.env.NODE_ENV === 'development') debugLogger.log('📖 Loading user data...');
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.USER_DATA);
       if (!stored) {
-        debugLogger.log('ℹ️ No user data found');
+        if (process.env.NODE_ENV === 'development') debugLogger.log('ℹ️ No user data found');
         return null;
       }
 
       const userData = JSON.parse(stored) as UserData;
-      debugLogger.log('✅ User data loaded successfully:', userData);
+      if (process.env.NODE_ENV === 'development') debugLogger.log('✅ User data loaded successfully:', userData);
       return userData;
     } catch (error) {
       debugLogger.error('❌ Failed to load user data:', error);
@@ -230,11 +231,11 @@ class LocalStorageBackup {
 
   // Quiz-specific methods
   static async saveQuiz(quiz: Omit<UserQuiz, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
-    debugLogger.log('💾 LocalStorageBackup.saveQuiz called');
-    debugLogger.log('💾 Quiz to save:', quiz);
+    if (process.env.NODE_ENV === 'development') debugLogger.log('💾 LocalStorageBackup.saveQuiz called');
+    if (process.env.NODE_ENV === 'development') debugLogger.log('💾 Quiz to save:', quiz);
     
     try {
-      debugLogger.log('💾 Loading existing user data...');
+      if (process.env.NODE_ENV === 'development') debugLogger.log('💾 Loading existing user data...');
       const userData = await this.loadUserData();
       
       if (!userData) {
@@ -242,7 +243,7 @@ class LocalStorageBackup {
         throw new Error('User data not found');
       }
       
-      debugLogger.log('💾 Current quizzes count:', userData.quizzes.length);
+      if (process.env.NODE_ENV === 'development') debugLogger.log('💾 Current quizzes count:', userData.quizzes.length);
 
       const now = new Date().toISOString();
       const newQuiz: UserQuiz = {
@@ -252,15 +253,15 @@ class LocalStorageBackup {
         updatedAt: now,
       };
       
-      debugLogger.log('💾 New quiz created:', newQuiz);
-      debugLogger.log('💾 New quiz ID:', newQuiz.id);
+      if (process.env.NODE_ENV === 'development') debugLogger.log('💾 New quiz created:', newQuiz);
+      if (process.env.NODE_ENV === 'development') debugLogger.log('💾 New quiz ID:', newQuiz.id);
 
       userData.quizzes.push(newQuiz);
-      debugLogger.log('💾 Quiz added to user data. New count:', userData.quizzes.length);
+      if (process.env.NODE_ENV === 'development') debugLogger.log('💾 Quiz added to user data. New count:', userData.quizzes.length);
       
-      debugLogger.log('💾 Saving updated user data...');
+      if (process.env.NODE_ENV === 'development') debugLogger.log('💾 Saving updated user data...');
       await this.saveUserData(userData);
-      debugLogger.log('✅ Quiz saved successfully');
+      if (process.env.NODE_ENV === 'development') debugLogger.log('✅ Quiz saved successfully');
 
       return newQuiz.id;
       
@@ -294,7 +295,7 @@ class LocalStorageBackup {
     };
 
     await this.saveUserData(userData);
-    debugLogger.log('📝 Quiz updated in local storage:', userData.quizzes[quizIndex].title);
+    if (process.env.NODE_ENV === 'development') debugLogger.log('📝 Quiz updated in local storage:', userData.quizzes[quizIndex].title);
   }
 
   static async deleteQuiz(quizId: string): Promise<boolean> {
@@ -306,14 +307,63 @@ class LocalStorageBackup {
 
     const deletedQuiz = userData.quizzes.splice(index, 1)[0];
     await this.saveUserData(userData);
-    debugLogger.log('🗑️ Quiz deleted from local storage:', deletedQuiz.title);
+    if (process.env.NODE_ENV === 'development') debugLogger.log('🗑️ Quiz deleted from local storage:', deletedQuiz.title);
+    return true;
+  }
+
+  // Flashcard deck methods
+  static async saveFlashcardDeck(deck: Omit<import("@/types/flashcard").FlashcardDeck, 'id'>): Promise<string> {
+    if (process.env.NODE_ENV === 'development') debugLogger.log('💾 LocalStorageBackup.saveFlashcardDeck called');
+    const userData = await this.loadUserData();
+    if (!userData) throw new Error('User data not found');
+    const newDeck = {
+      ...deck,
+      id: `flashcard_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    };
+    userData.flashcardDecks = userData.flashcardDecks || [];
+    userData.flashcardDecks.push(newDeck);
+    await this.saveUserData(userData);
+    return newDeck.id;
+  }
+
+  static async getFlashcardDecks(): Promise<import("@/types/flashcard").FlashcardDeck[]> {
+    const userData = await this.loadUserData();
+    return userData?.flashcardDecks || [];
+  }
+
+  static async getFlashcardDeck(deckId: string): Promise<import("@/types/flashcard").FlashcardDeck | null> {
+    const userData = await this.loadUserData();
+    return userData?.flashcardDecks?.find(d => d.id === deckId) || null;
+  }
+
+  static async updateFlashcardDeck(deckId: string, updates: Partial<import("@/types/flashcard").FlashcardDeck>): Promise<void> {
+    const userData = await this.loadUserData();
+    if (!userData) throw new Error('User data not found');
+    const deckIndex = userData.flashcardDecks?.findIndex(d => d.id === deckId);
+    if (deckIndex === undefined || deckIndex === -1) throw new Error('Deck not found');
+    userData.flashcardDecks[deckIndex] = {
+      ...userData.flashcardDecks[deckIndex],
+      ...updates,
+    };
+    await this.saveUserData(userData);
+    if (process.env.NODE_ENV === 'development') debugLogger.log('📝 Flashcard deck updated in local storage:', userData.flashcardDecks[deckIndex].title);
+  }
+
+  static async deleteFlashcardDeck(deckId: string): Promise<boolean> {
+    const userData = await this.loadUserData();
+    if (!userData) return false;
+    const index = userData.flashcardDecks?.findIndex(d => d.id === deckId);
+    if (index === undefined || index === -1) return false;
+    const deletedDeck = userData.flashcardDecks.splice(index, 1)[0];
+    await this.saveUserData(userData);
+    if (process.env.NODE_ENV === 'development') debugLogger.log('🗑️ Flashcard deck deleted from local storage:', deletedDeck.title);
     return true;
   }
 
   // Convert legacy QuizQuestion to EnhancedQuizQuestion
   static convertLegacyQuestions(questions: QuizQuestion[]): EnhancedQuizQuestion[] {
-    debugLogger.log('🔄 Converting legacy questions...');
-    debugLogger.log('🔄 Input questions:', questions);
+    if (process.env.NODE_ENV === 'development') debugLogger.log('🔄 Converting legacy questions...');
+    if (process.env.NODE_ENV === 'development') debugLogger.log('🔄 Input questions:', questions);
     
     const enhanced = questions.map((q, index) => ({
       ...q,
@@ -330,20 +380,20 @@ class LocalStorageBackup {
       ...defaultEnhancedFields,
     }));
     
-    debugLogger.log('✅ Questions converted successfully:', enhanced);
+    if (process.env.NODE_ENV === 'development') debugLogger.log('✅ Questions converted successfully:', enhanced);
     return enhanced;
   }
 
   // Import quiz from legacy format
   static async importLegacyQuiz(title: string, questions: QuizQuestion[], description?: string): Promise<string> {
-    debugLogger.log('📥 LocalStorageBackup.importLegacyQuiz called');
-    debugLogger.log('📥 Parameters:', { title, questionsCount: questions.length, description });
-    debugLogger.log('📥 Questions:', questions);
+    if (process.env.NODE_ENV === 'development') debugLogger.log('📥 LocalStorageBackup.importLegacyQuiz called');
+    if (process.env.NODE_ENV === 'development') debugLogger.log('📥 Parameters:', { title, questionsCount: questions.length, description });
+    if (process.env.NODE_ENV === 'development') debugLogger.log('📥 Questions:', questions);
     
     try {
-      debugLogger.log('📥 Converting legacy questions...');
+      if (process.env.NODE_ENV === 'development') debugLogger.log('📥 Converting legacy questions...');
       const enhancedQuestions = this.convertLegacyQuestions(questions);
-      debugLogger.log('📥 Enhanced questions:', enhancedQuestions);
+      if (process.env.NODE_ENV === 'development') debugLogger.log('📥 Enhanced questions:', enhancedQuestions);
       
       const quizData = {
         title,
@@ -355,11 +405,11 @@ class LocalStorageBackup {
         estimatedDuration: enhancedQuestions.reduce((total, q) => total + q.estimatedTime, 0),
       };
       
-      debugLogger.log('📥 Quiz data prepared:', quizData);
-      debugLogger.log('📥 Calling saveQuiz...');
+      if (process.env.NODE_ENV === 'development') debugLogger.log('📥 Quiz data prepared:', quizData);
+      if (process.env.NODE_ENV === 'development') debugLogger.log('📥 Calling saveQuiz...');
       
       const result = await this.saveQuiz(quizData);
-      debugLogger.log('✅ Quiz imported successfully. ID:', result);
+      if (process.env.NODE_ENV === 'development') debugLogger.log('✅ Quiz imported successfully. ID:', result);
       return result;
       
     } catch (error) {
@@ -387,7 +437,7 @@ class LocalStorageBackup {
       localStorage.removeItem(key);
     });
     this.currentUser = null;
-    debugLogger.log('🧹 All local quiz data cleared');
+    if (process.env.NODE_ENV === 'development') debugLogger.log('🧹 All local quiz data cleared');
   }
 }
 

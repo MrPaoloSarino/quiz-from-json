@@ -127,12 +127,14 @@ export const updateLearningAnalytics = (
   timeSpent: number,
   isInterleaved: boolean
 ): LearningAnalytics => {
-  console.log('📊 [Analytics Update] Input:', { 
-    analytics, 
-    isCorrect, 
-    timeSpent, 
-    isInterleaved 
-  });
+  if (process.env.NODE_ENV === 'development') {
+    console.log('�� [Analytics Update] Input:', { 
+      analytics, 
+      isCorrect, 
+      timeSpent, 
+      isInterleaved 
+    });
+  }
 
   const newAnalytics = { ...analytics };
   
@@ -159,14 +161,16 @@ export const updateLearningAnalytics = (
     newAnalytics.lastInterleaved = new Date();
   }
   
-  console.log('📊 [Analytics Update] Output:', {
-    recallAttempts: newAnalytics.recallAttempts,
-    recallSuccesses: newAnalytics.recallSuccesses,
-    averageRecallTime: newAnalytics.averageRecallTime,
-    strengthScore: newAnalytics.strengthScore,
-    recallRate,
-    timeWeight
-  });
+  if (process.env.NODE_ENV === 'development') {
+    console.log('📊 [Analytics Update] Output:', {
+      recallAttempts: newAnalytics.recallAttempts,
+      recallSuccesses: newAnalytics.recallSuccesses,
+      averageRecallTime: newAnalytics.averageRecallTime,
+      strengthScore: newAnalytics.strengthScore,
+      recallRate,
+      timeWeight
+    });
+  }
   
   return newAnalytics;
 };

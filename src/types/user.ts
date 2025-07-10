@@ -1,3 +1,6 @@
+import type { Skill, LearningActivity } from './learning';
+import type { FlashcardDeck } from './flashcard';
+
 export interface UserProfile {
   id: string;
   email: string;
@@ -153,6 +156,7 @@ export interface UserData {
     };
   };
   quizzes: UserQuiz[];
+  flashcardDecks: FlashcardDeck[]; // NEW: Flashcard decks for flashcard activity
   sessions: QuizSession[];
   achievements: Achievement[];
   level: number;
@@ -174,6 +178,9 @@ export interface UserData {
     retentionTrend: number[];  // Historical retention scores
     masteryProgress: { [topic: string]: number };  // 0-1 mastery level per topic
   };
+  // New: Skill and activity tracking
+  skills?: Skill[];
+  learningActivities?: LearningActivity[];
 }
 
 export interface Achievement {
