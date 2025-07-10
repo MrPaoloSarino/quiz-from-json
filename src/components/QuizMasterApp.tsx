@@ -283,8 +283,8 @@ const CerebrumApp: React.FC = () => {
             </TooltipProvider>
             <span className="text-sm text-gray-600 hidden sm:block">Welcome, {user.name.split(' ')[0]}!</span>
             <Button 
-              variant="ghost"
-              size="sm"
+              variant="ghost" 
+              size="sm" 
               onClick={handleViewProfile}
               className="flex items-center gap-2 hover:bg-black/70 hover:text-white"
             >
