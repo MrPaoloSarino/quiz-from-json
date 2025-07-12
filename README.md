@@ -1,4 +1,4 @@
-# 🚀 Your Website Project
+# Cerebrum
 
 Welcome to your new website! Everything is set up and ready to go. You can start editing right away.
 
