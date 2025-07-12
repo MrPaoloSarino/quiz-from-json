@@ -1,0 +1,6 @@
+{
+  "packageManager": "npm",
+  "nodeVersion": "18",
+  "buildCommand": "npm run build",
+  "installCommand": "npm install"
+} 
