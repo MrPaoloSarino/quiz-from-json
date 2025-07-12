@@ -13,7 +13,7 @@
     "fix": "node scripts/fix-phion.js",
     "setup:browser": "node scripts/install-browser-extension.js",
     "clear:ports": "node -e \"require('child_process').exec(process.platform === 'win32' ? 'for /f \\\"tokens=5\\\" %a in (\\'netstat -ano ^| findstr :5173 :3333 :3334\\') do taskkill /F /PID %a' : 'lsof -ti:5173,3333,3334 | xargs kill -9 2>/dev/null || true'); console.log('✅ All dev ports (5173, 3333, 3334) cleared!');\"",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
     "format": "prettier --write .",
