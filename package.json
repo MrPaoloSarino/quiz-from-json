@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "echo '=== Starting build ===' && vite build",
+    "postinstall": "echo 'npm install completed successfully'",
     "preview": "vite preview",
     "sync": "phion",
     "start": "pnpm install && pnpm upgrade && node scripts/check-updates.js && node scripts/start-with-browser.js",

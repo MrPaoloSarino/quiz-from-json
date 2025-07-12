@@ -64,3 +64,17 @@ Happy building! 🎉
 - Minimal automated test utilities exist (see `src/utils/aiServiceTest.ts`).
 - Debug logging is extensive and gated for development; production builds suppress debug output.
 - Legacy code (e.g., legacy quiz import) is maintained minimally and marked for future review/refactor.
+
+## Cloud Deployment Best Practices
+
+- This project uses **npm** as the package manager. Only `package-lock.json` is tracked.
+- Node.js version: 18 (see `.nvmrc` and `.node-version`)
+- Build command: `npm run build`
+- Install command: `npm install`
+- Publish directory: `dist`
+
+If deploying to Netlify, Vercel, Cloudflare Pages:
+- Set the install command to `npm install --verbose`
+- Set the build command to `npm run build`
+- Set the publish/output directory to `dist`
+- Clear the build cache if you previously used Bun or pnpm
