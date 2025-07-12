@@ -37,7 +37,8 @@ class AIService {
       this.apiKey = apiKey || '';
       this.settingsLoaded = true;
     } catch (error) {
-      console.error('Failed to load AI settings:', error);
+      // eslint-disable-next-line no-console
+      if (process.env.NODE_ENV === 'development') console.error('Failed to load AI settings:', error);
     }
   }
 
@@ -116,7 +117,8 @@ class AIService {
         errorMessage += `: ${errorText}`;
       }
       
-      console.error('❌ API Error:', errorMessage);
+      // eslint-disable-next-line no-console
+      if (process.env.NODE_ENV === 'development') console.error('❌ API Error:', errorMessage);
       throw new Error(errorMessage);
     }
     
@@ -204,8 +206,10 @@ class AIService {
       
       return validQuestions;
     } catch (error) {
-      console.error('Failed to parse AI response:', error);
-      console.error('Raw response:', response);
+      // eslint-disable-next-line no-console
+      if (process.env.NODE_ENV === 'development') console.error('Failed to parse AI response:', error);
+      // eslint-disable-next-line no-console
+      if (process.env.NODE_ENV === 'development') console.error('Raw response:', response);
       throw new Error('Failed to generate questions. Please try again.');
     }
   }
@@ -246,7 +250,8 @@ class AIService {
         explanation: result.explanation
       };
     } catch (error) {
-      console.error('Failed to parse evaluation:', error);
+      // eslint-disable-next-line no-console
+      if (process.env.NODE_ENV === 'development') console.error('Failed to parse evaluation:', error);
       return {
         correct: userAnswer === correctAnswer,
         feedback: userAnswer === correctAnswer ? 'Correct!' : 'Incorrect',
@@ -283,7 +288,8 @@ class AIService {
       
       return content;
     } catch (error) {
-      console.error('Failed to generate feedback:', error);
+      // eslint-disable-next-line no-console
+      if (process.env.NODE_ENV === 'development') console.error('Failed to generate feedback:', error);
       return 'Unable to generate detailed feedback at this time. Please review the correct answer.';
     }
   }

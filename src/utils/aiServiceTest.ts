@@ -9,7 +9,8 @@ export class AIServiceTester {
     response?: any;
   }> {
     try {
-      console.log(`🧪 Testing ${provider} provider...`);
+      // eslint-disable-next-line no-console
+    if (process.env.NODE_ENV === 'development') console.log(`🧪 Testing ${provider} provider...`);
       
       // Get the first available model for the provider
       const model = testModel || PROVIDERS[provider].models[0].id;
@@ -24,7 +25,8 @@ export class AIServiceTester {
         throw new Error('No questions generated');
       }
       
-      console.log(`✅ ${provider} test successful:`, questions[0]);
+      // eslint-disable-next-line no-console
+    if (process.env.NODE_ENV === 'development') console.log(`✅ ${provider} test successful:`, questions[0]);
       
       return {
         success: true,
@@ -58,7 +60,8 @@ export class AIServiceTester {
   }
   
   static async testGeminiSpecific(apiKey: string): Promise<any> {
-    console.log('🔍 Testing Gemini-specific functionality...');
+    // eslint-disable-next-line no-console
+    if (process.env.NODE_ENV === 'development') console.log('🔍 Testing Gemini-specific functionality...');
     
     try {
       // Test different Gemini models
@@ -91,16 +94,22 @@ export class AIServiceTester {
   }
   
   static logProviderInfo(): void {
-    console.log('📋 Available AI Providers:');
+    // eslint-disable-next-line no-console
+    if (process.env.NODE_ENV === 'development') console.log('📋 Available AI Providers:');
     
     Object.entries(PROVIDERS).forEach(([id, config]) => {
-      console.log(`\n🤖 ${config.name} (${id}):`);
-      console.log(`   URL: ${config.baseUrl}`);
-      console.log(`   API Key Help: ${config.apiKeyHelpUrl}`);
-      console.log(`   Models: ${config.models.length}`);
+      // eslint-disable-next-line no-console
+    if (process.env.NODE_ENV === 'development') console.log(`\n🤖 ${config.name} (${id});:`);
+      // eslint-disable-next-line no-console
+    if (process.env.NODE_ENV === 'development') console.log(`   URL: ${config.baseUrl}`);
+      // eslint-disable-next-line no-console
+    if (process.env.NODE_ENV === 'development') console.log(`   API Key Help: ${config.apiKeyHelpUrl}`);
+      // eslint-disable-next-line no-console
+    if (process.env.NODE_ENV === 'development') console.log(`   Models: ${config.models.length}`);
       
       config.models.forEach((model, index) => {
-        console.log(`     ${index + 1}. ${model.name} (${model.id})`);
+        // eslint-disable-next-line no-console
+    if (process.env.NODE_ENV === 'development') console.log(`     ${index + 1}. ${model.name} (${model.id});`);
       });
     });
   }
@@ -112,28 +121,35 @@ export async function runAITests(apiKeys: {
   gemini?: string;
   openai?: string;
 }): Promise<void> {
-  console.log('🚀 Starting AI Service Tests...\n');
+  // eslint-disable-next-line no-console
+    if (process.env.NODE_ENV === 'development') console.log('🚀 Starting AI Service Tests...\n');
   
   // Log provider info
   AIServiceTester.logProviderInfo();
   
-  console.log('\n🧪 Running provider tests...');
+  // eslint-disable-next-line no-console
+    if (process.env.NODE_ENV === 'development') console.log('\n🧪 Running provider tests...');
   const results = await AIServiceTester.testAllProviders(apiKeys);
   
-  console.log('\n📊 Test Results:');
+  // eslint-disable-next-line no-console
+    if (process.env.NODE_ENV === 'development') console.log('\n📊 Test Results:');
   Object.entries(results).forEach(([provider, result]) => {
     const status = result.success ? '✅ PASS' : '❌ FAIL';
-    console.log(`${status} ${provider}: ${result.error || 'Success'}`);
+    // eslint-disable-next-line no-console
+    if (process.env.NODE_ENV === 'development') console.log(`${status} ${provider}: ${result.error || 'Success'}`);
   });
   
   // Special Gemini test if API key provided
   if (apiKeys.gemini) {
-    console.log('\n🔬 Running Gemini-specific tests...');
+    // eslint-disable-next-line no-console
+    if (process.env.NODE_ENV === 'development') console.log('\n🔬 Running Gemini-specific tests...');
     const geminiResults = await AIServiceTester.testGeminiSpecific(apiKeys.gemini);
-    console.log('Gemini Model Test Results:', geminiResults);
+    // eslint-disable-next-line no-console
+    if (process.env.NODE_ENV === 'development') console.log('Gemini Model Test Results:', geminiResults);
   }
   
-  console.log('\n✨ AI Service tests completed!');
+  // eslint-disable-next-line no-console
+    if (process.env.NODE_ENV === 'development') console.log('\n✨ AI Service tests completed!');
 }
 
 // Export for console debugging

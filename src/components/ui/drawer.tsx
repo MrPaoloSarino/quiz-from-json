@@ -51,7 +51,9 @@ const DrawerContent = React.forwardRef<
     </DrawerPrimitive.Content>
   </DrawerPortal>
 ))
-DrawerContent.displayName = "DrawerContent"
+DrawerContent.displayName = "DrawerContent";
+// eslint-disable-next-line react/display-name;
+// eslint-disable-next-line react/display-name
 
 const DrawerHeader = ({
   className,

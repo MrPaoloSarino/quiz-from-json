@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 import { aiService } from '@/utils/aiService';
-import type { ProviderConfig, AIModel, AIProvider } from '@/utils/aiConfig';
+import type { AIProvider } from '@/utils/aiConfig';
 import { PROVIDERS } from '@/utils/aiConfig';
 
 const AISettings: React.FC = () => {
@@ -31,6 +31,8 @@ const AISettings: React.FC = () => {
         const settingsStr = localStorage.getItem('ai_settings');
         if (settingsStr) {
           try {
+        "@typescript-eslint/eslint-plugin": "^8.11.0",
+        "@typescript-eslint/parser": "^8.11.0",          try {
             const settings = JSON.parse(settingsStr) as {
               provider?: AIProvider;
               model?: string;

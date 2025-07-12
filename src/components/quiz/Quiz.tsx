@@ -322,7 +322,9 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
         setShowInput(false);
       }
     } catch (error) {
-      debugError('Quiz Initialization', error as Error);
+            // eslint-disable-next-line no-console
+            if (process.env.NODE_ENV === 'development') console.error('fetchQuestionsIfNeeded', error);
+            debugError('Quiz Initialization', error as Error);
     }
   }, [externalQuestions]);
 
@@ -982,7 +984,9 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
           }));
           setShowInput(false);
         } catch (error) {
-          debugError('fetchQuestionsIfNeeded', error as Error);
+            // eslint-disable-next-line no-console
+            if (process.env.NODE_ENV === 'development') console.error('fetchQuestionsIfNeeded', error);
+            debugError('fetchQuestionsIfNeeded', error as Error);
           toast.error('Failed to generate questions');
         } finally {
           setIsLoading(false);

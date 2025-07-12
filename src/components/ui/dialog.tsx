@@ -49,7 +49,8 @@ const DialogContent = React.forwardRef<
     </DialogPrimitive.Content>
   </DialogPortal>
 ))
-DialogContent.displayName = DialogPrimitive.Content.displayName
+DialogContent.displayName = DialogPrimitive.Content.displayName;
+// eslint-disable-next-line react/display-name
 
 const DialogHeader = ({
   className,
