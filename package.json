@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "echo '=== Starting build ===' && vite build",
     "preview": "vite preview",
     "sync": "phion",
     "start": "pnpm install && pnpm upgrade && node scripts/check-updates.js && node scripts/start-with-browser.js",
