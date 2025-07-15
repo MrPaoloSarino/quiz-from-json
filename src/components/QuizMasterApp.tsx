@@ -18,8 +18,9 @@ import SettingsPage from '@/pages/Settings';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import Flashcards from '@/pages/Flashcards';
 import SkillAcquisitionApp from './skill/SkillAcquisitionApp';
+import Games from './games/Games';
 
-type AppView = 'dashboard' | 'quiz' | 'create' | 'profile' | 'settings' | 'flashcards' | 'skills';
+type AppView = 'dashboard' | 'quiz' | 'create' | 'profile' | 'settings' | 'flashcards' | 'skills' | 'games';
 
 const providerModels = {
   openrouter: [
@@ -208,6 +209,10 @@ const CerebrumApp: React.FC = () => {
     setCurrentView('skills');
   };
 
+  const handleViewGames = () => {
+    setCurrentView('games');
+  };
+
   React.useEffect(() => {
     const settingsStr = localStorage.getItem('ai_settings');
     if (settingsStr) {
@@ -281,6 +286,13 @@ const CerebrumApp: React.FC = () => {
               className="ml-2"
             >
               Skills
+            </Button>
+            <Button
+              variant={currentView === 'games' ? 'default' : 'ghost'}
+              onClick={handleViewGames}
+              className="ml-2"
+            >
+              Games
             </Button>
           </div>
           
@@ -437,6 +449,10 @@ const CerebrumApp: React.FC = () => {
             <SkillAcquisitionApp onBack={() => setCurrentView('dashboard')} />
           </div>
         );
+      
+      case 'games':
+        console.log('🎮 [DEBUG] Rendering games view');
+        return <Games />;
       
       default:
         console.error('🖥️ [DEBUG] Unknown view:', currentView);
