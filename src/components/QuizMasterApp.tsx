@@ -9,15 +9,17 @@ import QuizDashboard from '@/components/dashboard/QuizDashboard';
 import StorageManager from '@/utils/storageManager';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { aiService, AIProvider } from '@/utils/aiService';
+import { aiService } from '@/utils/aiService';
+import { AIProvider } from '@/utils/aiConfig';
 import { ArrowLeft, User, Settings } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import SettingsPage from '@/pages/Settings';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import Flashcards from '@/pages/Flashcards';
+import SkillAcquisitionApp from './skill/SkillAcquisitionApp';
 
-type AppView = 'dashboard' | 'quiz' | 'create' | 'profile' | 'settings' | 'flashcards';
+type AppView = 'dashboard' | 'quiz' | 'create' | 'profile' | 'settings' | 'flashcards' | 'skills';
 
 const providerModels = {
   openrouter: [
@@ -202,6 +204,10 @@ const CerebrumApp: React.FC = () => {
     setCurrentView('flashcards');
   };
 
+  const handleViewSkills = () => {
+    setCurrentView('skills');
+  };
+
   React.useEffect(() => {
     const settingsStr = localStorage.getItem('ai_settings');
     if (settingsStr) {
@@ -269,6 +275,13 @@ const CerebrumApp: React.FC = () => {
             >
               Flashcards
             </Button>
+            <Button
+              variant={currentView === 'skills' ? 'default' : 'ghost'}
+              onClick={handleViewSkills}
+              className="ml-2"
+            >
+              Skills
+            </Button>
           </div>
           
           <div className="flex items-center gap-3">
@@ -314,7 +327,7 @@ const CerebrumApp: React.FC = () => {
             <select
               value={globalProvider}
               onChange={e => {
-                setGlobalProvider(e.target.value);
+                setGlobalProvider(e.target.value as AIProvider);
                 // Set default model for provider
                 const models = providerModels[e.target.value as keyof typeof providerModels];
                 if (models && models.length > 0) setGlobalModel(models[0].value);
@@ -416,6 +429,14 @@ const CerebrumApp: React.FC = () => {
       case 'flashcards':
         console.log('��️ [DEBUG] Rendering flashcards view');
         return <Flashcards />;
+      
+      case 'skills':
+        console.log('🧠 [DEBUG] Rendering skills view');
+        return (
+          <div className="overflow-auto h-[calc(100vh-80px)]">
+            <SkillAcquisitionApp onBack={() => setCurrentView('dashboard')} />
+          </div>
+        );
       
       default:
         console.error('🖥️ [DEBUG] Unknown view:', currentView);
