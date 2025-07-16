@@ -22,6 +22,8 @@ const CrosswordGame: React.FC<CrosswordProps> = ({ onBack }) => {
   const [currentWord, setCurrentWord] = useState('');
   const [currentClue, setCurrentClue] = useState('');
   const [grid, setGrid] = useState<string[][]>([]);
+  const [userInput, setUserInput] = useState<string[][]>([]);
+  const [completedWords, setCompletedWords] = useState<string[]>([]);
   const [gridSize, setGridSize] = useState(15);
   const [showAnswers, setShowAnswers] = useState(false);
   const [placedWords, setPlacedWords] = useState<WordClue[]>([]);
@@ -50,7 +52,6 @@ const CrosswordGame: React.FC<CrosswordProps> = ({ onBack }) => {
     const placed: WordClue[] = [];
     const shuffled = [...wordClues].sort(() => Math.random() - 0.5);
 
-    // Place first word in center
     if (shuffled.length > 0) {
       const firstWord = shuffled[0];
       const startRow = Math.floor(gridSize / 2);
@@ -67,19 +68,16 @@ const CrosswordGame: React.FC<CrosswordProps> = ({ onBack }) => {
       });
     }
 
-    // Try to place remaining words
     for (let i = 1; i < shuffled.length; i++) {
       const word = shuffled[i];
       let wordPlaced = false;
 
-      // Try to intersect with existing words
       for (const placedWord of placed) {
         if (wordPlaced) break;
         
         for (let j = 0; j < word.word.length; j++) {
           for (let k = 0; k < placedWord.word.length; k++) {
             if (word.word[j] === placedWord.word[k]) {
-              // Try placing word perpendicular to placed word
               const isPlacedAcross = placedWord.position!.direction === 'across';
               const newDirection = isPlacedAcross ? 'down' : 'across';
               
@@ -92,7 +90,6 @@ const CrosswordGame: React.FC<CrosswordProps> = ({ onBack }) => {
                 newCol = placedWord.position!.col + k;
               }
 
-              // Check if word fits and doesn't conflict
               if (canPlaceWord(newGrid, word.word, newRow, newCol, newDirection)) {
                 placeWord(newGrid, word.word, newRow, newCol, newDirection);
                 placed.push({
@@ -110,7 +107,9 @@ const CrosswordGame: React.FC<CrosswordProps> = ({ onBack }) => {
     }
 
     setGrid(newGrid);
+    setUserInput(Array(gridSize).fill(null).map(() => Array(gridSize).fill('')));
     setPlacedWords(placed);
+    setCompletedWords([]);
   };
 
   const canPlaceWord = (grid: string[][], word: string, row: number, col: number, direction: 'across' | 'down'): boolean => {
@@ -140,6 +139,35 @@ const CrosswordGame: React.FC<CrosswordProps> = ({ onBack }) => {
     }
   };
 
+  const handleInputChange = (rowIndex: number, colIndex: number, value: string) => {
+    const newUserInput = userInput.map(row => [...row]);
+    newUserInput[rowIndex][colIndex] = value.toUpperCase();
+    setUserInput(newUserInput);
+    checkCompletedWords(newUserInput);
+  };
+
+  const checkCompletedWords = (currentInput: string[][]) => {
+    const newlyCompletedWords: string[] = [];
+    for (const word of placedWords) {
+      if (word.position) {
+        let correct = true;
+        for (let i = 0; i < word.word.length; i++) {
+          const { row, col, direction } = word.position;
+          const r = direction === 'down' ? row + i : row;
+          const c = direction === 'across' ? col + i : col;
+          if (currentInput[r][c] !== word.word[i]) {
+            correct = false;
+            break;
+          }
+        }
+        if (correct) {
+          newlyCompletedWords.push(word.id);
+        }
+      }
+    }
+    setCompletedWords(newlyCompletedWords);
+  };
+
   const renderGrid = () => {
     return (
       <div className="inline-block border-2 border-gray-300 bg-white">
@@ -153,11 +181,22 @@ const CrosswordGame: React.FC<CrosswordProps> = ({ onBack }) => {
                 word.position?.row === rowIndex && word.position?.col === colIndex
               )?.number;
 
+              const completedWord = placedWords.find(word => {
+                if (!completedWords.includes(word.id) || !word.position) return false;
+                const { row, col, direction } = word.position;
+                if (direction === 'across') {
+                  return rowIndex === row && colIndex >= col && colIndex < col + word.word.length;
+                } else {
+                  return colIndex === col && rowIndex >= row && rowIndex < row + word.word.length;
+                }
+              });
+
               return (
                 <div
                   key={`${rowIndex}-${colIndex}`}
                   className={`w-8 h-8 border border-gray-300 flex items-center justify-center text-sm font-bold relative
                     ${cell ? 'bg-white' : 'bg-gray-800'}
+                    ${completedWord ? 'bg-green-200' : ''}
                   `}
                 >
                   {isNumberCell && (
@@ -165,7 +204,16 @@ const CrosswordGame: React.FC<CrosswordProps> = ({ onBack }) => {
                       {wordNumber}
                     </span>
                   )}
-                  {cell && (showAnswers ? cell : '')}
+                  {cell && (
+                    <Input
+                      type="text"
+                      maxLength={1}
+                      value={showAnswers ? cell : userInput[rowIndex]?.[colIndex] || ''}
+                      onChange={(e) => handleInputChange(rowIndex, colIndex, e.target.value)}
+                      className="w-full h-full text-center bg-transparent border-none focus:ring-0"
+                      disabled={!cell || showAnswers}
+                    />
+                  )}
                 </div>
               );
             })}
@@ -188,7 +236,7 @@ const CrosswordGame: React.FC<CrosswordProps> = ({ onBack }) => {
           <CardContent>
             <div className="space-y-2">
               {acrossClues.map(word => (
-                <div key={word.id} className="text-sm">
+                <div key={word.id} className={`text-sm ${completedWords.includes(word.id) ? 'text-green-600' : ''}`}>
                   <span className="font-bold">{word.number}.</span> {word.clue}
                 </div>
               ))}
@@ -203,7 +251,7 @@ const CrosswordGame: React.FC<CrosswordProps> = ({ onBack }) => {
           <CardContent>
             <div className="space-y-2">
               {downClues.map(word => (
-                <div key={word.id} className="text-sm">
+                <div key={word.id} className={`text-sm ${completedWords.includes(word.id) ? 'text-green-600' : ''}`}>
                   <span className="font-bold">{word.number}.</span> {word.clue}
                 </div>
               ))}
