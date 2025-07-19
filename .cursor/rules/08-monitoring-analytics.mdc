@@ -1,0 +1,83 @@
+---
+description: Monitoring, Analytics, and Performance Tracking Rules
+globs: ["src/**/*.ts", "src/**/*.tsx"]
+alwaysApply: true
+---
+
+# Monitoring & Analytics Rules
+
+## Performance Monitoring Rules
+- ALWAYS track Core Web Vitals metrics
+- ALWAYS monitor component rendering performance
+- ALWAYS track API response times
+- ALWAYS monitor memory usage patterns
+- ALWAYS track bundle size changes
+- ALWAYS monitor user interaction responsiveness
+- ALWAYS track loading state performance
+
+## Error Monitoring Rules
+- ALWAYS track error rates and patterns
+- ALWAYS monitor error impact on user experience
+- ALWAYS track error recovery success rates
+- ALWAYS monitor error trends over time
+- ALWAYS track error distribution by feature
+- ALWAYS monitor error resolution times
+- ALWAYS track error prevention effectiveness
+
+## User Analytics Rules
+- ALWAYS track user engagement metrics
+- ALWAYS monitor user journey completion rates
+- ALWAYS track feature adoption rates
+- ALWAYS monitor user retention patterns
+- ALWAYS track user satisfaction metrics
+- ALWAYS monitor user behavior patterns
+- ALWAYS track user feedback and ratings
+
+## Quiz-Specific Analytics Rules
+- ALWAYS track quiz completion rates
+- ALWAYS monitor quiz performance metrics
+- ALWAYS track question difficulty analysis
+- ALWAYS monitor user learning progress
+- ALWAYS track quiz engagement patterns
+- ALWAYS monitor quiz result trends
+- ALWAYS track quiz improvement rates
+
+## Business Metrics Rules
+- ALWAYS track key business indicators
+- ALWAYS monitor conversion rates
+- ALWAYS track revenue metrics
+- ALWAYS monitor cost per acquisition
+- ALWAYS track customer lifetime value
+- ALWAYS monitor churn rates
+- ALWAYS track growth metrics
+
+## Technical Monitoring Rules
+- ALWAYS monitor system health metrics
+- ALWAYS track infrastructure performance
+- ALWAYS monitor security incidents
+- ALWAYS track deployment success rates
+- ALWAYS monitor code quality metrics
+- ALWAYS track technical debt levels
+- ALWAYS monitor system scalability
+
+## Real-Time Monitoring Rules
+- ALWAYS implement real-time error tracking
+- ALWAYS monitor live user sessions
+- ALWAYS track real-time performance metrics
+- ALWAYS monitor system alerts
+- ALWAYS track real-time user feedback
+- ALWAYS monitor live system health
+- ALWAYS track real-time business metrics
+
+## Data Quality Rules
+- ALWAYS validate analytics data accuracy
+- ALWAYS implement proper data collection
+- ALWAYS monitor data completeness
+- ALWAYS track data consistency
+- ALWAYS implement proper data privacy
+- ALWAYS monitor data retention compliance
+- ALWAYS track data processing performance
+description:
+globs:
+alwaysApply: false
+---
