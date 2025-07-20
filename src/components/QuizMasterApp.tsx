@@ -41,33 +41,33 @@ const providerModels = {
     { value: 'gemini-2.5-flash-exp-native-audio-thinking-dialog', label: 'Gemini 2.5 Flash Audio Thinking' },
     { value: 'gemini-2.5-flash-preview-tts', label: 'Gemini 2.5 Flash TTS' },
     { value: 'gemini-2.5-pro-preview-tts', label: 'Gemini 2.5 Pro TTS' },
-    
+
     // Gemini 2.0 Models
     { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
     { value: 'gemini-2.0-flash-preview-image-generation', label: 'Gemini 2.0 Flash Image Gen' },
     { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite' },
     { value: 'gemini-2.0-flash-live-001', label: 'Gemini 2.0 Flash Live' },
-    
+
     // Gemini 1.5 Models
     { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
     { value: 'gemini-1.5-flash-8b', label: 'Gemini 1.5 Flash 8B' },
     { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
     { value: 'gemini-1.5-pro-vision', label: 'Gemini 1.5 Pro Vision' },
     { value: 'gemini-1.5-pro-latest', label: 'Gemini 1.5 Pro Latest' },
-    
+
     // Gemini 1.0 Models
     { value: 'gemini-pro', label: 'Gemini 1.0 Pro' },
     { value: 'gemini-pro-vision', label: 'Gemini 1.0 Pro Vision' },
-    
+
     // Specialized Models
     { value: 'gemini-embedding-exp', label: 'Gemini Embedding Exp' },
     { value: 'gemini-live-2.5-flash-preview', label: 'Gemini Live 2.5 Flash' },
-    
+
     // Imagen Models
     { value: 'imagen-4.0-generate-preview-06-06', label: 'Imagen 4.0' },
     { value: 'imagen-4.0-ultra-generate-preview-06-06', label: 'Imagen 4.0 Ultra' },
     { value: 'imagen-3.0-generate-002', label: 'Imagen 3.0' },
-    
+
     // Veo Models
     { value: 'veo-2.0-generate-001', label: 'Veo 2.0' },
   ]
@@ -87,7 +87,7 @@ const CerebrumApp: React.FC = () => {
   // Consolidated initialization useEffect
   useEffect(() => {
     initializeApp();
-    
+
     const handler = () => setApiModalOpen(true);
     window.addEventListener('open-ai-api-setup', handler);
     return () => window.removeEventListener('open-ai-api-setup', handler);
@@ -110,7 +110,7 @@ const CerebrumApp: React.FC = () => {
           setUser(currentUser);
         }
       }
-      
+
       // Show storage mode info
       const storageInfo = StorageManager.getStorageInfo();
       const modeText = storageInfo.mode === 'local_storage' ? 'Offline Mode' : 'Cloud Mode';
@@ -126,7 +126,7 @@ const CerebrumApp: React.FC = () => {
   const handleSignIn = async (signedInUser: UserProfile) => {
     setUser(signedInUser);
     setCurrentView('dashboard');
-    
+
     const storageInfo = StorageManager.getStorageInfo();
     const modeText = storageInfo.mode === 'local_storage' ? 'offline mode' : 'cloud mode';
     toast.success(`Welcome! Running in ${modeText}`);
@@ -205,7 +205,7 @@ const CerebrumApp: React.FC = () => {
     }
   }, [globalProvider, globalApiKey, globalModel]);
 
-  
+
 
   if (isLoading) {
     return (
@@ -262,7 +262,7 @@ const CerebrumApp: React.FC = () => {
               Games
             </Button>
           </div>
-          
+
           <div className="flex items-center gap-3">
             <TooltipProvider>
               <Tooltip>
@@ -284,9 +284,9 @@ const CerebrumApp: React.FC = () => {
               </Tooltip>
             </TooltipProvider>
             <span className="text-sm text-gray-600 hidden sm:block">Welcome, {user.name.split(' ')[0]}!</span>
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleViewProfile}
               className="flex items-center gap-2 hover:bg-black/70 hover:text-white"
             >
@@ -360,7 +360,7 @@ const CerebrumApp: React.FC = () => {
     switch (currentView) {
       case 'dashboard':
         return renderDashboard;
-      
+
       case 'quiz':
         return currentQuiz ? (
           <div className="container mx-auto p-4">
@@ -371,41 +371,41 @@ const CerebrumApp: React.FC = () => {
             <p className="text-gray-500">No quiz selected</p>
           </div>
         );
-      
+
       case 'create':
         return (
           <div className="container mx-auto p-4">
             <JsonInput onQuizStart={handleStartQuiz} />
           </div>
         );
-      
+
       case 'profile':
         return (
           <div className="container mx-auto p-4 flex justify-center">
             <UserProfileComponent onSignOut={handleSignOut} />
           </div>
         );
-      
+
       case 'settings':
         return <SettingsPage />;
-      
+
       case 'flashcards':
         return <Flashcards />;
-      
+
       case 'skills':
         return (
           <div className="overflow-auto h-[calc(100vh-80px)]">
             <SkillAcquisitionApp onBack={handleBackToDashboard} />
           </div>
         );
-      
+
       case 'games':
         return <Games />;
-      
+
       default:
         return <div>Unknown view</div>;
     }
-  }, [currentView, currentQuiz, renderDashboard, handleStartQuiz, handleSignOut, handleBackToDashboard]);
+  }, [currentView, currentQuiz, renderDashboard, handleStartQuiz, handleSignOut, handleBackToDashboard, user]);
 
   return (
     <div className="min-h-screen bg-gray-50">

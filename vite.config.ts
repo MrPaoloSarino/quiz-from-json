@@ -15,8 +15,8 @@ export default defineConfig(({ mode }) => ({
       'Cross-Origin-Embedder-Policy': 'unsafe-none'
     }
   },
-  // Use GitHub Pages base path only for production builds, root path for development
-  base: process.env.GITHUB_ACTIONS ? '/quiz-from-json/' : '/',
+  // Always use root path for deployment
+  base: '/',
   plugins: [react()],
   resolve: {
     alias: {
