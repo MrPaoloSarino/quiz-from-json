@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { UserProfile } from '@/types/user';
 import { QuizQuestion } from '@/types/quiz';
 import GoogleSignIn from '@/components/auth/GoogleSignIn';
@@ -84,31 +84,21 @@ const CerebrumApp: React.FC = () => {
   const [globalApiKey, setGlobalApiKey] = React.useState('');
   const [globalModel, setGlobalModel] = React.useState('deepseek-chat-v3');
 
-  // Enhanced state tracking with useEffect
-  useEffect(() => {
-    console.log(' [STATE] currentQuiz state changed:', currentQuiz);
-    console.log(' [STATE] currentQuiz length:', currentQuiz?.length || 'null/undefined');
-    console.log(' [STATE] Stack trace:', new Error().stack);
-  }, [currentQuiz]);
-
-  useEffect(() => {
-    console.log(' [STATE] currentView state changed:', currentView);
-    // If we're returning to dashboard, refresh the quiz list
-    if (currentView === 'dashboard') {
-      console.log(' [DEBUG] Back to dashboard, refreshing quizzes...');
-      dashboardRef.current?.refreshQuizzes();
-    }
-  }, [currentView]);
-
+  // Consolidated initialization useEffect
   useEffect(() => {
     initializeApp();
-  }, []);
-
-  useEffect(() => {
+    
     const handler = () => setApiModalOpen(true);
     window.addEventListener('open-ai-api-setup', handler);
     return () => window.removeEventListener('open-ai-api-setup', handler);
   }, []);
+
+  // Dashboard refresh effect (only when returning to dashboard)
+  useEffect(() => {
+    if (currentView === 'dashboard') {
+      dashboardRef.current?.refreshQuizzes();
+    }
+  }, [currentView]);
 
   const initializeApp = async () => {
     try {
@@ -155,65 +145,42 @@ const CerebrumApp: React.FC = () => {
     }
   };
 
-  const handleStartQuiz = (questions: QuizQuestion[]) => {
-    console.log(' [DEBUG] CerebrumApp.handleStartQuiz called');
-    console.log(' [DEBUG] Received questions:', questions);
-    console.log(' [DEBUG] Questions count:', questions.length);
-    console.log(' [DEBUG] Current view before:', currentView);
-    console.log(' [DEBUG] Current quiz before:', currentQuiz);
-    
-    // Use React's batched state updates
-    React.startTransition(() => {
-      setCurrentQuiz(questions);
-      setCurrentView('quiz');
-    });
-    
-    console.log(' [DEBUG] State updates batched and dispatched');
-  };
+  const handleStartQuiz = useCallback((questions: QuizQuestion[]) => {
+    setCurrentQuiz(questions);
+    setCurrentView('quiz');
+  }, []);
 
-  const handleCreateQuiz = () => {
-    console.log(' [DEBUG] CerebrumApp.handleCreateQuiz called');
-    console.log(' [DEBUG] Current view before:', currentView);
+  const handleCreateQuiz = useCallback(() => {
     setCurrentView('create');
-    console.log(' [DEBUG] setCurrentView("create") called');
-  };
+  }, []);
 
-  const handleBackToDashboard = () => {
-    console.log(' [DEBUG] handleBackToDashboard called');
-    console.log(' [DEBUG] Current view before:', currentView);
-    console.log(' [DEBUG] Current quiz before:', currentQuiz);
-    console.log('🔙 [DEBUG] Current quiz before:', currentQuiz);
-    
-    // Use React's batched state updates
-    React.startTransition(() => {
-      setCurrentQuiz(null);
-      setCurrentView('dashboard');
-    });
-    
-    console.log('🔙 [DEBUG] Back to dashboard - state updates dispatched');
-  };
+  const handleBackToDashboard = useCallback(() => {
+    setCurrentQuiz(null);
+    setCurrentView('dashboard');
+  }, []);
 
-  const handleViewProfile = () => {
+  const handleViewProfile = useCallback(() => {
     setCurrentView('profile');
-  };
+  }, []);
 
-  const handleViewSettings = () => {
+  const handleViewSettings = useCallback(() => {
     setCurrentView('settings');
-  };
+  }, []);
 
-  const handleViewFlashcards = () => {
+  const handleViewFlashcards = useCallback(() => {
     setCurrentView('flashcards');
-  };
+  }, []);
 
-  const handleViewSkills = () => {
+  const handleViewSkills = useCallback(() => {
     setCurrentView('skills');
-  };
+  }, []);
 
-  const handleViewGames = () => {
+  const handleViewGames = useCallback(() => {
     setCurrentView('games');
-  };
+  }, []);
 
-  React.useEffect(() => {
+  // Load AI settings on mount (consolidated with main initialization)
+  useEffect(() => {
     const settingsStr = localStorage.getItem('ai_settings');
     if (settingsStr) {
       try {
@@ -227,7 +194,7 @@ const CerebrumApp: React.FC = () => {
     }
   }, []);
 
-  const handleSaveApiSettings = async () => {
+  const handleSaveApiSettings = useCallback(async () => {
     try {
       await aiService.updateSettings(globalProvider, globalApiKey, globalModel);
       setApiModalOpen(false);
@@ -236,7 +203,7 @@ const CerebrumApp: React.FC = () => {
       console.error('Failed to save API settings:', error);
       toast.error(`Failed to save API settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  };
+  }, [globalProvider, globalApiKey, globalModel]);
 
   
 
@@ -256,8 +223,8 @@ const CerebrumApp: React.FC = () => {
     return <GoogleSignIn onSignIn={handleSignIn} />;
   }
 
-  // Main app navigation bar
-  const renderNavBar = () => (
+  // Memoized navigation bar to prevent unnecessary re-renders
+  const renderNavBar = useMemo(() => (
     <nav className="bg-white shadow-sm border-b">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
@@ -377,36 +344,24 @@ const CerebrumApp: React.FC = () => {
         </DialogContent>
       </Dialog>
     </nav>
-  );
+  ), [currentView, user.name, apiModalOpen, globalProvider, globalApiKey, globalModel, handleViewProfile, handleViewFlashcards, handleViewSkills, handleViewGames, handleSaveApiSettings]);
 
-  // Replace the placeholder dashboard with the actual QuizDashboard component
-  const renderDashboard = () => {
-    console.log('📊 [DEBUG] Rendering QuizDashboard component');
-    return (
-      <QuizDashboard
-        ref={dashboardRef}
-        onStartQuiz={handleStartQuiz}
-        onCreateQuiz={handleCreateQuiz}
-      />
-    );
-  };
+  // Memoized dashboard component
+  const renderDashboard = useMemo(() => (
+    <QuizDashboard
+      ref={dashboardRef}
+      onStartQuiz={handleStartQuiz}
+      onCreateQuiz={handleCreateQuiz}
+    />
+  ), [handleStartQuiz, handleCreateQuiz]);
 
-  // Render current view
-  const renderCurrentView = () => {
-    console.log('🖥️ [DEBUG] renderCurrentView called');
-    console.log('🖥️ [DEBUG] Current view:', currentView);
-    console.log('🖥️ [DEBUG] Current quiz:', currentQuiz);
-    console.log('🖥️ [DEBUG] Quiz length:', currentQuiz?.length || 'null/undefined');
-    
+  // Memoized view rendering with optimized switch logic
+  const renderCurrentView = useMemo(() => {
     switch (currentView) {
       case 'dashboard':
-        console.log('📊 [DEBUG] Rendering QuizDashboard component');
-        return renderDashboard();
+        return renderDashboard;
       
       case 'quiz':
-        console.log('🖥️ [DEBUG] Rendering quiz view');
-        console.log('🖥️ [DEBUG] currentQuiz exists:', !!currentQuiz);
-        console.log('🖥️ [DEBUG] Passing questions to Quiz component:', currentQuiz?.length || 'null/undefined');
         return currentQuiz ? (
           <div className="container mx-auto p-4">
             <Quiz questions={currentQuiz} />
@@ -418,8 +373,6 @@ const CerebrumApp: React.FC = () => {
         );
       
       case 'create':
-        console.log('🖥️ [DEBUG] Rendering create view');
-        console.log('🖥️ [DEBUG] handleStartQuiz function:', typeof handleStartQuiz);
         return (
           <div className="container mx-auto p-4">
             <JsonInput onQuizStart={handleStartQuiz} />
@@ -427,7 +380,6 @@ const CerebrumApp: React.FC = () => {
         );
       
       case 'profile':
-        console.log('🖥️ [DEBUG] Rendering profile view');
         return (
           <div className="container mx-auto p-4 flex justify-center">
             <UserProfileComponent onSignOut={handleSignOut} />
@@ -435,36 +387,31 @@ const CerebrumApp: React.FC = () => {
         );
       
       case 'settings':
-        console.log('🖥️ [DEBUG] Rendering settings view');
         return <SettingsPage />;
       
       case 'flashcards':
-        console.log('��️ [DEBUG] Rendering flashcards view');
         return <Flashcards />;
       
       case 'skills':
-        console.log('🧠 [DEBUG] Rendering skills view');
         return (
           <div className="overflow-auto h-[calc(100vh-80px)]">
-            <SkillAcquisitionApp onBack={() => setCurrentView('dashboard')} />
+            <SkillAcquisitionApp onBack={handleBackToDashboard} />
           </div>
         );
       
       case 'games':
-        console.log('🎮 [DEBUG] Rendering games view');
         return <Games />;
       
       default:
-        console.error('🖥️ [DEBUG] Unknown view:', currentView);
         return <div>Unknown view</div>;
     }
-  };
+  }, [currentView, currentQuiz, renderDashboard, handleStartQuiz, handleSignOut, handleBackToDashboard]);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {renderNavBar()}
+      {renderNavBar}
       <main className="py-6">
-        {renderCurrentView()}
+        {renderCurrentView}
       </main>
     </div>
   );
