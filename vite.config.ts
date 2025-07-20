@@ -1,7 +1,6 @@
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react-swc";
+import react from "@vitejs/plugin-react";
 import path from "path";
-import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -16,13 +15,9 @@ export default defineConfig(({ mode }) => ({
       'Cross-Origin-Embedder-Policy': 'unsafe-none'
     }
   },
-  // Use GitHub Pages base path only for production builds, root path for development/Lovable
+  // Use GitHub Pages base path only for production builds, root path for development
   base: process.env.GITHUB_ACTIONS ? '/quiz-from-json/' : '/',
-  plugins: [
-    react(),
-    mode === 'development' &&
-    componentTagger(),
-  ].filter(Boolean),
+  plugins: [react()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
