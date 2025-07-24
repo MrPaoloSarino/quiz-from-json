@@ -2,6 +2,7 @@
 import { API_CONFIG, PROVIDERS, AIProvider, GeminiModel } from './aiConfig';
 import { loadSettings, saveSettings } from './aiSettings';
 import { secureStorage } from './secureStorage';
+import { QuizQuestionArraySchema } from '@/types/quizSchema';
 
 class AIService {
   private static instance: AIService;
@@ -188,22 +189,21 @@ class AIService {
       }
       
       const questions = JSON.parse(jsonContent);
-      if (!Array.isArray(questions)) {
-        throw new Error('Invalid response format from AI - expected array');
+      // Zod validation
+      const parseResult = QuizQuestionArraySchema.safeParse(questions);
+      if (!parseResult.success) {
+        throw new Error('Invalid AI response format: ' + parseResult.error.message);
       }
-      
-      // Validate questions structure
-      const validQuestions = questions.filter(q => 
-        q.question && 
-        Array.isArray(q.options) && 
-        q.options.length >= 2 && 
-        q.answer
-      );
-      
+      // Only return questions with required fields (question, options, answer)
+      const validQuestions = parseResult.data.filter(q =>
+        typeof q.question === 'string' &&
+        Array.isArray(q.options) &&
+        q.options.length >= 2 &&
+        typeof q.answer === 'string'
+      ) as { question: string; options: string[]; answer: string; explanation?: string; difficulty?: string; category?: string; tags?: string[]; }[];
       if (validQuestions.length === 0) {
         throw new Error('No valid questions generated');
       }
-      
       return validQuestions;
     } catch (error) {
       // eslint-disable-next-line no-console

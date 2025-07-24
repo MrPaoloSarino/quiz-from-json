@@ -1,5 +1,6 @@
 import { QuizQuestion } from '@/types/quiz';
 import { SpacedRepetitionData, ReviewHistoryEntry, LearningAnalytics, EnhancedQuizQuestion } from '@/types/user';
+import { QuizQuestionArraySchema } from '@/types/quizSchema';
 
 export const exportQuizToFile = (questions: QuizQuestion[]) => {
   // Create a JSON string with pretty formatting
@@ -34,7 +35,13 @@ export const importQuizFromFile = (file: File): Promise<QuizQuestion[]> => {
       try {
         const content = event.target?.result as string;
         const questions = JSON.parse(content);
-        resolve(questions);
+        // Zod validation
+        const parseResult = QuizQuestionArraySchema.safeParse(questions);
+        if (!parseResult.success) {
+          reject(new Error('Invalid quiz file format: ' + parseResult.error.message));
+          return;
+        }
+        resolve(parseResult.data);
       } catch (error) {
         reject(new Error('Invalid quiz file format'));
       }
