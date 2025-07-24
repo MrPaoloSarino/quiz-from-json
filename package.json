@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "echo '=== Starting build ===' && npm install @rollup/rollup-linux-x64-gnu --no-save && vite build",
+    "build": "npm install @rollup/rollup-linux-x64-gnu --no-save --ignore-platform-reqs || true && vite build",
     "postinstall": "echo 'npm install completed successfully'",
     "preview": "vite preview",
     "sync": "phion",
@@ -34,8 +34,8 @@
   "packageManager": "npm@10.9.2",
   "overrides": {
     "rollup": {
-      "@rollup/rollup-linux-x64-gnu": "4.9.5",
-      "@rollup/rollup-win32-x64-msvc": "4.9.5"
+      "@rollup/rollup-linux-x64-gnu": "4.45.1",
+      "@rollup/rollup-win32-x64-msvc": "4.45.1"
     }
   },
   "engines": {
@@ -132,6 +132,7 @@
     "vitest": "^3.2.4"
   },
   "optionalDependencies": {
-    "@rollup/rollup-win32-x64-msvc": "^4.9.5"
+    "@rollup/rollup-linux-x64-gnu": "^4.45.1",
+    "@rollup/rollup-win32-x64-msvc": "^4.45.1"
   }
 }
