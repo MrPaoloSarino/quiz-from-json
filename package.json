@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm install @rollup/rollup-linux-x64-gnu --no-save --ignore-platform-reqs || true && vite build",
+    "build": "vite build",
     "postinstall": "echo 'npm install completed successfully'",
     "preview": "vite preview",
     "sync": "phion",
@@ -97,6 +97,7 @@
     "@21st-extension/toolbar": "latest",
     "@21st-extension/toolbar-react": "latest",
     "@chromatic-com/storybook": "4.0.1",
+    "@rollup/rollup-win32-x64-msvc": "^4.45.1",
     "@storybook/addon-a11y": "9.0.16",
     "@storybook/addon-docs": "9.0.16",
     "@storybook/addon-onboarding": "9.0.16",
