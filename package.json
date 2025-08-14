@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "postinstall": "echo 'npm install completed successfully'",
+  "postinstall:ci": "node scripts/strip-win-rollup.js",
     "preview": "vite preview",
     "sync": "phion",
     "start": "pnpm install && pnpm upgrade && node scripts/check-updates.js && node scripts/start-with-browser.js",
@@ -32,12 +33,6 @@
     ]
   },
   "packageManager": "npm@10.9.2",
-  "overrides": {
-    "rollup": {
-      "@rollup/rollup-linux-x64-gnu": "4.45.1",
-      "@rollup/rollup-win32-x64-msvc": "4.45.1"
-    }
-  },
   "engines": {
     "node": ">=20.0.0"
   },
@@ -97,7 +92,6 @@
     "@21st-extension/toolbar": "latest",
     "@21st-extension/toolbar-react": "latest",
     "@chromatic-com/storybook": "4.0.1",
-    "@rollup/rollup-win32-x64-msvc": "^4.45.1",
     "@storybook/addon-a11y": "9.0.16",
     "@storybook/addon-docs": "9.0.16",
     "@storybook/addon-onboarding": "9.0.16",
