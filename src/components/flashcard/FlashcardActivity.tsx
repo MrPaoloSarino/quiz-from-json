@@ -22,6 +22,7 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 type FlashcardState = "idle" | "flipped" | "marked";
 
 const FlashcardActivity: React.FC<FlashcardActivityProps> = ({ deck }) => {
+  // All hooks must be called before any conditional return
   const [shuffle, setShuffle] = useState(false);
   const [reverse, setReverse] = useState(false);
   const [playAll, setPlayAll] = useState(false);
