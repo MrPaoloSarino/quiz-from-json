@@ -1,0 +1,11 @@
+{
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "installCommand": "npm install --no-optional",
+  "outputDirectory": "dist",
+  "env": {
+    "npm_config_optional": "false",
+    "npm_config_target_platform": "linux",
+    "npm_config_target_arch": "x64"
+  }
+}
