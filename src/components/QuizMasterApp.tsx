@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { aiService } from '@/utils/aiService';
 import { AIProvider } from '@/utils/aiConfig';
-import { ArrowLeft, User, Settings } from 'lucide-react';
+import { User, Settings } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import SettingsPage from '@/pages/Settings';
@@ -73,32 +73,226 @@ const providerModels = {
   ]
 };
 
+// Extracted authenticated portion into its own component so that
+// parent component can conditionally render <GoogleSignIn/> or loading
+// state WITHOUT skipping hooks inside the authenticated experience.
+// This resolves the React production error (minified error 310) caused
+// by early returns before hook declarations (useMemo etc.).
+
+interface AuthenticatedLayoutProps {
+  user: UserProfile;
+  currentView: AppView;
+  setCurrentView: React.Dispatch<React.SetStateAction<AppView>>;
+  currentQuiz: QuizQuestion[] | null;
+  dashboardRef: React.RefObject<{ refreshQuizzes: () => void }>;
+  handleStartQuiz: (q: QuizQuestion[]) => void;
+  handleCreateQuiz: () => void;
+  handleSignOut: () => Promise<void>;
+  handleBackToDashboard: () => void;
+}
+
+const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
+  user,
+  currentView,
+  setCurrentView,
+  currentQuiz,
+  dashboardRef,
+  handleStartQuiz,
+  handleCreateQuiz,
+  handleSignOut,
+  handleBackToDashboard,
+}) => {
+  // Local state that is only relevant when authenticated
+  const [apiModalOpen, setApiModalOpen] = React.useState(false);
+  const [globalProvider, setGlobalProvider] = React.useState<AIProvider>('openrouter');
+  const [globalApiKey, setGlobalApiKey] = React.useState('');
+  const [globalModel, setGlobalModel] = React.useState('deepseek-chat-v3');
+
+  // Load AI settings
+  useEffect(() => {
+    const settingsStr = localStorage.getItem('ai_settings');
+    if (settingsStr) {
+      try {
+        const settings = JSON.parse(settingsStr);
+        if (settings.provider) setGlobalProvider(settings.provider);
+        if (settings.apiKey) setGlobalApiKey(settings.apiKey);
+        if (settings.model) setGlobalModel(settings.model);
+      } catch (e) {
+        console.error('Failed to parse AI settings from localStorage', e);
+      }
+    }
+  }, []);
+
+  const handleSaveApiSettings = useCallback(async () => {
+    try {
+      await aiService.updateSettings(globalProvider, globalApiKey, globalModel);
+      setApiModalOpen(false);
+      toast.success('API settings saved!');
+    } catch (error) {
+      console.error('Failed to save API settings:', error);
+      toast.error(`Failed to save API settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }, [globalProvider, globalApiKey, globalModel]);
+
+  const handleViewFlashcards = useCallback(() => setCurrentView('flashcards'), [setCurrentView]);
+  const handleViewSkills = useCallback(() => setCurrentView('skills'), [setCurrentView]);
+  const handleViewGames = useCallback(() => setCurrentView('games'), [setCurrentView]);
+  const handleViewProfile = useCallback(() => setCurrentView('profile'), [setCurrentView]);
+
+  const userFirstName = user.name?.split(' ')[0] ?? 'User';
+
+  const renderNavBar = useMemo(() => (
+    <nav className="bg-white shadow-sm border-b">
+      <div className="container mx-auto px-4 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-bold text-black">Cerebrum</h1>
+            <Button
+              variant={currentView === 'dashboard' ? 'default' : 'ghost'}
+              onClick={() => setCurrentView('dashboard')}
+              className="ml-2"
+            >
+              Quizzes
+            </Button>
+            <Button variant={currentView === 'flashcards' ? 'default' : 'ghost'} onClick={handleViewFlashcards} className="ml-2">Flashcards</Button>
+            <Button variant={currentView === 'skills' ? 'default' : 'ghost'} onClick={handleViewSkills} className="ml-2">Skills</Button>
+            <Button variant={currentView === 'games' ? 'default' : 'ghost'} onClick={handleViewGames} className="ml-2">Games</Button>
+          </div>
+          <div className="flex items-center gap-3">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setApiModalOpen(true)}
+                    className="flex items-center gap-2"
+                    aria-label="AI/API Setup"
+                  >
+                    <Settings className="w-4 h-4" />
+                    <span className="hidden sm:block">AI/API Setup</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Configure your AI provider, API key, and model for quiz generation and feedback.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <span className="text-sm text-gray-600 hidden sm:block">Welcome, {userFirstName}!</span>
+            <Button variant="ghost" size="sm" onClick={handleViewProfile} className="flex items-center gap-2 hover:bg-black/70 hover:text-white">
+              <User className="w-4 h-4" />
+              <span className="hidden sm:block">Profile</span>
+            </Button>
+          </div>
+        </div>
+      </div>
+      <Dialog open={apiModalOpen} onOpenChange={setApiModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>AI/API Setup</DialogTitle>
+          </DialogHeader>
+            <div className="space-y-4">
+              <label className="block text-sm font-medium">Provider</label>
+              <select
+                value={globalProvider}
+                onChange={e => {
+                  setGlobalProvider(e.target.value as AIProvider);
+                  const models = providerModels[e.target.value as keyof typeof providerModels];
+                  if (models && models.length > 0) setGlobalModel(models[0].value);
+                }}
+                className="w-full border rounded p-2"
+              >
+                <option value="openrouter">OpenRouter</option>
+                <option value="openai">OpenAI</option>
+                <option value="gemini">Gemini</option>
+              </select>
+              <label className="block text-sm font-medium">API Key</label>
+              <Input
+                value={globalApiKey}
+                onChange={e => setGlobalApiKey(e.target.value)}
+                placeholder={`Enter your ${globalProvider} API key`}
+                type="password"
+              />
+              <label className="block text-sm font-medium">Model</label>
+              <select
+                value={globalModel}
+                onChange={e => setGlobalModel(e.target.value)}
+                className="w-full border rounded p-2"
+              >
+                {providerModels[globalProvider as keyof typeof providerModels].map(m => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button onClick={handleSaveApiSettings} className="bg-blue-600 text-white">Save</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </nav>
+  ), [currentView, userFirstName, apiModalOpen, globalProvider, globalApiKey, globalModel, handleViewProfile, handleViewFlashcards, handleViewSkills, handleViewGames, handleSaveApiSettings]);
+
+  const renderDashboard = useMemo(() => (
+    <QuizDashboard ref={dashboardRef} onStartQuiz={handleStartQuiz} onCreateQuiz={handleCreateQuiz} />
+  ), [handleStartQuiz, handleCreateQuiz]);
+
+  const renderCurrentView = useMemo(() => {
+    switch (currentView) {
+      case 'dashboard':
+        return renderDashboard;
+      case 'quiz':
+        return currentQuiz ? (
+          <div className="container mx-auto p-4"><Quiz questions={currentQuiz} /></div>
+        ) : (
+          <div className="container mx-auto p-4 text-center"><p className="text-gray-500">No quiz selected</p></div>
+        );
+      case 'create':
+        return <div className="container mx-auto p-4"><JsonInput onQuizStart={handleStartQuiz} /></div>;
+      case 'profile':
+        return <div className="container mx-auto p-4 flex justify-center"><UserProfileComponent onSignOut={handleSignOut} /></div>;
+      case 'settings':
+        return <SettingsPage />;
+      case 'flashcards':
+        return <Flashcards />;
+      case 'skills':
+        return <div className="overflow-auto h-[calc(100vh-80px)]"><SkillAcquisitionApp onBack={handleBackToDashboard} /></div>;
+      case 'games':
+        return <Games />;
+      default:
+        return <div>Unknown view</div>;
+    }
+  }, [currentView, currentQuiz, renderDashboard, handleStartQuiz, handleSignOut, handleBackToDashboard]);
+
+  // Refresh quizzes when returning to dashboard
+  useEffect(() => {
+    if (currentView === 'dashboard') {
+      dashboardRef.current?.refreshQuizzes();
+    }
+  }, [currentView]);
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {renderNavBar}
+      <main className="py-6">{renderCurrentView}</main>
+    </div>
+  );
+};
+
 const CerebrumApp: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [currentView, setCurrentView] = useState<AppView>('dashboard');
   const [currentQuiz, setCurrentQuiz] = useState<QuizQuestion[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const dashboardRef = useRef<{ refreshQuizzes: () => void }>(null);
-  const [apiModalOpen, setApiModalOpen] = React.useState(false);
-  const [globalProvider, setGlobalProvider] = React.useState<AIProvider>('openrouter');
-  const [globalApiKey, setGlobalApiKey] = React.useState('');
-  const [globalModel, setGlobalModel] = React.useState('deepseek-chat-v3');
 
   // Consolidated initialization useEffect
   useEffect(() => {
     initializeApp();
-
-    const handler = () => setApiModalOpen(true);
-    window.addEventListener('open-ai-api-setup', handler);
-    return () => window.removeEventListener('open-ai-api-setup', handler);
   }, []);
 
-  // Dashboard refresh effect (only when returning to dashboard)
-  useEffect(() => {
-    if (currentView === 'dashboard') {
-      dashboardRef.current?.refreshQuizzes();
-    }
-  }, [currentView]);
 
   const initializeApp = async () => {
     try {
@@ -159,261 +353,33 @@ const CerebrumApp: React.FC = () => {
     setCurrentView('dashboard');
   }, []);
 
-  const handleViewProfile = useCallback(() => {
-    setCurrentView('profile');
-  }, []);
-
-  const handleViewSettings = useCallback(() => {
-    setCurrentView('settings');
-  }, []);
-
-  const handleViewFlashcards = useCallback(() => {
-    setCurrentView('flashcards');
-  }, []);
-
-  const handleViewSkills = useCallback(() => {
-    setCurrentView('skills');
-  }, []);
-
-  const handleViewGames = useCallback(() => {
-    setCurrentView('games');
-  }, []);
-
-  // Load AI settings on mount (consolidated with main initialization)
-  useEffect(() => {
-    const settingsStr = localStorage.getItem('ai_settings');
-    if (settingsStr) {
-      try {
-        const settings = JSON.parse(settingsStr);
-        if (settings.provider) setGlobalProvider(settings.provider);
-        if (settings.apiKey) setGlobalApiKey(settings.apiKey);
-        if (settings.model) setGlobalModel(settings.model);
-      } catch (e) {
-        console.error("Failed to parse AI settings from localStorage", e);
-      }
-    }
-  }, []);
-
-  const handleSaveApiSettings = useCallback(async () => {
-    try {
-      await aiService.updateSettings(globalProvider, globalApiKey, globalModel);
-      setApiModalOpen(false);
-      toast.success('API settings saved!');
-    } catch (error) {
-      console.error('Failed to save API settings:', error);
-      toast.error(`Failed to save API settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }, [globalProvider, globalApiKey, globalModel]);
-
-
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-600">Initializing Cerebrum...</p>
         </div>
       </div>
     );
   }
 
-  // Show sign-in page if user is not authenticated
   if (!user) {
     return <GoogleSignIn onSignIn={handleSignIn} />;
   }
 
-  // Memoized navigation bar to prevent unnecessary re-renders
-  const renderNavBar = useMemo(() => (
-    <nav className="bg-white shadow-sm border-b">
-      <div className="container mx-auto px-4 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {/* Removed Back button for consistent title alignment */}
-            <h1 className="text-2xl font-bold text-black">
-              Cerebrum
-            </h1>
-            <Button
-              variant={currentView === 'dashboard' ? 'default' : 'ghost'}
-              onClick={() => setCurrentView('dashboard')}
-              className="ml-2"
-            >
-              Quizzes
-            </Button>
-            <Button
-              variant={currentView === 'flashcards' ? 'default' : 'ghost'}
-              onClick={handleViewFlashcards}
-              className="ml-2"
-            >
-              Flashcards
-            </Button>
-            <Button
-              variant={currentView === 'skills' ? 'default' : 'ghost'}
-              onClick={handleViewSkills}
-              className="ml-2"
-            >
-              Skills
-            </Button>
-            <Button
-              variant={currentView === 'games' ? 'default' : 'ghost'}
-              onClick={handleViewGames}
-              className="ml-2"
-            >
-              Games
-            </Button>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setApiModalOpen(true)}
-                    className="flex items-center gap-2"
-                    aria-label="AI/API Setup"
-                  >
-                    <Settings className="w-4 h-4" />
-                    <span className="hidden sm:block">AI/API Setup</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  Configure your AI provider, API key, and model for quiz generation and feedback.
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <span className="text-sm text-gray-600 hidden sm:block">Welcome, {user.name.split(' ')[0]}!</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleViewProfile}
-              className="flex items-center gap-2 hover:bg-black/70 hover:text-white"
-            >
-              <User className="w-4 h-4" />
-              <span className="hidden sm:block">Profile</span>
-            </Button>
-          </div>
-        </div>
-      </div>
-      <Dialog open={apiModalOpen} onOpenChange={setApiModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>AI/API Setup</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <label className="block text-sm font-medium">Provider</label>
-            <select
-              value={globalProvider}
-              onChange={e => {
-                setGlobalProvider(e.target.value as AIProvider);
-                // Set default model for provider
-                const models = providerModels[e.target.value as keyof typeof providerModels];
-                if (models && models.length > 0) setGlobalModel(models[0].value);
-              }}
-              className="w-full border rounded p-2"
-            >
-              <option value="openrouter">OpenRouter</option>
-              <option value="openai">OpenAI</option>
-              <option value="gemini">Gemini</option>
-            </select>
-            <label className="block text-sm font-medium">API Key</label>
-            <Input
-              value={globalApiKey}
-              onChange={e => setGlobalApiKey(e.target.value)}
-              placeholder={`Enter your ${globalProvider} API key`}
-              type="password"
-            />
-            <label className="block text-sm font-medium">Model</label>
-            <select
-              value={globalModel}
-              onChange={e => setGlobalModel(e.target.value)}
-              className="w-full border rounded p-2"
-            >
-              {providerModels[globalProvider as keyof typeof providerModels].map(m => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DialogClose>
-            <Button onClick={handleSaveApiSettings} className="bg-blue-600 text-white">Save</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </nav>
-  ), [currentView, user.name, apiModalOpen, globalProvider, globalApiKey, globalModel, handleViewProfile, handleViewFlashcards, handleViewSkills, handleViewGames, handleSaveApiSettings]);
-
-  // Memoized dashboard component
-  const renderDashboard = useMemo(() => (
-    <QuizDashboard
-      ref={dashboardRef}
-      onStartQuiz={handleStartQuiz}
-      onCreateQuiz={handleCreateQuiz}
-    />
-  ), [handleStartQuiz, handleCreateQuiz]);
-
-  // Memoized view rendering with optimized switch logic
-  const renderCurrentView = useMemo(() => {
-    switch (currentView) {
-      case 'dashboard':
-        return renderDashboard;
-
-      case 'quiz':
-        return currentQuiz ? (
-          <div className="container mx-auto p-4">
-            <Quiz questions={currentQuiz} />
-          </div>
-        ) : (
-          <div className="container mx-auto p-4 text-center">
-            <p className="text-gray-500">No quiz selected</p>
-          </div>
-        );
-
-      case 'create':
-        return (
-          <div className="container mx-auto p-4">
-            <JsonInput onQuizStart={handleStartQuiz} />
-          </div>
-        );
-
-      case 'profile':
-        return (
-          <div className="container mx-auto p-4 flex justify-center">
-            <UserProfileComponent onSignOut={handleSignOut} />
-          </div>
-        );
-
-      case 'settings':
-        return <SettingsPage />;
-
-      case 'flashcards':
-        return <Flashcards />;
-
-      case 'skills':
-        return (
-          <div className="overflow-auto h-[calc(100vh-80px)]">
-            <SkillAcquisitionApp onBack={handleBackToDashboard} />
-          </div>
-        );
-
-      case 'games':
-        return <Games />;
-
-      default:
-        return <div>Unknown view</div>;
-    }
-  }, [currentView, currentQuiz, renderDashboard, handleStartQuiz, handleSignOut, handleBackToDashboard, user]);
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {renderNavBar}
-      <main className="py-6">
-        {renderCurrentView}
-      </main>
-    </div>
+    <AuthenticatedLayout
+      user={user}
+      currentView={currentView}
+      setCurrentView={setCurrentView}
+      currentQuiz={currentQuiz}
+      dashboardRef={dashboardRef}
+      handleStartQuiz={handleStartQuiz}
+      handleCreateQuiz={handleCreateQuiz}
+      handleSignOut={handleSignOut}
+      handleBackToDashboard={handleBackToDashboard}
+    />
   );
 };
 
