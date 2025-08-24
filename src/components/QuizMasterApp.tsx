@@ -146,7 +146,10 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold text-black">Cerebrum</h1>
+            <div className="flex items-center gap-2">
+              <img src="/icon (1).svg" alt="Cerebrum Logo" className="w-8 h-8" />
+              <h1 className="text-2xl font-bold text-black">Cerebrum</h1>
+            </div>
             <Button
               variant={currentView === 'dashboard' ? 'default' : 'ghost'}
               onClick={() => setCurrentView('dashboard')}
@@ -358,7 +361,10 @@ const CerebrumApp: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Initializing Cerebrum...</p>
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <img src="/icon (1).svg" alt="Cerebrum Logo" className="w-8 h-8" />
+            <p className="text-gray-600 text-lg font-medium">Initializing Cerebrum...</p>
+          </div>
         </div>
       </div>
     );

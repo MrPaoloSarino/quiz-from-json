@@ -15,7 +15,10 @@ const NotFound = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted">
       <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4 text-destructive">404</h1>
+        <div className="flex items-center justify-center gap-3 mb-6">
+          <img src="/icon (1).svg" alt="Cerebrum Logo" className="w-12 h-12" />
+          <h1 className="text-4xl font-bold text-destructive">404</h1>
+        </div>
         <p className="text-xl text-muted-foreground mb-4">Oops! Page not found</p>
         <a href="/" className="text-primary hover:text-primary-foreground underline">
           Return to Home
