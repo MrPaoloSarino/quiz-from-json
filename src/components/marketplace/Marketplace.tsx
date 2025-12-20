@@ -92,7 +92,6 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onInstall }) => {
                             <div className="grid grid-cols-2 gap-2 text-sm text-gray-500">
                                 <div>Author: <span className="font-medium text-gray-900">{item.author}</span></div>
                                 <div>Category: <span className="font-medium text-gray-900">{item.category}</span></div>
-                                <div>Downloads: <span className="font-medium text-gray-900">{item.downloads}</span></div>
                             </div>
                         </CardContent>
                         <CardFooter className="pt-2">

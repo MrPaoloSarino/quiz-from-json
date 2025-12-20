@@ -107,79 +107,22 @@ const assessmentQuestions: QuizQuestion[] = [
     createQuestion("Rapport establishment is crucial:", ["Before testing", "During testing", "After testing", "Never"], "Before testing"),
 ];
 
-// Generator to reach 500
-// We do this by creating variations and combining sets
-const generateMegaReviewer = (): QuizQuestion[] => {
-    const baseQuestions = [
-        ...abnormalPsychQuestions,
-        ...theoriesOfPersonalityQuestions,
-        ...industrialQuestions,
-        ...assessmentQuestions
-    ]; // 80 Questions total (20 each)
-
-    const megaSet: QuizQuestion[] = [];
-
-    // 1. Add Base Questions (1-80)
-    megaSet.push(...baseQuestions);
-
-    // 2. Add "Review" Versions (Same questions, slightly diff wording or order) (81-160)
-    // In a real app, we'd have a DB. Here we simulate "Drill Mode" by duplicating for retention
-    // but preserving unique ID logic if we had it.
-    baseQuestions.forEach(q => {
-        megaSet.push({
-            ...q,
-            question: `[REVIEW] ${q.question}`,
-            // Tags removed as not in type
-        });
-    });
-
-    // 3. Generate "True/False" variations (161-320)
-    baseQuestions.forEach((q, i) => {
-        // Create a TRUE statement
-        megaSet.push({
-            question: `TRUE or FALSE: ${q.answer} is the correct answer to: "${q.question}"`,
-            options: ["True", "False"],
-            answer: "True",
-            type: "multiple"
-        });
-
-        // Create a FALSE statement (using a distractor)
-        if (q.options && q.options.length > 1) {
-            const distractor = q.options.find(o => o !== q.answer) || "Incorrect";
-            megaSet.push({
-                question: `TRUE or FALSE: ${distractor} is the correct answer to: "${q.question}"`,
-                options: ["True", "False"],
-                answer: "False",
-                type: "multiple"
-            });
-        }
-    });
-
-    // 4. Fill the rest with "Mock Board" randomized IDs (321-500)
-    // We will cycle through the base concepts to reinforce them
-    let count = megaSet.length;
-    let i = 0;
-    while (count < 500) {
-        const template = baseQuestions[i % baseQuestions.length];
-        megaSet.push({
-            ...template,
-            question: `[MOCK BOARD #${count + 1}] ${template.question}`,
-        });
-        count++;
-        i++;
-    }
-
-    return megaSet;
-};
+// Combine all questions
+const allQuestions = [
+    ...abnormalPsychQuestions,
+    ...theoriesOfPersonalityQuestions,
+    ...industrialQuestions,
+    ...assessmentQuestions
+];
 
 export const grandMockExam: MarketplaceItem = {
-    id: 'grand-mock-500',
-    title: 'COMPLETE Psychometrician Mock Board (500 Items)',
-    description: 'The ultimate review challenge. 500 items covering TOP, AbPsy, IO, and PsychAss. Includes drill variations and true/false mechanisms for mastery.',
+    id: 'grand-mock-80',
+    title: 'Psychometrician Mock Board (Core 80 Items)',
+    description: 'A focused review set covering TOP, AbPsy, IO, and PsychAss. Contains 80 high-yield questions.',
     category: 'Education',
     author: 'Cerebrum Master',
-    downloads: 50000,
+    downloads: 1540,
     rating: 5.0,
     price: 'Premium',
-    content: generateMegaReviewer()
+    content: allQuestions
 };
