@@ -17,10 +17,8 @@ import { Input } from '@/components/ui/input';
 import SettingsPage from '@/pages/Settings';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import Flashcards from '@/pages/Flashcards';
-import SkillAcquisitionApp from './skill/SkillAcquisitionApp';
-import Games from './games/Games';
 
-type AppView = 'dashboard' | 'quiz' | 'create' | 'profile' | 'settings' | 'flashcards' | 'skills' | 'games';
+type AppView = 'dashboard' | 'quiz' | 'create' | 'profile' | 'settings' | 'flashcards';
 
 const providerModels = {
   openrouter: [
@@ -135,8 +133,6 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
   }, [globalProvider, globalApiKey, globalModel]);
 
   const handleViewFlashcards = useCallback(() => setCurrentView('flashcards'), [setCurrentView]);
-  const handleViewSkills = useCallback(() => setCurrentView('skills'), [setCurrentView]);
-  const handleViewGames = useCallback(() => setCurrentView('games'), [setCurrentView]);
   const handleViewProfile = useCallback(() => setCurrentView('profile'), [setCurrentView]);
 
   const userFirstName = user.name?.split(' ')[0] ?? 'User';
@@ -158,8 +154,6 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
               Quizzes
             </Button>
             <Button variant={currentView === 'flashcards' ? 'default' : 'ghost'} onClick={handleViewFlashcards} className="ml-2">Flashcards</Button>
-            <Button variant={currentView === 'skills' ? 'default' : 'ghost'} onClick={handleViewSkills} className="ml-2">Skills</Button>
-            <Button variant={currentView === 'games' ? 'default' : 'ghost'} onClick={handleViewGames} className="ml-2">Games</Button>
           </div>
           <div className="flex items-center gap-3">
             <TooltipProvider>
@@ -236,7 +230,7 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
         </DialogContent>
       </Dialog>
     </nav>
-  ), [currentView, userFirstName, apiModalOpen, globalProvider, globalApiKey, globalModel, handleViewProfile, handleViewFlashcards, handleViewSkills, handleViewGames, handleSaveApiSettings]);
+  ), [currentView, userFirstName, apiModalOpen, globalProvider, globalApiKey, globalModel, handleViewProfile, handleViewFlashcards, handleSaveApiSettings]);
 
   const renderDashboard = useMemo(() => (
     <QuizDashboard ref={dashboardRef} onStartQuiz={handleStartQuiz} onCreateQuiz={handleCreateQuiz} />
@@ -260,10 +254,6 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
         return <SettingsPage />;
       case 'flashcards':
         return <Flashcards />;
-      case 'skills':
-        return <div className="overflow-auto h-[calc(100vh-80px)]"><SkillAcquisitionApp onBack={handleBackToDashboard} /></div>;
-      case 'games':
-        return <Games />;
       default:
         return <div>Unknown view</div>;
     }
