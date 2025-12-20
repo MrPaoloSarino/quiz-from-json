@@ -1,5 +1,6 @@
 import { QuizQuestion } from '@/types/quiz';
 import { phBoardExamReviewers } from './ph_reviewer';
+import { grandMockExam } from './grand_mock';
 
 export interface MarketplaceItem {
     id: string;
@@ -14,6 +15,7 @@ export interface MarketplaceItem {
 }
 
 export const mockMarketplaceItems: MarketplaceItem[] = [
+    grandMockExam,
     ...phBoardExamReviewers,
     {
         id: '1',
