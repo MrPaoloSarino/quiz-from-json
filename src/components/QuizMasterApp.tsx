@@ -11,14 +11,16 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { aiService } from '@/utils/aiService';
 import { AIProvider } from '@/utils/aiConfig';
-import { User, Settings } from 'lucide-react';
+import { User, Settings, ShoppingBag } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import SettingsPage from '@/pages/Settings';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import Flashcards from '@/pages/Flashcards';
+import Marketplace from './marketplace/Marketplace';
+import { MarketplaceItem } from './marketplace/data';
 
-type AppView = 'dashboard' | 'quiz' | 'create' | 'profile' | 'settings' | 'flashcards';
+type AppView = 'dashboard' | 'quiz' | 'create' | 'profile' | 'settings' | 'flashcards' | 'marketplace';
 
 const providerModels = {
   openrouter: [
@@ -87,6 +89,7 @@ interface AuthenticatedLayoutProps {
   handleCreateQuiz: () => void;
   handleSignOut: () => Promise<void>;
   handleBackToDashboard: () => void;
+  handleInstallTemplate: (item: MarketplaceItem) => void;
 }
 
 const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
@@ -99,6 +102,7 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
   handleCreateQuiz,
   handleSignOut,
   handleBackToDashboard,
+  handleInstallTemplate,
 }) => {
   // Local state that is only relevant when authenticated
   const [apiModalOpen, setApiModalOpen] = React.useState(false);
@@ -134,6 +138,7 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
 
   const handleViewFlashcards = useCallback(() => setCurrentView('flashcards'), [setCurrentView]);
   const handleViewProfile = useCallback(() => setCurrentView('profile'), [setCurrentView]);
+  const handleViewMarketplace = useCallback(() => setCurrentView('marketplace'), [setCurrentView]);
 
   const userFirstName = user.name?.split(' ')[0] ?? 'User';
 
@@ -154,6 +159,10 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
               Quizzes
             </Button>
             <Button variant={currentView === 'flashcards' ? 'default' : 'ghost'} onClick={handleViewFlashcards} className="ml-2">Flashcards</Button>
+            <Button variant={currentView === 'marketplace' ? 'default' : 'ghost'} onClick={handleViewMarketplace} className="ml-2 flex items-center gap-1">
+              <ShoppingBag className="w-4 h-4" />
+              Marketplace
+            </Button>
           </div>
           <div className="flex items-center gap-3">
             <TooltipProvider>
@@ -188,49 +197,49 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
           <DialogHeader>
             <DialogTitle>AI/API Setup</DialogTitle>
           </DialogHeader>
-            <div className="space-y-4">
-              <label className="block text-sm font-medium">Provider</label>
-              <select
-                value={globalProvider}
-                onChange={e => {
-                  setGlobalProvider(e.target.value as AIProvider);
-                  const models = providerModels[e.target.value as keyof typeof providerModels];
-                  if (models && models.length > 0) setGlobalModel(models[0].value);
-                }}
-                className="w-full border rounded p-2"
-              >
-                <option value="openrouter">OpenRouter</option>
-                <option value="openai">OpenAI</option>
-                <option value="gemini">Gemini</option>
-              </select>
-              <label className="block text-sm font-medium">API Key</label>
-              <Input
-                value={globalApiKey}
-                onChange={e => setGlobalApiKey(e.target.value)}
-                placeholder={`Enter your ${globalProvider} API key`}
-                type="password"
-              />
-              <label className="block text-sm font-medium">Model</label>
-              <select
-                value={globalModel}
-                onChange={e => setGlobalModel(e.target.value)}
-                className="w-full border rounded p-2"
-              >
-                {providerModels[globalProvider as keyof typeof providerModels].map(m => (
-                  <option key={m.value} value={m.value}>{m.label}</option>
-                ))}
-              </select>
-            </div>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline">Cancel</Button>
-              </DialogClose>
-              <Button onClick={handleSaveApiSettings} className="bg-blue-600 text-white">Save</Button>
-            </DialogFooter>
+          <div className="space-y-4">
+            <label className="block text-sm font-medium">Provider</label>
+            <select
+              value={globalProvider}
+              onChange={e => {
+                setGlobalProvider(e.target.value as AIProvider);
+                const models = providerModels[e.target.value as keyof typeof providerModels];
+                if (models && models.length > 0) setGlobalModel(models[0].value);
+              }}
+              className="w-full border rounded p-2"
+            >
+              <option value="openrouter">OpenRouter</option>
+              <option value="openai">OpenAI</option>
+              <option value="gemini">Gemini</option>
+            </select>
+            <label className="block text-sm font-medium">API Key</label>
+            <Input
+              value={globalApiKey}
+              onChange={e => setGlobalApiKey(e.target.value)}
+              placeholder={`Enter your ${globalProvider} API key`}
+              type="password"
+            />
+            <label className="block text-sm font-medium">Model</label>
+            <select
+              value={globalModel}
+              onChange={e => setGlobalModel(e.target.value)}
+              className="w-full border rounded p-2"
+            >
+              {providerModels[globalProvider as keyof typeof providerModels].map(m => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button onClick={handleSaveApiSettings} className="bg-blue-600 text-white">Save</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </nav>
-  ), [currentView, userFirstName, apiModalOpen, globalProvider, globalApiKey, globalModel, handleViewProfile, handleViewFlashcards, handleSaveApiSettings]);
+  ), [currentView, userFirstName, apiModalOpen, globalProvider, globalApiKey, globalModel, handleViewProfile, handleViewFlashcards, handleViewMarketplace, handleSaveApiSettings]);
 
   const renderDashboard = useMemo(() => (
     <QuizDashboard ref={dashboardRef} onStartQuiz={handleStartQuiz} onCreateQuiz={handleCreateQuiz} />
@@ -254,10 +263,12 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
         return <SettingsPage />;
       case 'flashcards':
         return <Flashcards />;
+      case 'marketplace':
+        return <Marketplace onInstall={handleInstallTemplate} />;
       default:
         return <div>Unknown view</div>;
     }
-  }, [currentView, currentQuiz, renderDashboard, handleStartQuiz, handleSignOut, handleBackToDashboard]);
+  }, [currentView, currentQuiz, renderDashboard, handleStartQuiz, handleSignOut, handleBackToDashboard, handleInstallTemplate]);
 
   // Refresh quizzes when returning to dashboard
   useEffect(() => {
@@ -346,6 +357,18 @@ const CerebrumApp: React.FC = () => {
     setCurrentView('dashboard');
   }, []);
 
+  const handleInstallTemplate = useCallback(async (item: MarketplaceItem) => {
+    try {
+      await StorageManager.importLegacyQuiz(item.title, item.content, item.description);
+      toast.success(`Template "${item.title}" added to your quizzes!`);
+      setCurrentView('dashboard');
+      // Refresh handled by effect on currentView change
+    } catch (error) {
+      console.error('Failed to install template:', error);
+      toast.error('Failed to save template to your library.');
+    }
+  }, []);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
@@ -375,6 +398,7 @@ const CerebrumApp: React.FC = () => {
       handleCreateQuiz={handleCreateQuiz}
       handleSignOut={handleSignOut}
       handleBackToDashboard={handleBackToDashboard}
+      handleInstallTemplate={handleInstallTemplate}
     />
   );
 };
