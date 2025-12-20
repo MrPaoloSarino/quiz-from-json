@@ -1,4 +1,5 @@
 import { QuizQuestion } from '@/types/quiz';
+import { phBoardExamReviewers } from './ph_reviewer';
 
 export interface MarketplaceItem {
     id: string;
@@ -13,6 +14,7 @@ export interface MarketplaceItem {
 }
 
 export const mockMarketplaceItems: MarketplaceItem[] = [
+    ...phBoardExamReviewers,
     {
         id: '1',
         title: 'General Knowledge Basics',
