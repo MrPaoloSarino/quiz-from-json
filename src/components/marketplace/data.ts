@@ -1,6 +1,11 @@
 import { QuizQuestion } from '@/types/quiz';
 import { phBoardExamReviewers } from './ph_reviewer';
 import { grandMockExam } from './grand_mock';
+import { psychAssessmentMarketplaceItem } from './psych_assessment';
+import { theoriesMarketplaceItem } from './theories_of_personality';
+import { abnormalPsychMarketplaceItem } from './abnormal_psych';
+import { ioPsychMarketplaceItem } from './io_psych';
+import { grandMock2026Item } from './grand_mock_2026';
 
 export interface MarketplaceItem {
     id: string;
@@ -16,6 +21,11 @@ export interface MarketplaceItem {
 
 export const mockMarketplaceItems: MarketplaceItem[] = [
     grandMockExam,
+    grandMock2026Item,
+    psychAssessmentMarketplaceItem,
+    theoriesMarketplaceItem,
+    abnormalPsychMarketplaceItem,
+    ioPsychMarketplaceItem,
     ...phBoardExamReviewers,
     {
         id: '1',
