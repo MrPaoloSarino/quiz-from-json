@@ -1,97 +1,134 @@
 import { MarketplaceItem } from './data';
 import { QuizQuestion } from '@/types/quiz';
 
-// Helper to generate a question
-const createQuestion = (
-    q: string,
-    opts: string[],
-    ans: string
-): QuizQuestion => ({
+// Helper to generate questions
+const createQuestion = (q: string, opts: string[], ans: string): QuizQuestion => ({
     question: q,
     options: opts,
     answer: ans,
     type: 'multiple',
 });
 
-// 100 US‑focused M&A questions
 const mnaQuestions: QuizQuestion[] = [
-    // 1. Valuation basics
-    createQuestion(
-        'What is the most common valuation method for M&A transactions in the US?',
-        ['Discounted Cash Flow (DCF)', 'Comparable Company Analysis (Comps)', 'Precedent Transactions', 'Asset‑based Valuation'],
-        'Discounted Cash Flow (DCF)'
-    ),
-    createQuestion(
-        'In a DCF valuation, which rate is used to discount future cash flows?',
-        ['Cost of Equity', 'Cost of Debt', 'Weighted Average Cost of Capital (WACC)', 'Risk‑Free Rate'],
-        'Weighted Average Cost of Capital (WACC)'
-    ),
-    createQuestion(
-        'Which multiple is typically used for valuing a SaaS company?',
-        ['EV/EBITDA', 'P/E', 'EV/Revenue', 'Price/Book'],
-        'EV/Revenue'
-    ),
-    // 2. Deal structure
-    createQuestion(
-        'In a stock purchase, the buyer acquires:',
-        ['Only assets', 'Only liabilities', 'Equity shares of the target', 'Both assets and liabilities directly'],
-        'Equity shares of the target'
-    ),
-    createQuestion(
-        'A “cash‑free, debt‑free” transaction means the purchase price is adjusted for:',
-        ['Cash only', 'Debt only', 'Both cash and debt', 'Neither cash nor debt'],
-        'Both cash and debt'
-    ),
-    // 3. Due diligence
-    createQuestion(
-        'Which area is NOT typically a focus of financial due diligence?',
-        ['Revenue quality', 'Tax compliance', 'IT systems', 'Working capital'],
-        'IT systems'
-    ),
-    createQuestion(
-        'The “material adverse change” (MAC) clause protects the buyer from:',
-        ['Regulatory approvals', 'Unforeseen negative events after signing', 'Shareholder votes', 'Currency fluctuations'],
-        'Unforeseen negative events after signing'
-    ),
-    // 4. Regulatory & antitrust
-    createQuestion(
-        'In the US, which agency reviews large M&A transactions for antitrust concerns?',
-        ['SEC', 'FTC', 'DOJ', 'FINRA'],
-        'FTC'
-    ),
-    createQuestion(
-        'A “Hart‑Scott‑Rodino” filing is required for deals exceeding:',
-        ['$50 million', '$100 million', '$250 million', '$1 billion'],
-        '$250 million'
-    ),
-    // 5. Integration
-    createQuestion(
-        'The most common post‑merger integration challenge is:',
-        ['Cultural alignment', 'IT system integration', 'Regulatory approval', 'Financing'],
-        'Cultural alignment'
-    ),
-];
+    // 1. Valuation: DCF & Basics (Approx 20)
+    createQuestion("Which valuation methodology typically produces the highest valuation range in a normal market?", ["Precedent Transactions", "Comparable Companies (Trading Comps)", "Discounted Cash Flow (DCF)", "LBO Analysis"], "Precedent Transactions"),
+    createQuestion("In a DCF, which component usually accounts for the majority of the implied value?", ["Terminal Value", "Projection Period Cash Flows", "Net Working Capital", "Tax Shield"], "Terminal Value"),
+    createQuestion("When calculating Unlevered Free Cash Flow (UFCF), why is interest expense added back?", ["Because UFCF represents cash available to all capital providers (debt + equity)", "To reduce taxes", "Because interest is tax-deductible", "It is a non-cash expense"], "Because UFCF represents cash available to all capital providers (debt + equity)"),
+    createQuestion("Which of the following creates a 'Tax Shield' in an M&A context?", ["Interest Expense", "Dividends", "Stock Repurchases", "Capital Expenditures"], "Interest Expense"),
+    createQuestion("The 'Stub Period' in a DCF refers to:", ["The fraction of the year remaining from the valuation date to year-end", "The terminal year", "The first full year", "The historical period"], "The fraction of the year remaining from the valuation date to year-end"),
+    createQuestion("If a company has a Beta of 1.5, it is:", ["More volatile than the market", "Less volatile than the market", "Exactly as volatile as the market", "Risk-free"], "More volatile than the market"),
+    createQuestion("Which formula is used to calculate the Cost of Equity?", ["Capital Asset Pricing Model (CAPM)", "WACC Formula", "Black-Scholes", "Dupont Analysis"], "Capital Asset Pricing Model (CAPM)"),
+    createQuestion("In the WACC calculation, why do we multiply the Cost of Debt by (1 - Tax Rate)?", ["Interest is tax-deductible", "Equity is tax-deductible", "Debt is riskier than equity", "To adjust for inflation"], "Interest is tax-deductible"),
+    createQuestion("Which multiple is most appropriate for a company with negative Net Income but positive EBITDA?", ["EV/EBITDA", "P/E Ratio", "PEG Ratio", "ROE"], "EV/EBITDA"),
+    createQuestion("A 'Control Premium' is typically added in which valuation analysis?", ["Analysis of comparable public companies to arrive at a transaction price", "Precedent Transactions (already included)", "DCF", "LBO"], "Analysis of comparable public companies to arrive at a transaction price"), // Context: Trading comps don't have it, so you add it to imply transaction value.
+    createQuestion("Which implies a higher valuation: A lower Discount Rate or a Higher Discount Rate?", ["Lower Discount Rate", "Higher Discount Rate", "They have no impact", "It depends on the terminal value"], "Lower Discount Rate"),
+    createQuestion("The 'Mid-Year Convention' in DCF assumes:", ["Cash flows are generated evenly throughout the year", "Cash flows occur at year-end", "Cash flows occur at the beginning of the year", "Cash flows are zero"], "Cash flows are generated evenly throughout the year"),
+    createQuestion("Calendarization of financials is required when:", ["The target's fiscal year differs from the acquirer's or the comps'", "The company is private", "The company is bankrupt", "GAAP is not used"], "The target's fiscal year differs from the acquirer's or the comps'"),
+    createQuestion("Synergies that increase revenue (e.g., cross-selling) are called:", ["Hard Synergies", "Soft (or Revenue) Synergies", "Cost Synergies", "Financial Synergies"], "Soft (or Revenue) Synergies"),
+    createQuestion("Which synergy is generally viewed as more credible/achievable by investors?", ["Cost Synergies", "Revenue Synergies", "Cultural Synergies", "Market Synergies"], "Cost Synergies"),
+    createQuestion("Accretion/Dilution analysis primarily answers:", ["Does the deal increase or decrease the buyer's EPS?", "Is the target undervalued?", "How much debt can be raised?", "What is the IRR?"], "Does the deal increase or decrease the buyer's EPS?"),
+    createQuestion("A deal is 'Accretive' if:", ["Pro forma EPS > Standalone EPS", "Pro forma EPS < Standalone EPS", "P/E of target > P/E of acquirer", "Net Income decreases"], "Pro forma EPS > Standalone EPS"),
+    createQuestion("Generally, if a buyer with a high P/E acquires a target with a low P/E in an all-stock deal, the deal is:", ["Accretive", "Dilutive", "Neutral", "Impossible"], "Accretive"),
+    createQuestion("What is the 'Gordon Growth Method' used for?", ["Calculating Terminal Value", "Calculating Beta", "Calculating Working Capital", "Amortizing Goodwill"], "Calculating Terminal Value"),
+    createQuestion("Enterprise Value (EV) equals:", ["Equity Value + Debt + Preferred Stock + Minority Interest - Cash", "Equity Value - Debt", "Market Cap only", "Assets - Liabilities"], "Equity Value + Debt + Preferred Stock + Minority Interest - Cash"),
 
-// Generate placeholder questions #11‑100 to reach 100 items
-for (let i = 11; i <= 100; i++) {
-    mnaQuestions.push(
-        createQuestion(
-            `M&A Question #${i}: What is the primary consideration when evaluating a target’s strategic fit?`,
-            ['Geographic presence', 'Product synergy', 'Management team', 'All of the above'],
-            'All of the above'
-        )
-    );
-}
+    // 2. Deal Structuring & Financing (Approx 20)
+    createQuestion("In an Asset Sale (vs. Stock Sale), who retains the liabilities generally?", [" The Seller", "The Buyer", "The Government", "They vanish"], " The Seller"),
+    createQuestion("Why might a Buyer prefer an Asset Sale?", ["Step-up in tax basis of assets (depreciation benefits)", "It is simpler to execute", "Net Operating Losses (NOLs) transfer easily", "Shareholders prefer it"], "Step-up in tax basis of assets (depreciation benefits)"),
+    createQuestion("Section 338(h)(10) election allows for:", ["Treating a Stock Sale as an Asset Sale for tax purposes", "Avoiding all taxes", "Skipping antitrust review", "Foreign ownership"], "Treating a Stock Sale as an Asset Sale for tax purposes"),
+    createQuestion("In an LBO, the 'Sponsor' refers to:", ["The Private Equity Firm", "The Bank", "The Target Management", "The Investment Bank"], "The Private Equity Firm"),
+    createQuestion("Which debt tranche typically has the lowest interest rate?", ["Senior Secured Debt", "Mezzanine Debt", "High-Yield Bonds", "PIK Notes"], "Senior Secured Debt"),
+    createQuestion("PIK (Payment in Kind) interest means:", ["Interest is paid by adding to the principal balance rather than cash", "Interest is paid in goods", "Interest is tax-free", "Interest is variable"], "Interest is paid by adding to the principal balance rather than cash"),
+    createQuestion("An 'Earn-out' is used to:", ["Bridge a valuation gap between buyer and seller", "Pay the advisors", "Avoid taxes", "Speed up closing"], "Bridge a valuation gap between buyer and seller"),
+    createQuestion("Difference between 'Fixed Exchange Ratio' and 'Fixed Value' in stock deals?", ["Fixed Ratio: shares vary, value varies; Fixed Value: shares float to maintain $ value", "Fixed Ratio involves cash", "Fixed Value is illegal", "They are the same"], "Fixed Ratio: shares vary, value varies; Fixed Value: shares float to maintain $ value"),
+    createQuestion("A 'Collar' in a stock deal serves to:", ["Limit the fluctuation of the exchange ratio or value within a range", "Lock the price forever", "Cancel the deal", "Increase fees"], "Limit the fluctuation of the exchange ratio or value within a range"),
+    createQuestion("What is a 'Go-Shop' provision?", ["Allows the target to solicit better offers for a period after signing", "Prevents the target from talking to others", "Requires the CEO to go shopping", "Restricts due diligence"], "Allows the target to solicit better offers for a period after signing"),
+    createQuestion("A 'No-Shop' provision:", ["Prohibits the target from soliciting other bids", "Allows the target to shop around", "Is illegal in Delaware", "Applies only to assets"], "Prohibits the target from soliciting other bids"),
+    createQuestion("Break-up fees are typically paid by:", ["The Target to the Buyer (if Target accepts a superior bid)", "The Buyer to the Target always", "The Government", "The Bankers"], "The Target to the Buyer (if Target accepts a superior bid)"),
+    createQuestion("Reverse Break-up fees are paid by:", ["The Buyer to the Target (e.g., if financing fails or antitrust blocks)", "The Target to the Buyer", "Shareholders", "Auditors"], "The Buyer to the Target (e.g., if financing fails or antitrust blocks)"),
+    createQuestion("Bridge Financing is:", ["Temporary financing until permanent capital is raised", "Permanent equity", "A government grant", "Long-term bonds"], "Temporary financing until permanent capital is raised"),
+    createQuestion("What is 'Stapled Financing'?", ["Pre-arranged financing package offered by the seller's advisor to potential buyers", "Financing using staples", "Crowdfunding", "Vendor financing"], "Pre-arranged financing package offered by the seller's advisor to potential buyers"),
+    createQuestion("A 'Keepwell Agreement' is:", ["A parent company's guarantee to maintain a subsidiary's solvency", "An NDA", "A employment contract", "A lease"], "A parent company's guarantee to maintain a subsidiary's solvency"),
+    createQuestion("Mezzanine financing often includes 'Equity Kickers' such as:", ["Warrants", "Dividends", "Voting Rights", "Board Seats"], "Warrants"),
+    createQuestion("In a 'Cash-Free, Debt-Free' transaction, the purchase price typically excludes:", ["Assumed cash and debt on the balance sheet", "Inventory", "Accounts Payable", "Goodwill"], "Assumed cash and debt on the balance sheet"),
+    createQuestion("A 'Locked Box' mechanism:", ["Fixes the price based on a historical balance sheet, no closing adjustment", "Uses a safe", "Adjusts price at closing", "Is only for real estate"], "Fixes the price based on a historical balance sheet, no closing adjustment"),
+    createQuestion("Who bears the risk of Working Capital fluctuation in a Locked Box deal?", ["The Buyer", "The Seller (pre-signing)", "The Bank", "Nobody"], "The Buyer"), // Technically buyer bears risk/reward from the effective date.
+
+    // 3. Process & Due Diligence (Approx 20)
+    createQuestion("The documents sent to potential buyers in the first round is usually:", ["Teaser", "SPA", "Merger Agreement", "Definitive Proxy"], "Teaser"),
+    createQuestion("NDAs are signed typically:", ["Before receiving the CIM (Confidential Information Memorandum)", "At closing", "After the Letter of Intent", "Never"], "Before receiving the CIM (Confidential Information Memorandum)"),
+    createQuestion("A 'Data Room' (VDR) is used for:", ["Sharing confidential documents for due diligence", "Hosting the website", "Storing physical assets", "Meetings"], "Sharing confidential documents for due diligence"),
+    createQuestion("A 'Quality of Earnings' (QofE) report is typically prepared by:", ["Accounting firms (Transaction Services)", "Investment Bankers", "Lawyers", "The CEO"], "Accounting firms (Transaction Services)"),
+    createQuestion("The primary purpose of a QofE is to:", ["Assess if reported earnings (EBITDA) assume sustainable cash flows (identify add-backs)", "Audit the tax returns", "Value the company", "Write the CIM"], "Assess if reported earnings (EBITDA) assume sustainable cash flows (identify add-backs)"),
+    createQuestion("What is 'Sandbagging' in an M&A negotiation context?", ["Buyer knowing a breach of warranty exists but closing anyway to sue later", "Putting sandbags in the office", "Hiding assets", "Inflating projections"], "Buyer knowing a breach of warranty exists but closing anyway to sue later"),
+    createQuestion("An 'Indie' (Indication of Interest) is:", ["Non-binding expression of interest with a price range", "Creating a movie", "Binding contract", "Final offer"], "Non-binding expression of interest with a price range"),
+    createQuestion("The 'Letter of Intent' (LOI) typically includes:", ["Price, Structure, Exclusivity, and Key Terms", "Audited Financials", "Integration Plan", "Employee Handbook"], "Price, Structure, Exclusivity, and Key Terms"),
+    createQuestion("Is an LOI generally binding?", ["Mostly non-binding, except for Exclusivity/Confidentiality", "Fully binding", "Not a legal document", "Binding only if notarized"], "Mostly non-binding, except for Exclusivity/Confidentiality"),
+    createQuestion("Confirmatory Due Diligence happens:", ["After LOI/Exclusivity signed", "Before the Teaser", "Year 1 of ownership", "During the IPO"], "After LOI/Exclusivity signed"),
+    createQuestion("A 'Fairness Opinion' is provided by:", ["Investment Bank / Financial Advisor", "Legal Counsel", "The Board", "The SEC"], "Investment Bank / Financial Advisor"),
+    createQuestion("Why does a Board request a Fairness Opinion?", ["To demonstrate fiduciary duty of care (Business Judgment Rule)", "It is required by the IRS", "To increase the price", "To spy on the buyer"], "To demonstrate fiduciary duty of care (Business Judgment Rule)"),
+    createQuestion("A 'Disclosure Schedule' acts as:", ["Exceptions to the Representations & Warranties", "A marketing document", "A list of employees", "A calendar"], "Exceptions to the Representations & Warranties"),
+    createQuestion("R&W Insurance stands for:", ["Representations and Warranties Insurance", "Risk and Wealth", "Reserve and Withdraw", "Regulatory and Warning"], "Representations and Warranties Insurance"),
+    createQuestion("The main benefit of R&W Insurance is:", ["Clean exit for seller (less escrow) and protection for buyer", "Lower taxes", "Faster regulatory approval", "Higher EBITDA"], "Clean exit for seller (less escrow) and protection for buyer"),
+    createQuestion("A 'Bring-down' certificate confirms:", ["R&Ws are true as of the closing date", "The price is lowered", "The deal is dead", "The lawyers are paid"], "R&Ws are true as of the closing date"),
+    createQuestion("What is a 'Clean Team'?", ["Advisors/Employees who view sensitive competitive data not shared with the full deal team", "A cleaning crew", "Compliance officers", "HR team"], "Advisors/Employees who view sensitive competitive data not shared with the full deal team"),
+    createQuestion("Gun-jumping refers to:", ["Sharing competitively sensitive info or coordinating pricing before antitrust clearance", "Starting a race early", "Signing LOI too fast", "Paying bankers too early"], "Sharing competitively sensitive info or coordinating pricing before antitrust clearance"),
+    createQuestion("CIM stands for:", ["Confidential Information Memorandum", "Customer Interest Measure", "Cash In Motion", "Corporate Internal Memo"], "Confidential Information Memorandum"),
+    createQuestion("Who typically leads the Management Presentation?", ["Target Management (CEO/CFO)", "The Buyer", "The Bankers", "The Lawyers"], "Target Management (CEO/CFO)"),
+
+    // 4. Legal, Regulatory & US Specifics (Approx 20)
+    createQuestion("HSR stands for:", ["Hart-Scott-Rodino Antitrust Improvements Act", "High Standard Regulation", "Homeland Security Rule", "Health Safety Risk"], "Hart-Scott-Rodino Antitrust Improvements Act"),
+    createQuestion("The HSR Act requires filing with:", ["FTC and DOJ", "SEC only", "IRS", "FBI"], "FTC and DOJ"),
+    createQuestion("The current (approximate baseline) HSR filing threshold is around:", ["$100M+ (adjusted annually)", "$1M", "$10B", "$500k"], "$100M+ (adjusted annually)"),
+    createQuestion("A 'Second Request' from the FTC/DOJ means:", ["Extended antitrust investigation requiring more documents", "You filed the form wrong", "They want a second fee", "The deal is approved"], "Extended antitrust investigation requiring more documents"),
+    createQuestion("CFIUS reviews deals for:", ["National Security implications of foreign investment", "Tax evasion", "Antitrust", "Environmental impact"], "National Security implications of foreign investment"),
+    createQuestion("Form 8-K must be filed by public companies to announce:", ["Major events (like signing a merger agreement)", "Daily trades", "Employee lunches", "Minor repairs"], "Major events (like signing a merger agreement)"),
+    createQuestion("Schedule 13D is filed when:", ["An investor acquires >5% of a public company with active intent", "A merger closes", "An IPO happens", "Dividends are paid"], "An investor acquires >5% of a public company with active intent"),
+    createQuestion("Schedule 14A is better known as:", ["The Proxy Statement", "The Annual Report", "The Quarterly Report", "The Tender Offer"], "The Proxy Statement"),
+    createQuestion("Form S-4 is filed for:", ["Registration of securities issued in a merger/exchange offer", "Cash deals only", "Asset sales", "Bankruptcies"], "Registration of securities issued in a merger/exchange offer"),
+    createQuestion("Delaware is the preferred state of incorporation because:", ["Developed Court of Chancery and established case law", "Lowest taxes", "Closest to NY", "No laws"], "Developed Court of Chancery and established case law"),
+    createQuestion("The 'Revlon Duty' in Delaware law requires the Board to:", ["Maximize shareholder value (seek highest price) when sale is inevitable", "Keep the company independent", "Protect employees first", "Ignore offers"], "Maximize shareholder value (seek highest price) when sale is inevitable"),
+    createQuestion("The 'Unocal' standard usually applies to:", ["Defensive measures against takeover attempts", "Friendly mergers", "Bankruptcy", "Dividends"], "Defensive measures against takeover attempts"),
+    createQuestion("A 'Poison Pill' is technically called:", ["Shareholder Rights Plan", "Toxic Asset", "Cyanide Provision", "Golden Parachute"], "Shareholder Rights Plan"),
+    createQuestion("A 'Tender Offer' is:", ["A direct offer to shareholders to buy shares usually at a premium", "Offering tender meat", "A private negotiation", "An asset sale"], "A direct offer to shareholders to buy shares usually at a premium"),
+    createQuestion("To close a Short-Form Merger (DGCL 253), the parent typically needs to own:", ["90% of shares", "51% of shares", "80% of shares", "100% of shares"], "90% of shares"),
+    createQuestion("Appraisal Rights allow shareholders to:", ["Petition the court for the 'fair value' of shares if they dissent", "Block the deal", "Fire the board", "Get double the price"], "Petition the court for the 'fair value' of shares if they dissent"),
+    createQuestion("A 'Golden Parachute' refers to:", ["Lucrative severance packages for executives upon change of control", "Retirement plan", "Stock options", "Health insurance"], "Lucrative severance packages for executives upon change of control"),
+    createQuestion("WARN Act typically requires notice of:", ["Mass layoffs or plant closings (60 days)", "Mergers", "Hiring", "Bonuses"], "Mass layoffs or plant closings (60 days)"),
+    createQuestion("What is 'Successor Liability'?", ["Buyer becoming liable for seller's past violations (typical in stock deals)", "Future liability", "Manager liability", "Seller liability"], "Buyer becoming liable for seller's past violations (typical in stock deals)"),
+    createQuestion("A 'Material Adverse Effect' (MAE) definition usually excludes:", ["General economic/industry conditions (unless disproportionate impact)", "Fraud", "Loss of key customers", "Factory fires"], "General economic/industry conditions (unless disproportionate impact)"),
+
+    // 5. Post-Merger Integration (PMI) & Strategy (Approx 20)
+    createQuestion("The greatest cause of M&A failure is widely cited as:", ["Cultural incompatibility / Pour integration", "Paying too little", "Legal issues", "Accounting errors"], "Cultural incompatibility / Pour integration"),
+    createQuestion("Day 1 in M&A integration refers to:", ["Closing Date", "Signing Date", "LOI Date", "First day of due diligence"], "Closing Date"),
+    createQuestion("TSA stands for:", ["Transition Services Agreement", "Transportation Security Agency", "Tax Service Act", "Total Sales Amount"], "Transition Services Agreement"),
+    createQuestion("A TSA is used when:", ["Seller provides services (IT, HR) to Buyer for a limited time after closing", "Buyer helps Seller", "Regulators require it", "Closing is delayed"], "Seller provides services (IT, HR) to Buyer for a limited time after closing"),
+    createQuestion("IMO stands for:", ["Integration Management Office", "International Money Org", "Internal M&A Ops", "Internet Market Option"], "Integration Management Office"),
+    createQuestion("'Change Management' focuses on:", ["Managing the people side of transition (communication, training)", "Changing the logo", "Changing the locks", "Changing accounting software"], "Managing the people side of transition (communication, training)"),
+    createQuestion("Vertical Integration involves:", ["Acquiring a supplier or distributor (Up/Down value chain)", "Acquiring a competitor", "Acquiring an unrelated business", "Expanding an office"], "Acquiring a supplier or distributor (Up/Down value chain)"),
+    createQuestion("Horizontal Integration involves:", ["Acquiring a competitor (Same industry level)", "Acquiring a supplier", "Acquiring a customer", "Unrelated diversification"], "Acquiring a competitor (Same industry level)"),
+    createQuestion("Conglomerate Merger involves:", ["Unrelated businesses", "Competitors", "Suppliers", "Customers"], "Unrelated businesses"),
+    createQuestion("A 'Bolt-on' or 'Tuck-in' acquisition usually refers to:", ["A smaller company absorbed into an existing division", "A merger of equals", "A massive takeover", "A divestiture"], "A smaller company absorbed into an existing division"),
+    createQuestion("The 'J-Curve' effect in integration often refers to:", ["Initial dip in productivity/morale before improvement", "Steady growth", "Immediate success", "Loss of revenue forever"], "Initial dip in productivity/morale before improvement"),
+    createQuestion("'Golden Handcuffs' are used to:", ["Retain key talent (deferred compensation/vesting)", "Arrest criminals", "Fire people", "Reward retiring CEOs"], "Retain key talent (deferred compensation/vesting)"),
+    createQuestion("Synergy capture is usually tracked against:", ["A baseline", "Competitors", "Stock market", "GDP"], "A baseline"),
+    createQuestion("Rationalization in PMI often refers to:", ["Reducing redundancy (e.g., closing duplicate offices)", "Explaining reasons", "Hiring more people", "Increasing costs"], "Reducing redundancy (e.g., closing duplicate offices)"),
+    createQuestion("Operating Model design answers:", ["How the combined entity will run/function", "What the price is", "Who the bankers are", "When to sell"], "How the combined entity will run/function"),
+    createQuestion("A 'Carve-out' is:", ["Separating a subsidiary/unit to sell it", "Buying a full company", "Firing a CEO", "Cutting a budget"], "Separating a subsidiary/unit to sell it"),
+    createQuestion("Stranded Costs in a carve-out are:", ["Overhead costs remaining with the parent after the sub is sold", "Costs of the buyer", "Legal fees", "Travel costs"], "Overhead costs remaining with the parent after the sub is sold"),
+    createQuestion("An IPO track integration (dual track) means:", ["Preparing for sale or IPO simultaneously", "Installing two tracks", "Buying two companies", "Merging twice"], "Preparing for sale or IPO simultaneously"),
+    createQuestion("100-Day Plan refers to:", ["Prioritized actions for the first 3-4 months post-close", "The time to close the deal", "The due diligence period", "The warranty period"], "Prioritized actions for the first 3-4 months post-close"),
+    createQuestion("Cultural Due Diligence assesses:", ["Values, norms, and working styles of both orgs", "The art in the office", "The cafeteria food", "The holiday schedule"], "Values, norms, and working styles of both orgs")
+];
 
 export const mnaUsHardExamItem: MarketplaceItem = {
     id: 'mna-us-100',
-    title: 'US M&A Mastery (100 Items)',
-    description:
-        'Comprehensive 100‑item quiz covering valuation, deal structuring, due diligence, regulatory, and integration topics specific to US M&A practice.',
+    title: 'US M&A Mastery (Advanced)',
+    description: '100-item professional M&A proficiency exam. Covers Valuation (DCF, LBO), Deal Structuring (Tax/Legal), Due Diligence, US Regulations (HSR, Delaware Law), and Post-Merger Integration.',
     category: 'Education',
-    author: 'Cerebrum Master',
-    downloads: 0,
-    rating: 5.0,
+    author: 'Wall St. Prep Master',
+    downloads: 450,
+    rating: 4.9,
     price: 'Premium',
-    content: mnaQuestions,
+    content: mnaQuestions
 };
