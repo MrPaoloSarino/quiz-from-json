@@ -82,7 +82,7 @@ const calculateSessionDifficulty = (questions: EnhancedQuizQuestion[]): string =
       default: return sum + 2;
     }
   }, 0) / questions.length;
-  
+
   if (avgDifficulty <= 1.5) return 'easy';
   if (avgDifficulty <= 2.5) return 'medium';
   return 'hard';
@@ -127,19 +127,19 @@ const shouldInterleave = (questions: EnhancedQuizQuestion[], currentTopic: strin
   // 3. Current performance is good (strength score > 0.7)
   const currentQ = questions.find(q => q.category === currentTopic);
   if (!currentQ) return false;
-  
-  const hasRelatedTopics = questions.some(q => 
-    q.category !== currentTopic && 
+
+  const hasRelatedTopics = questions.some(q =>
+    q.category !== currentTopic &&
     q.analytics.relatedConcepts.includes(currentTopic)
   );
-  
+
   const recentlyInterleaved = questions
     .slice(-2)
     .some(q => q.category !== currentTopic);
-  
-  return hasRelatedTopics && 
-         !recentlyInterleaved && 
-         currentQ.analytics.strengthScore > 0.7;
+
+  return hasRelatedTopics &&
+    !recentlyInterleaved &&
+    currentQ.analytics.strengthScore > 0.7;
 };
 
 const initializeQuizState = (externalQuestions?: QuizQuestion[]): QuizState => {
@@ -165,7 +165,7 @@ const initializeQuizState = (externalQuestions?: QuizQuestion[]): QuizState => {
     // Initialize with proper defaults
     const spacedRepetition = initializeSpacedRepetition();
     const analytics = initializeLearningAnalytics();
-    
+
     return {
       ...q,
       id: `question_${Date.now()}_${index}`,
@@ -297,7 +297,9 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       });
 
       if (externalQuestions && externalQuestions.length > 0) {
-        const enhancedQuestions = initializeQuizState(externalQuestions).questions;
+        // Shuffle questions globally by default for each play session
+        const shuffledQuestions = shuffleArray(externalQuestions);
+        const enhancedQuestions = initializeQuizState(shuffledQuestions).questions;
         Debug.logAnalytics('Questions Enhanced', {
           strengthScore: 0,
           lastRecallSuccess: false,
@@ -322,9 +324,9 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
         setShowInput(false);
       }
     } catch (error) {
-            // eslint-disable-next-line no-console
-            if (process.env.NODE_ENV === 'development') console.error('fetchQuestionsIfNeeded', error);
-            debugError('Quiz Initialization', error as Error);
+      // eslint-disable-next-line no-console
+      if (process.env.NODE_ENV === 'development') console.error('fetchQuestionsIfNeeded', error);
+      debugError('Quiz Initialization', error as Error);
     }
   }, [externalQuestions]);
 
@@ -332,25 +334,25 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
   const validateApiKey = (key: string): boolean => {
     if (!key || typeof key !== 'string') return false;
     const trimmedKey = key.trim();
-    
+
     // Basic format validation
     if (trimmedKey.length < 20) return false;
-    
+
     // Check for common API key patterns
     const validPrefixes = ['sk-', 'pk-', 'api-', 'key-'];
     const hasValidPrefix = validPrefixes.some(prefix => trimmedKey.startsWith(prefix));
-    
+
     // Must have valid prefix and reasonable length
     if (!hasValidPrefix || trimmedKey.length > 200) return false;
-    
+
     // Check for suspicious patterns (all same character, etc.)
     const uniqueChars = new Set(trimmedKey).size;
     if (uniqueChars < 8) return false; // Too few unique characters
-    
+
     // Check for valid characters (alphanumeric, hyphens, underscores)
     const validChars = /^[a-zA-Z0-9\-_]+$/;
     if (!validChars.test(trimmedKey)) return false;
-    
+
     return true;
   };
 
@@ -360,7 +362,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       const now = Date.now();
       // Filter calls made within the rate limit time window
       const recentCalls = apiCalls.filter(timestamp => (now - timestamp) < RATE_LIMIT.TIME_WINDOW);
-      
+
       return recentCalls.length >= RATE_LIMIT.MAX_CALLS;
     } catch (error) {
       console.error('Rate limiting check failed:', error);
@@ -385,19 +387,19 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
   // Load API keys from AI settings system on component mount
   useEffect(() => {
     let isMounted = true;
-    
+
     const loadApiKeys = async () => {
       try {
         // Load all API keys from secure storage
         const openRouterApiKey = await secureStorage.getApiKey('openrouter');
         const geminiApiKey = await secureStorage.getApiKey('gemini');
         const openAIApiKey = await secureStorage.getApiKey('openai');
-        
+
         if (isMounted) {
           setOpenRouterKey(openRouterApiKey || '');
           setGeminiKey(geminiApiKey || '');
           setOpenAIKey(openAIApiKey || '');
-          
+
           // Debug logging
           console.log('🔑 [DEBUG] API Keys loaded:', {
             openRouter: !!openRouterApiKey,
@@ -409,9 +411,9 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
         console.error('Failed to load API keys:', error);
       }
     };
-    
+
     loadApiKeys();
-    
+
     return () => {
       isMounted = false;
     };
@@ -454,7 +456,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       showConfirmation: false
     }));
     setShowGeminiInput(false);
-    
+
     // Track quiz start analytics
     analytics.trackQuizStart({
       title: `Quiz Session ${Date.now()}`,
@@ -480,7 +482,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       };
     });
   };
-  
+
   const startQuiz = () => {
     setState(prevState => ({
       ...prevState,
@@ -497,15 +499,15 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
 
   // Add learning context
   const { state: learningState, dispatch: learningDispatch } = useLearning();
-  
+
   // Track question start time
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
-  
+
   // Function to update learning state based on answer
   const updateLearningState = (questionId: string, isCorrect: boolean) => {
     const timeSpent = (Date.now() - questionStartTime) / 1000; // in seconds
     const performance = isCorrect ? 1 : 0;
-    
+
     // Update analytics
     learningDispatch({
       type: 'UPDATE_ANALYTICS',
@@ -514,7 +516,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
         timeSpent
       }
     });
-    
+
     // Update mastery based on performance
     learningDispatch({
       type: 'UPDATE_MASTERY',
@@ -524,7 +526,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
         timeSpent
       }
     });
-    
+
     // Update cognitive load
     learningDispatch({
       type: 'UPDATE_COGNITIVE_LOAD',
@@ -533,19 +535,19 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
         performance
       }
     });
-    
+
     // Update spaced repetition based on performance
-    const spacedRepetitionPerformance = isCorrect 
-      ? (timeSpent < 10 ? 'perfect' : 'good') 
+    const spacedRepetitionPerformance = isCorrect
+      ? (timeSpent < 10 ? 'perfect' : 'good')
       : (timeSpent > 30 ? 'hard' : 'medium');
-    
+
     learningDispatch({
       type: 'UPDATE_SPACED_REPETITION',
       payload: {
         performance: spacedRepetitionPerformance
       }
     });
-    
+
     // Update adaptive settings
     learningDispatch({
       type: 'UPDATE_ADAPTIVE_SETTINGS',
@@ -556,7 +558,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       }
     });
   };
-  
+
   // Update question start time when question changes
   useEffect(() => {
     setQuestionStartTime(Date.now());
@@ -571,7 +573,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
     const isCorrectBasic = selectedOption === currentQ.answer;
     setShowFeedback(true);
     setSelectedOption(selectedOption);
-    
+
     // Lock the answer immediately after submission
     const updatedQuestions = [...state.questions];
     updatedQuestions[state.currentQuestion] = {
@@ -585,14 +587,14 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
         timeSpent: (Date.now() - questionStartTime) / 1000
       }]
     };
-    
+
     // Update user answers array
     const updatedUserAnswers = [...state.userAnswers];
     updatedUserAnswers[state.currentQuestion] = selectedOption;
-    
+
     // Update score for non-essay questions
     const scoreIncrement = currentQ.type !== 'essay' && isCorrectBasic ? 1 : 0;
-    
+
     setState(prev => ({
       ...prev,
       questions: updatedQuestions,
@@ -614,7 +616,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
           selectedOption,
           currentQ.answer
         );
-        
+
         // Update state with AI evaluation
         setState(prev => ({
           ...prev,
@@ -625,28 +627,28 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
             detailsLink: `/ai-details/${currentQ.id}`
           }
         }));
-        
+
         // For essays, DO NOT auto-proceed. Let the user decide when to move on.
         // Optionally, you can show a message/toast: "You may proceed when ready."
         if (currentQ.type === 'essay') {
           toast.info('You may proceed to the next question when ready.');
         }
       } catch (error) {
-      console.error('AI evaluation failed:', error);
-      // Fallback to basic validation if AI fails
-      setState(prev => ({
-        ...prev,
-        feedback: {
-          correct: isCorrectBasic,
-          feedback: isCorrectBasic ? 'Correct! ✅' : 'Incorrect ❌',
-          explanation: 'AI evaluation unavailable, using basic validation',
-          detailsLink: `/ai-details/${currentQ.id}`
-        }
-      }));
-      
-      // For essays without AI, DO NOT auto-proceed. Let the user decide when to move on.
-      toast.info('No AI configured. You may proceed to the next question when ready.');
-    }
+        console.error('AI evaluation failed:', error);
+        // Fallback to basic validation if AI fails
+        setState(prev => ({
+          ...prev,
+          feedback: {
+            correct: isCorrectBasic,
+            feedback: isCorrectBasic ? 'Correct! ✅' : 'Incorrect ❌',
+            explanation: 'AI evaluation unavailable, using basic validation',
+            detailsLink: `/ai-details/${currentQ.id}`
+          }
+        }));
+
+        // For essays without AI, DO NOT auto-proceed. Let the user decide when to move on.
+        toast.info('No AI configured. You may proceed to the next question when ready.');
+      }
     } else {
       // No AI available - immediately proceed for essays, show basic feedback for others
       setState(prev => ({
@@ -658,10 +660,10 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
           detailsLink: `/ai-details/${currentQ.id}`
         }
       }));
-      
+
       toast.info('No AI configured. You may proceed to the next question when ready.');
     }
-    
+
     // Update learning metrics
     updateLearningState(currentQ.id, isCorrectBasic);
   };
@@ -669,7 +671,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
   const handleActiveRecallSubmit = (explanation: string) => {
     console.log('🎯 [DEBUG] Processing active recall submission...');
     const currentQ = state.questions[state.currentQuestion];
-    
+
     // Save the Feynman explanation
     const updatedQuestions = [...state.questions];
     updatedQuestions[state.currentQuestion] = {
@@ -677,15 +679,15 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       feynmanExplanation: explanation,
       elaborations: [...(currentQ.elaborations || []), explanation]
     };
-    
+
     setState({
       ...state,
       questions: updatedQuestions
     });
-    
+
     setShowActiveRecall(false);
     setShowConfirmation(true);
-    
+
     toast.success("Great job explaining the concept!");
   };
 
@@ -694,14 +696,14 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       // Get interleaved questions if appropriate
       let nextQuestions = [...state.questions];
       const currentTopic = state.questions[state.currentQuestion].category;
-      
+
       if (shouldInterleave(state.questions, currentTopic)) {
         const interleavedQuestions = getInterleavedQuestions(
           state.questions,
           currentTopic,
           2 // Get 2 related questions
         );
-        
+
         if (interleavedQuestions.length > 0) {
           // Insert interleaved questions after current position
           nextQuestions.splice(
@@ -716,7 +718,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
           });
         }
       }
-      
+
       setState({
         ...state,
         currentQuestion: state.currentQuestion + 1,
@@ -725,7 +727,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       setSelectedOption(null);
       setShowFeedback(false);
       setShowConfirmation(false);
-      
+
     } else {
       // Save session data before showing results
       console.log('🏁 [Quiz Complete] Creating session with:', {
@@ -776,10 +778,10 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
           feynmanTechnique: hasFeynmanExplanations(state.questions)
         }
       };
-      
+
       // Save session
       StorageManager.saveQuizSession(session);
-      
+
       setState({
         ...state,
         showResults: true
@@ -954,7 +956,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       setAiError(null);
       setAiLoading(false);
     }
-    }, [state.currentQuestion, state.questions[state.currentQuestion]?.isAnswerLocked, selectedOption, openRouterKey, geminiKey, openAIKey, provider, selectedModel]);
+  }, [state.currentQuestion, state.questions[state.currentQuestion]?.isAnswerLocked, selectedOption, openRouterKey, geminiKey, openAIKey, provider, selectedModel]);
 
   useEffect(() => {
     async function fetchQuestionsIfNeeded() {
@@ -967,7 +969,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
             // Show a notification but continue with fallback functionality
             toast.info('API key not configured. Using basic quiz functionality.');
           }
-          
+
           // Generate questions - aiService will use fallback if no API key is configured
           const aiQuestions = await aiService.generateQuestions('General Knowledge', 5);
           const enhancedQuestions = initializeQuizState(aiQuestions).questions;
@@ -984,9 +986,9 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
           }));
           setShowInput(false);
         } catch (error) {
-            // eslint-disable-next-line no-console
-            if (process.env.NODE_ENV === 'development') console.error('fetchQuestionsIfNeeded', error);
-            debugError('fetchQuestionsIfNeeded', error as Error);
+          // eslint-disable-next-line no-console
+          if (process.env.NODE_ENV === 'development') console.error('fetchQuestionsIfNeeded', error);
+          debugError('fetchQuestionsIfNeeded', error as Error);
           toast.error('Failed to generate questions');
         } finally {
           setIsLoading(false);
@@ -994,7 +996,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       }
     }
     fetchQuestionsIfNeeded();
-    }, []);
+  }, []);
 
   useEffect(() => {
     // Check if API key is configured
@@ -1034,7 +1036,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       {showInput ? (
         <JsonInput onQuizStart={prepareQuiz} />
       ) : state.showResults ? (
-        <QuizResults 
+        <QuizResults
           questions={state.questions}
           userAnswers={state.userAnswers}
           score={state.score}
@@ -1051,7 +1053,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
             <h2 className="text-2xl font-bold">Quiz</h2>
             <SoundControls />
           </div>
-          
+
           <QuizCard
             key={`${state.currentQuestion}-${state.questions[state.currentQuestion]?.analytics?.recallAttempts || 0}`}
             question={state.questions[state.currentQuestion]}
@@ -1062,14 +1064,14 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
             selectedOption={selectedOption}
             isCorrect={selectedOption === state.questions[state.currentQuestion]?.answer}
           />
-          
+
           {showActiveRecall && (
             <ActiveRecallPrompt
               prompts={activeRecallPrompts}
               onSubmit={handleActiveRecallSubmit}
             />
           )}
-          
+
           {/* Show AI Explainer after answering */}
           {selectedOption && state.questions[state.currentQuestion]?.isAnswerLocked && (
             <AIExplainer
@@ -1083,22 +1085,22 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
               }}
             />
           )}
-          
+
           {/* Always visible navigation */}
           <div className="flex justify-between items-center pt-4 border-t">
-            <Button 
-              onClick={handleBack} 
+            <Button
+              onClick={handleBack}
               variant="outline"
               disabled={state.currentQuestion === 0}
             >
               Previous
             </Button>
-            
+
             <div className="text-sm" style={{ color: 'var(--cerebrum-text-muted)' }}>
               Question {state.currentQuestion + 1} of {state.questions.length}
             </div>
-            
-            <Button 
+
+            <Button
               onClick={moveToNextQuestion}
               disabled={!selectedOption && !state.questions[state.currentQuestion]?.isAnswerLocked}
               variant="default"
@@ -1106,13 +1108,13 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
               {state.currentQuestion < state.questions.length - 1 ? 'Next' : 'Finish Quiz 🎉'}
             </Button>
           </div>
-          
+
           {showConfirmation && (
             <div className="flex justify-between">
               <Button onClick={handleBack} variant="outline">
                 Previous
               </Button>
-              <Button 
+              <Button
                 onClick={moveToNextQuestion}
                 variant="default"
               >
@@ -1120,7 +1122,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
               </Button>
             </div>
           )}
-          
+
           {isLoading && (
             <div className="flex justify-center my-4" aria-busy="true" aria-live="polite">
               <Spinner />

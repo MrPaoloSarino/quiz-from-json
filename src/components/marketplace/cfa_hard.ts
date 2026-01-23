@@ -1,6 +1,7 @@
 import { MarketplaceItem } from './data';
 import { QuizQuestion } from '@/types/quiz';
 
+
 // Helper to generate questions
 const createQuestion = (q: string, opts: string[], ans: string): QuizQuestion => ({
     question: q,

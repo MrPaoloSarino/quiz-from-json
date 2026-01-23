@@ -1,6 +1,6 @@
 import { MarketplaceItem } from './data';
 import { QuizQuestion } from '@/types/quiz';
-import { shuffleArray } from '@/utils/shuffle';
+
 
 const createQuestion = (q: string, opts: string[], ans: string): QuizQuestion => ({
     question: q,
@@ -132,5 +132,5 @@ export const abnormalPsychMarketplaceItem: MarketplaceItem = {
     downloads: 95,
     rating: 4.9,
     price: 'Premium',
-    content: shuffleArray(abnormalPsychQuestions)
+    content: abnormalPsychQuestions
 };
