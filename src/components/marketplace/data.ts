@@ -1,5 +1,6 @@
 import { QuizQuestion } from '@/types/quiz';
 import { phBoardExamReviewers } from './ph_reviewer';
+import { mnaUsHardExamItem } from './mna_us_hard';
 import { grandMockExam } from './grand_mock';
 import { psychAssessmentMarketplaceItem } from './psych_assessment';
 import { theoriesMarketplaceItem } from './theories_of_personality';
@@ -30,6 +31,7 @@ export const mockMarketplaceItems: MarketplaceItem[] = [
     theoriesMarketplaceItem,
     abnormalPsychMarketplaceItem,
     ioPsychMarketplaceItem,
+    mnaUsHardExamItem,
     ...phBoardExamReviewers,
     {
         id: '1',
