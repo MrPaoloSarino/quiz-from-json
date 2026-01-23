@@ -6,6 +6,8 @@ import { theoriesMarketplaceItem } from './theories_of_personality';
 import { abnormalPsychMarketplaceItem } from './abnormal_psych';
 import { ioPsychMarketplaceItem } from './io_psych';
 import { grandMock2026Item } from './grand_mock_2026';
+import { cfaHardExamItem } from './cfa_hard';
+import { pmpHardExamItem } from './pmp_hard';
 
 export interface MarketplaceItem {
     id: string;
@@ -22,6 +24,8 @@ export interface MarketplaceItem {
 export const mockMarketplaceItems: MarketplaceItem[] = [
     grandMockExam,
     grandMock2026Item,
+    cfaHardExamItem,
+    pmpHardExamItem,
     psychAssessmentMarketplaceItem,
     theoriesMarketplaceItem,
     abnormalPsychMarketplaceItem,
