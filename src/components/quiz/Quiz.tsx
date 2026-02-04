@@ -214,7 +214,6 @@ const initializeQuizState = (externalQuestions?: QuizQuestion[]): QuizState => {
     endedEarly: false,
     totalAnswered: 0
   };
-  };
 };
 
 function shuffleArray<T>(array: T[]): T[] {
