@@ -22,6 +22,8 @@ interface QuizResultsProps {
   provider: 'openrouter' | 'gemini' | 'openai';
   apiKey: string;
   selectedModel?: string;
+  endedEarly?: boolean;
+  totalAnswered?: number;
 }
 
 const QuizResults: React.FC<QuizResultsProps> = ({
@@ -34,7 +36,9 @@ const QuizResults: React.FC<QuizResultsProps> = ({
   onGeneratePrescription,
   provider,
   apiKey,
-  selectedModel
+  selectedModel,
+  endedEarly = false,
+  totalAnswered = 0
 }) => {
   const [prescription, setPrescription] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -92,22 +96,24 @@ const QuizResults: React.FC<QuizResultsProps> = ({
   React.useEffect(() => {
     // Generate a simple summary based on the results
     const correctAnswers = questions.filter((q, i) => userAnswers[i] === q.answer).length;
-    const totalQuestions = questions.length;
-    const percentage = Math.round((correctAnswers / totalQuestions) * 100);
+    const answeredCount = endedEarly ? totalAnswered : questions.length;
+    const percentage = answeredCount > 0 ? Math.round((correctAnswers / answeredCount) * 100) : 0;
     
     let summary = '';
+    const endedEarlyText = endedEarly ? ' (ended early)' : '';
+    
     if (percentage === 100) {
-      summary = 'Perfect! You got every question correct. Excellent understanding! 🎉';
+      summary = `Perfect! You got every question correct. Excellent understanding! 🎉${endedEarlyText}`;
     } else if (percentage >= 80) {
-      summary = `Great job! You scored ${percentage}% - you have a strong grasp of the material. 🌟`;
+      summary = `Great job! You scored ${percentage}% - you have a strong grasp of the material. 🌟${endedEarlyText}`;
     } else if (percentage >= 60) {
-      summary = `Good effort! You scored ${percentage}%. Review the missed questions to improve. 💪`;
+      summary = `Good effort! You scored ${percentage}%. Review the missed questions to improve. 💪${endedEarlyText}`;
     } else {
-      summary = `You scored ${percentage}%. Don't worry - practice makes perfect! Keep studying. 📚`;
+      summary = `You scored ${percentage}%. Don't worry - practice makes perfect! Keep studying. 📚${endedEarlyText}`;
     }
     
     setAiSummary(summary);
-  }, [questions, userAnswers]);
+  }, [questions, userAnswers, endedEarly, totalAnswered]);
 
   return (
     <div className="space-y-6">
@@ -122,21 +128,76 @@ const QuizResults: React.FC<QuizResultsProps> = ({
       {/* Results Summary */}
       <Card className="p-6">
         <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold">Quiz Complete!</h2>
+          <h2 className="text-2xl font-bold">{endedEarly ? 'Quiz Ended Early' : 'Quiz Complete'}!</h2>
           <div className="text-4xl font-bold" style={{ color: 'var(--cerebrum-secondary)' }}>
-            {score} / {questions.length}
+            {score} / {endedEarly ? totalAnswered : questions.length}
           </div>
+          {endedEarly && (
+            <p className="text-sm" style={{ color: 'var(--cerebrum-text-muted)' }}>
+              Answered {totalAnswered} of {questions.length} questions
+            </p>
+          )}
           <p style={{ color: 'var(--cerebrum-text-secondary)' }}>
-            {score === questions.length
-              ? "Perfect score! 🎉"
-              : score >= questions.length * 0.8
-              ? "Great job! 🌟"
-              : score >= questions.length * 0.6
-              ? "Good effort! 💪"
-              : "Keep practicing! 📚"}
+            {(() => {
+              const denominator = endedEarly ? totalAnswered : questions.length;
+              if (denominator === 0) return "No questions answered 📝";
+              if (score === denominator) return "Perfect score! 🎉";
+              if (score >= denominator * 0.8) return "Great job! 🌟";
+              if (score >= denominator * 0.6) return "Good effort! 💪";
+              return "Keep practicing! 📚";
+            })()}
           </p>
         </div>
       </Card>
+
+      {/* Wrong Questions Review Section */}
+      {(() => {
+        const wrongQuestions = questions
+          .map((q, i) => ({ question: q, index: i, userAnswer: userAnswers[i] }))
+          .filter(item => {
+            // Only include answered questions that are wrong
+            const answered = item.userAnswer && item.userAnswer.trim() !== '';
+            const isCorrect = item.userAnswer === item.question.answer;
+            return answered && !isCorrect;
+          });
+
+        if (wrongQuestions.length === 0) return null;
+
+        return (
+          <Card className="p-6">
+            <div className="space-y-4">
+              <h3 className="text-xl font-semibold flex items-center gap-2" style={{ color: 'var(--cerebrum-error, #ef4444)' }}>
+                <XCircle className="w-5 h-5" />
+                Questions to Review ({wrongQuestions.length})
+              </h3>
+              <div className="space-y-3">
+                {wrongQuestions.map(({ question, index, userAnswer }) => (
+                  <div 
+                    key={index} 
+                    className="p-4 rounded-lg border"
+                    style={{ 
+                      background: 'var(--cerebrum-bg-secondary, #fef2f2)', 
+                      borderColor: 'var(--cerebrum-error, #ef4444)' 
+                    }}
+                  >
+                    <p className="font-medium mb-2">
+                      Q{index + 1}: {question.question}
+                    </p>
+                    <div className="flex flex-col gap-1 text-sm">
+                      <p style={{ color: 'var(--cerebrum-error, #ef4444)' }}>
+                        ❌ Your answer: {userAnswer || 'No answer'}
+                      </p>
+                      <p style={{ color: 'var(--cerebrum-success, #22c55e)' }}>
+                        ✓ Correct answer: {question.answer}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        );
+      })()}
 
       {/* Learning Analytics */}
       <Card className="p-6">

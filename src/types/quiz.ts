@@ -27,6 +27,8 @@ export interface QuizState {
       isCorrect: boolean;
     };
   };
+  endedEarly: boolean;
+  totalAnswered: number;
 }
 
 export interface GeminiResponse {

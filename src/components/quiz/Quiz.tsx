@@ -157,7 +157,9 @@ const initializeQuizState = (externalQuestions?: QuizQuestion[]): QuizState => {
       activeRecallPrompts: [],
       showActiveRecall: false,
       showConfirmation: false,
-      lockedAnswers: {}
+      lockedAnswers: {},
+      endedEarly: false,
+      totalAnswered: 0
     };
   }
 
@@ -208,7 +210,10 @@ const initializeQuizState = (externalQuestions?: QuizQuestion[]): QuizState => {
     activeRecallPrompts: [],
     showActiveRecall: false,
     showConfirmation: false,
-    lockedAnswers: {}
+    lockedAnswers: {},
+    endedEarly: false,
+    totalAnswered: 0
+  };
   };
 };
 
@@ -782,9 +787,14 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       // Save session
       StorageManager.saveQuizSession(session);
 
+      // Count answered questions for normal completion
+      const answeredCount = state.userAnswers.filter(answer => answer && answer.trim() !== '').length;
+
       setState({
         ...state,
-        showResults: true
+        showResults: true,
+        endedEarly: false,
+        totalAnswered: answeredCount
       });
     }
   };
@@ -799,6 +809,64 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       setSelectedOption(null);
       setShowFeedback(false);
     }
+  };
+
+  const handleEndTestEarly = () => {
+    // Count how many questions have been answered
+    const answered = state.userAnswers.filter(answer => answer && answer.trim() !== '').length;
+    
+    // Create session data for early exit
+    const session: QuizSession = {
+      id: `session_${Date.now()}`,
+      startTime: state.startTime,
+      endTime: new Date(),
+      questions: state.questions.slice(0, answered), // Only include answered questions
+      userAnswers: state.questions.slice(0, answered)
+        .map((question, index) => {
+          const answer = state.userAnswers[index];
+          if (!question || !question.id || answer === undefined || answer === "") {
+            return null;
+          }
+          return {
+            questionId: question.id,
+            answer,
+            isCorrect: answer === question.answer,
+            timeSpent: question.analytics?.averageRecallTime || 0,
+            confidence: 0,
+            attempts: 1,
+            hintsUsed: 0,
+            timestamp: new Date()
+          };
+        })
+        .filter((answerData): answerData is NonNullable<typeof answerData> => answerData !== null),
+      confidenceRatings: [],
+      totalScore: state.score,
+      timeSpent: (Date.now() - state.startTime.getTime()) / 1000,
+      difficulty: calculateSessionDifficulty(state.questions),
+      tags: getSessionTags(state.questions),
+      interleaved: state.isInterleaved,
+      spacingInterval: calculateAverageSpacing(state.questions),
+      activeRecallSuccess: calculateActiveRecallSuccess(state.questions),
+      elaborationCount: countElaborations(state.questions),
+      retentionScore: calculateRetentionScore(state.questions),
+      strategiesUsed: {
+        activeRecall: true,
+        spacedRepetition: true,
+        interleaving: state.isInterleaved,
+        elaboration: hasElaborations(state.questions),
+        feynmanTechnique: hasFeynmanExplanations(state.questions)
+      }
+    };
+
+    // Save session
+    StorageManager.saveQuizSession(session);
+
+    setState({
+      ...state,
+      showResults: true,
+      endedEarly: true,
+      totalAnswered: answered
+    });
   };
 
   // Helper to fetch AI feedback
@@ -1046,6 +1114,8 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
           provider={provider}
           apiKey={openRouterKey}
           selectedModel={selectedModel}
+          endedEarly={state.endedEarly}
+          totalAnswered={state.totalAnswered}
         />
       ) : state.questions.length > 0 ? (
         <div className="space-y-6">
@@ -1087,7 +1157,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
           )}
 
           {/* Always visible navigation */}
-          <div className="flex justify-between items-center pt-4 border-t">
+          <div className="flex justify-between items-center pt-4 border-t gap-2">
             <Button
               onClick={handleBack}
               variant="outline"
@@ -1095,6 +1165,16 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
             >
               Previous
             </Button>
+
+            <div className="flex gap-2 flex-1 justify-center">
+              <Button
+                onClick={handleEndTestEarly}
+                variant="outline"
+                className="text-red-600 hover:text-red-700"
+              >
+                End Test Early
+              </Button>
+            </div>
 
             <div className="text-sm" style={{ color: 'var(--cerebrum-text-muted)' }}>
               Question {state.currentQuestion + 1} of {state.questions.length}
