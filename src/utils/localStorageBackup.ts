@@ -234,13 +234,23 @@ class LocalStorageBackup {
     if (process.env.NODE_ENV === 'development') debugLogger.log('💾 LocalStorageBackup.saveQuiz called');
     if (process.env.NODE_ENV === 'development') debugLogger.log('💾 Quiz to save:', quiz);
     
+    // Ensure initialization before any operation
+    this.initialize();
+    
     try {
       if (process.env.NODE_ENV === 'development') debugLogger.log('💾 Loading existing user data...');
-      const userData = await this.loadUserData();
+      let userData = await this.loadUserData();
       
+      // If user data still doesn't exist after initialization, create it
       if (!userData) {
-        debugLogger.error('❌ User data not found');
-        throw new Error('User data not found');
+        if (process.env.NODE_ENV === 'development') debugLogger.log('⚠️ User data not found after init, forcing structure creation...');
+        this.ensureUserDataStructure();
+        userData = await this.loadUserData();
+        
+        if (!userData) {
+          debugLogger.error('❌ Failed to create user data structure');
+          throw new Error('Failed to initialize user data');
+        }
       }
       
       if (process.env.NODE_ENV === 'development') debugLogger.log('💾 Current quizzes count:', userData.quizzes.length);
@@ -272,16 +282,19 @@ class LocalStorageBackup {
   }
 
   static async getQuizzes(): Promise<UserQuiz[]> {
+    this.initialize(); // Ensure initialization
     const userData = await this.loadUserData();
     return userData?.quizzes || [];
   }
 
   static async getQuiz(quizId: string): Promise<UserQuiz | null> {
+    this.initialize(); // Ensure initialization
     const userData = await this.loadUserData();
     return userData?.quizzes.find(q => q.id === quizId) || null;
   }
 
   static async updateQuiz(quizId: string, updates: Partial<UserQuiz>): Promise<void> {
+    this.initialize(); // Ensure initialization
     const userData = await this.loadUserData();
     if (!userData) throw new Error('User data not found');
 
@@ -299,6 +312,7 @@ class LocalStorageBackup {
   }
 
   static async deleteQuiz(quizId: string): Promise<boolean> {
+    this.initialize(); // Ensure initialization
     const userData = await this.loadUserData();
     if (!userData) return false;
 
