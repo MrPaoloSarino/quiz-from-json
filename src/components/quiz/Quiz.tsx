@@ -229,6 +229,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
   const [state, setState] = useState<QuizState>(() => initializeQuizState(externalQuestions));
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState<boolean>(false);
+  const [essayDraft, setEssayDraft] = useState<string>(''); // Track essay text for enabling Next button
   const [showInput, setShowInput] = useState<boolean>(!externalQuestions);
   const [activeRecallPrompts, setActiveRecallPrompts] = useState<string[]>([]);
   const [showActiveRecall, setShowActiveRecall] = useState<boolean>(false);
@@ -695,6 +696,24 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
     toast.success("Great job explaining the concept!");
   };
 
+  // Handle Next button click - auto-submit essay if there's text but not submitted yet
+  const handleNextClick = async () => {
+    const currentQ = state.questions[state.currentQuestion];
+    
+    // For essay questions: if there's draft text but answer not submitted/locked, auto-submit first
+    if (currentQ.type === 'essay' && essayDraft.trim() && !currentQ.isAnswerLocked && !selectedOption) {
+      await handleAnswer(essayDraft.trim());
+      // After submitting, we wait briefly for state to update, then proceed
+      setTimeout(() => {
+        moveToNextQuestion();
+      }, 100);
+      return;
+    }
+    
+    // Otherwise just move to next question
+    moveToNextQuestion();
+  };
+
   const moveToNextQuestion = () => {
     if (state.currentQuestion < state.questions.length - 1) {
       // Get interleaved questions if appropriate
@@ -731,6 +750,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       setSelectedOption(null);
       setShowFeedback(false);
       setShowConfirmation(false);
+      setEssayDraft(''); // Reset essay draft when moving to next question
 
     } else {
       // Save session data before showing results
@@ -807,6 +827,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       });
       setSelectedOption(null);
       setShowFeedback(false);
+      setEssayDraft(''); // Reset essay draft when going back
     }
   };
 
@@ -1132,6 +1153,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
             showFeedback={showFeedback}
             selectedOption={selectedOption}
             isCorrect={selectedOption === state.questions[state.currentQuestion]?.answer}
+            onEssayChange={setEssayDraft}
           />
 
           {showActiveRecall && (
@@ -1180,8 +1202,12 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
             </div>
 
             <Button
-              onClick={moveToNextQuestion}
-              disabled={!selectedOption && !state.questions[state.currentQuestion]?.isAnswerLocked}
+              onClick={handleNextClick}
+              disabled={
+                !selectedOption && 
+                !state.questions[state.currentQuestion]?.isAnswerLocked &&
+                !(state.questions[state.currentQuestion]?.type === 'essay' && essayDraft.trim())
+              }
               variant="default"
             >
               {state.currentQuestion < state.questions.length - 1 ? 'Next' : 'Finish Quiz 🎉'}
@@ -1194,7 +1220,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
                 Previous
               </Button>
               <Button
-                onClick={moveToNextQuestion}
+                onClick={handleNextClick}
                 variant="default"
               >
                 {state.currentQuestion < state.questions.length - 1 ? 'Next' : 'Finish Quiz 🎉'}

@@ -17,6 +17,7 @@ interface QuizCardProps {
   showFeedback: boolean;
   selectedOption: string | null;
   isCorrect: boolean | null;
+  onEssayChange?: (text: string) => void;
 }
 
 const QuizCard: React.FC<QuizCardProps> = ({
@@ -27,6 +28,7 @@ const QuizCard: React.FC<QuizCardProps> = ({
   showFeedback,
   selectedOption,
   isCorrect,
+  onEssayChange,
 }) => {
   // Get learning context
   const { state: learningState } = useLearning();
@@ -220,6 +222,7 @@ const QuizCard: React.FC<QuizCardProps> = ({
             isLocked={question.isAnswerLocked}
             scaffoldingLevel={scaffoldingLevel}
             hintAvailability={hintAvailability}
+            onTextChange={onEssayChange}
           />
         )}
       </div>
@@ -274,6 +277,7 @@ interface EssayInputProps {
   isLocked: boolean;
   scaffoldingLevel: number;
   hintAvailability: number;
+  onTextChange?: (text: string) => void;
 }
 
 function EssayInput({ 
@@ -282,9 +286,15 @@ function EssayInput({
   initialValue, 
   isLocked,
   scaffoldingLevel,
-  hintAvailability
+  hintAvailability,
+  onTextChange
 }: EssayInputProps) {
   const [value, setValue] = useState(initialValue);
+
+  const handleTextChange = (newValue: string) => {
+    setValue(newValue);
+    onTextChange?.(newValue);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -305,7 +315,7 @@ function EssayInput({
             isLocked ? 'bg-gray-50 cursor-not-allowed' : ''
           }`}
           value={value}
-          onChange={e => !isLocked && setValue(e.target.value)}
+          onChange={e => !isLocked && handleTextChange(e.target.value)}
           disabled={disabled || isLocked}
           placeholder={isLocked ? "Answer locked" : "Type your answer here..."}
         />
