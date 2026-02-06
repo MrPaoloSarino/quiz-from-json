@@ -323,17 +323,30 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
           relatedConcepts: []
         });
 
-        setState(prevState => ({
-          ...prevState,
+        // Reset ALL quiz state when starting a new quiz (not just spreading prevState)
+        // This fixes the bug where endedEarly/showResults/score carried over
+        setState({
           questions: enhancedQuestions,
+          currentQuestion: 0,
+          score: 0,
+          showResults: false,
           userAnswers: Array(enhancedQuestions.length).fill(""),
+          feedback: null,
           essayRatings: Array(enhancedQuestions.length).fill(null),
-          startTime: new Date(),
           isInterleaved: false,
+          startTime: new Date(),
           activeRecallPrompts: [],
           showActiveRecall: false,
-          showConfirmation: false
-        }));
+          showConfirmation: false,
+          lockedAnswers: {},
+          endedEarly: false,
+          totalAnswered: 0
+        });
+        // Also reset local UI state
+        setSelectedOption(null);
+        setShowFeedback(false);
+        setShowConfirmation(false);
+        setEssayDraft('');
         setShowInput(false);
       }
     } catch (error) {
