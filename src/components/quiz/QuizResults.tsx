@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { CheckCircle, XCircle, Brain, MessageSquare, ChevronDown, ChevronUp, RefreshCw, Plus } from "lucide-react";
+import { CheckCircle, XCircle, Brain, MessageSquare, ChevronDown, ChevronUp, RefreshCw, Plus, RotateCcw } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import QuestionFeedback from "./QuestionFeedback";
 import LearningDashboard from '../analytics/LearningDashboard';
@@ -17,6 +17,7 @@ interface QuizResultsProps {
   score: number;
   onRestart: () => void;
   onNewQuiz: () => void;
+  onRetakeWrong?: () => void;
   essayRatings: number[];
   onGeneratePrescription?: () => Promise<string>;
   provider: 'openrouter' | 'gemini' | 'openai';
@@ -32,6 +33,7 @@ const QuizResults: React.FC<QuizResultsProps> = ({
   score,
   onRestart,
   onNewQuiz,
+  onRetakeWrong,
   essayRatings,
   onGeneratePrescription,
   provider,
@@ -194,6 +196,18 @@ const QuizResults: React.FC<QuizResultsProps> = ({
                   </div>
                 ))}
               </div>
+              {onRetakeWrong && (
+                <div className="pt-4 border-t mt-4">
+                  <Button
+                    onClick={onRetakeWrong}
+                    className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold"
+                    size="lg"
+                  >
+                    <RotateCcw className="w-5 h-5 mr-2" />
+                    Retake {wrongQuestions.length} Wrong Question{wrongQuestions.length > 1 ? 's' : ''} Only
+                  </Button>
+                </div>
+              )}
             </div>
           </Card>
         );
@@ -263,7 +277,7 @@ const QuizResults: React.FC<QuizResultsProps> = ({
       )}
 
       {/* Action Buttons */}
-      <div className="flex gap-4">
+      <div className="flex gap-4 flex-wrap">
         <Button
           onClick={onRestart}
           variant="outline"
@@ -272,6 +286,24 @@ const QuizResults: React.FC<QuizResultsProps> = ({
           <RefreshCw className="w-4 h-4 mr-2" />
           Try Again
         </Button>
+        {onRetakeWrong && (() => {
+          const wrongCount = questions.filter((q, i) => {
+            const answer = userAnswers[i];
+            const answered = answer && answer.trim() !== '';
+            return answered && answer !== q.answer;
+          }).length;
+          if (wrongCount === 0) return null;
+          return (
+            <Button
+              onClick={onRetakeWrong}
+              variant="outline"
+              className="flex-1 border-orange-400 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
+            >
+              <XCircle className="w-4 h-4 mr-2" />
+              Retake Wrong ({wrongCount})
+            </Button>
+          );
+        })()}
         <Button
           onClick={onNewQuiz}
           className="flex-1" style={{ background: 'var(--cerebrum-secondary)', color: '#fff' }}

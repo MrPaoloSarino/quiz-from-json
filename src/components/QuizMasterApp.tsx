@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { aiService } from '@/utils/aiService';
 import { AIProvider } from '@/utils/aiConfig';
-import { User, Settings, ShoppingBag } from 'lucide-react';
+import { User, Settings, ShoppingBag, PlayCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import SettingsPage from '@/pages/Settings';
@@ -158,6 +158,16 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
             >
               Quizzes
             </Button>
+            {currentQuiz && currentView !== 'quiz' && (
+              <Button
+                variant="default"
+                onClick={() => setCurrentView('quiz')}
+                className="ml-2 flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white animate-pulse"
+              >
+                <PlayCircle className="w-4 h-4" />
+                Resume Quiz
+              </Button>
+            )}
             <Button variant={currentView === 'flashcards' ? 'default' : 'ghost'} onClick={handleViewFlashcards} className="ml-2">Flashcards</Button>
             <Button variant={currentView === 'marketplace' ? 'default' : 'ghost'} onClick={handleViewMarketplace} className="ml-2 flex items-center gap-1">
               <ShoppingBag className="w-4 h-4" />
@@ -239,36 +249,32 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
         </DialogContent>
       </Dialog>
     </nav>
-  ), [currentView, userFirstName, apiModalOpen, globalProvider, globalApiKey, globalModel, handleViewProfile, handleViewFlashcards, handleViewMarketplace, handleSaveApiSettings]);
+  ), [currentView, currentQuiz, userFirstName, apiModalOpen, globalProvider, globalApiKey, globalModel, handleViewProfile, handleViewFlashcards, handleViewMarketplace, handleSaveApiSettings, setCurrentView]);
 
   const renderDashboard = useMemo(() => (
     <QuizDashboard ref={dashboardRef} onStartQuiz={handleStartQuiz} onCreateQuiz={handleCreateQuiz} />
   ), [handleStartQuiz, handleCreateQuiz]);
 
-  const renderCurrentView = useMemo(() => {
+  // Non-persistent views rendered conditionally
+  const renderActiveView = useMemo(() => {
     switch (currentView) {
       case 'dashboard':
         return renderDashboard;
-      case 'quiz':
-        return currentQuiz ? (
-          <div className="container mx-auto p-4"><Quiz questions={currentQuiz} /></div>
-        ) : (
-          <div className="container mx-auto p-4 text-center"><p className="text-gray-500">No quiz selected</p></div>
-        );
       case 'create':
         return <div className="container mx-auto p-4"><JsonInput onQuizStart={handleStartQuiz} /></div>;
       case 'profile':
         return <div className="container mx-auto p-4 flex justify-center"><UserProfileComponent onSignOut={handleSignOut} /></div>;
       case 'settings':
         return <SettingsPage />;
+      case 'quiz':
       case 'flashcards':
-        return <Flashcards />;
       case 'marketplace':
-        return <Marketplace onInstall={handleInstallTemplate} />;
+        // These are rendered persistently below via display toggling
+        return null;
       default:
         return <div>Unknown view</div>;
     }
-  }, [currentView, currentQuiz, renderDashboard, handleStartQuiz, handleSignOut, handleBackToDashboard, handleInstallTemplate]);
+  }, [currentView, renderDashboard, handleStartQuiz, handleSignOut]);
 
   // Refresh quizzes when returning to dashboard
   useEffect(() => {
@@ -277,10 +283,50 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
     }
   }, [currentView]);
 
+  // Track whether persistent views have been visited at least once
+  const [mountedViews, setMountedViews] = React.useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (['quiz', 'flashcards', 'marketplace'].includes(currentView)) {
+      setMountedViews(prev => {
+        if (prev.has(currentView)) return prev;
+        const next = new Set(prev);
+        next.add(currentView);
+        return next;
+      });
+    }
+  }, [currentView]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {renderNavBar}
-      <main className="py-6">{renderCurrentView}</main>
+      <main className="py-6">
+        {/* Non-persistent views */}
+        {renderActiveView}
+
+        {/* Persistent quiz view – stays mounted so state is preserved */}
+        {currentQuiz && (mountedViews.has('quiz') || currentView === 'quiz') && (
+          <div style={{ display: currentView === 'quiz' ? 'block' : 'none' }}>
+            <div className="container mx-auto p-4"><Quiz questions={currentQuiz} /></div>
+          </div>
+        )}
+        {!currentQuiz && currentView === 'quiz' && (
+          <div className="container mx-auto p-4 text-center"><p className="text-gray-500">No quiz selected</p></div>
+        )}
+
+        {/* Persistent flashcards view */}
+        {(mountedViews.has('flashcards') || currentView === 'flashcards') && (
+          <div style={{ display: currentView === 'flashcards' ? 'block' : 'none' }}>
+            <Flashcards />
+          </div>
+        )}
+
+        {/* Persistent marketplace view */}
+        {(mountedViews.has('marketplace') || currentView === 'marketplace') && (
+          <div style={{ display: currentView === 'marketplace' ? 'block' : 'none' }}>
+            <Marketplace onInstall={handleInstallTemplate} />
+          </div>
+        )}
+      </main>
     </div>
   );
 };

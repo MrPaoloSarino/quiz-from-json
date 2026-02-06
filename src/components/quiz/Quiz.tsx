@@ -227,6 +227,7 @@ function shuffleArray<T>(array: T[]): T[] {
 
 const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQuestions }) => {
   const [state, setState] = useState<QuizState>(() => initializeQuizState(externalQuestions));
+  const initializedQuestionsRef = React.useRef<QuizQuestion[] | undefined>(externalQuestions);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState<boolean>(false);
   const [essayDraft, setEssayDraft] = useState<string>(''); // Track essay text for enabling Next button
@@ -302,6 +303,13 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       });
 
       if (externalQuestions && externalQuestions.length > 0) {
+        // Skip re-initialization if we already have these questions loaded
+        // This prevents state reset when navigating away and back
+        if (initializedQuestionsRef.current === externalQuestions) {
+          return;
+        }
+        initializedQuestionsRef.current = externalQuestions;
+
         // Shuffle questions globally by default for each play session
         const shuffledQuestions = shuffleArray(externalQuestions);
         const enhancedQuestions = initializeQuizState(shuffledQuestions).questions;
@@ -1128,8 +1136,72 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
           questions={state.questions}
           userAnswers={state.userAnswers}
           score={state.score}
-          onRestart={() => setState(initializeQuizState())}
+          onRestart={() => {
+            // Re-initialize with the same questions, re-shuffled
+            const shuffled = shuffleArray(state.questions);
+            const enhanced = initializeQuizState(shuffled).questions;
+            setState({
+              questions: enhanced,
+              currentQuestion: 0,
+              score: 0,
+              showResults: false,
+              userAnswers: Array(enhanced.length).fill(''),
+              feedback: null,
+              essayRatings: Array(enhanced.length).fill(null),
+              isInterleaved: false,
+              startTime: new Date(),
+              activeRecallPrompts: [],
+              showActiveRecall: false,
+              showConfirmation: false,
+              lockedAnswers: {},
+              endedEarly: false,
+              totalAnswered: 0
+            });
+            setSelectedOption(null);
+            setShowFeedback(false);
+            setShowConfirmation(false);
+            setEssayDraft('');
+            toast.success('Restarting quiz with all questions!');
+          }}
           onNewQuiz={() => setShowInput(true)}
+          onRetakeWrong={() => {
+            // Filter only the wrong questions (answered but incorrect)
+            const wrongQuestions = state.questions.filter((q, i) => {
+              const answer = state.userAnswers[i];
+              const answered = answer && answer.trim() !== '';
+              const isCorrect = answer === q.answer;
+              return answered && !isCorrect;
+            });
+            if (wrongQuestions.length === 0) {
+              toast.info('No wrong questions to retake!');
+              return;
+            }
+            // Re-initialize quiz with only the wrong questions
+            const shuffled = shuffleArray(wrongQuestions);
+            const enhanced = initializeQuizState(shuffled).questions;
+            setState({
+              questions: enhanced,
+              currentQuestion: 0,
+              score: 0,
+              showResults: false,
+              userAnswers: Array(enhanced.length).fill(''),
+              feedback: null,
+              essayRatings: Array(enhanced.length).fill(null),
+              isInterleaved: false,
+              startTime: new Date(),
+              activeRecallPrompts: [],
+              showActiveRecall: false,
+              showConfirmation: false,
+              lockedAnswers: {},
+              endedEarly: false,
+              totalAnswered: 0
+            });
+            setSelectedOption(null);
+            setShowFeedback(false);
+            setShowConfirmation(false);
+            setEssayDraft('');
+            toast.success(`Retaking ${wrongQuestions.length} wrong question${wrongQuestions.length > 1 ? 's' : ''}`);
+          }}
           essayRatings={state.essayRatings}
           provider={provider}
           apiKey={openRouterKey}

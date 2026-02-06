@@ -131,7 +131,7 @@ const JsonInput: React.FC<JsonInputProps> = ({ onQuizStart }) => {
     return overallResult;
   };
 
-  const handleStartQuiz = () => {
+  const handleStartQuiz = async () => {
     console.log('🚀 [DEBUG] handleStartQuiz called');
     console.log('🚀 [DEBUG] Current jsonInput length:', jsonInput.length);
     console.log('🚀 [DEBUG] Current quizTitle:', quizTitle);
@@ -172,13 +172,29 @@ const JsonInput: React.FC<JsonInputProps> = ({ onQuizStart }) => {
         return;
       }
       
+      // Auto-save the quiz before starting
+      try {
+        const autoTitle = quizTitle.trim() || `Quiz ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`;
+        console.log('💾 [DEBUG] Auto-saving quiz with title:', autoTitle);
+        
+        await StorageManager.importLegacyQuiz(
+          autoTitle,
+          parsedQuestions,
+          quizDescription.trim() || undefined
+        );
+        console.log('✅ [DEBUG] Quiz auto-saved successfully');
+        toast.success(`Quiz "${autoTitle}" saved and starting!`);
+      } catch (saveErr) {
+        console.warn('⚠️ [DEBUG] Auto-save failed, continuing with quiz:', saveErr);
+        // Don't block quiz start if save fails
+      }
+      
       console.log('🚀 [DEBUG] All validations passed. Calling onQuizStart...');
       console.log('🚀 [DEBUG] Questions being passed to onQuizStart:', parsedQuestions);
       
       onQuizStart(parsedQuestions);
       
       console.log('✅ [DEBUG] onQuizStart called successfully');
-      toast.success("Quiz loaded successfully!");
       
     } catch (err) {
       console.error('❌ [DEBUG] Unexpected error in handleStartQuiz:', err);
