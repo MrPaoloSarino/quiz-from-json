@@ -5,6 +5,7 @@ export interface QuizQuestion {
   options?: string[];
   answer?: string;
   type?: 'multiple' | 'essay' | 'fill-blank' | 'drag-drop' | 'sequence' | 'matching';
+  explanation?: string;
 }
 
 export interface QuizState {

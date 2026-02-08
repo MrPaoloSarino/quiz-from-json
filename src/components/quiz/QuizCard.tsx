@@ -244,6 +244,19 @@ const QuizCard: React.FC<QuizCardProps> = ({
         </div>
       )}
 
+      {/* Answer Explanation */}
+      {question.isAnswerLocked && question.explanation && (
+        <div className="pt-4 border-t bg-blue-50/50 p-4 rounded-lg border-blue-200">
+          <div className="flex items-center gap-2 mb-2 text-blue-800">
+            <Brain className="w-5 h-5 text-blue-500" />
+            <h4 className="text-sm font-bold uppercase tracking-wider">Answer Rationale</h4>
+          </div>
+          <p className="text-sm text-gray-700 leading-relaxed italic">
+            "{question.explanation}"
+          </p>
+        </div>
+      )}
+
       {/* Learning Support */}
       {scaffoldingLevel > 0.3 && !question.isAnswerLocked && (
         <div className="pt-4 border-t">

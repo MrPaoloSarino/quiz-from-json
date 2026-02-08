@@ -1,10 +1,13 @@
-import React, { useState, useEffect, Component, ErrorInfo } from "react";
+import React, { useState, useEffect, useCallback, Component, ErrorInfo } from "react";
 import JsonInput from "./JsonInput";
 import QuizCard from "./QuizCard";
 import QuizResults from "./QuizResults";
 import AiFeedback from "./AiFeedback";
 import QuestionFeedback from "./QuestionFeedback";
 import AIExplainer from "./AIExplainer";
+import BoardExamAnswerSheet, { type ExamMode } from "./BoardExamAnswerSheet";
+import BoardExamQuestionSheet from "./BoardExamQuestionSheet";
+import QuizLayoutToggle, { type QuizLayoutMode } from "./QuizLayoutToggle";
 import { QuizQuestion, QuizState, GeminiResponse } from "@/types/quiz";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -17,6 +20,7 @@ import { sanitizeMarkdown, sanitizeJson, validateContentLength } from '@/utils/s
 import { loadResource, verifyResourceIntegrity } from '@/utils/secureResources';
 import { QuizSession, EnhancedQuizQuestion } from '@/types/user';
 import StorageManager from '@/utils/storageManager';
+import { updateStatsAfterQuiz } from '@/components/auth/UserProfile';
 import {
   calculateNextReview,
   updateLearningAnalytics,
@@ -266,6 +270,178 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
   const [showApiKeyAlert, setShowApiKeyAlert] = useState(false);
   const [retryAction, setRetryAction] = useState<(() => void) | null>(null);
   const [isApiKeyConfigured, setIsApiKeyConfigured] = useState(true);
+
+  // --- Optional Board Exam (OMR) Layout ---
+  const [quizLayoutMode, setQuizLayoutMode] = useState<QuizLayoutMode>("standard");
+  const [flaggedQuestions, setFlaggedQuestions] = useState<Set<number>>(new Set());
+  const [examMode, setExamMode] = useState<ExamMode>("practice");
+  const [lockedQuestions, setLockedQuestions] = useState<Set<number>>(new Set());
+
+  /** Jump to a specific question (used by OMR answer sheet) */
+  const handleJumpToQuestion = useCallback((index: number) => {
+    if (index < 0 || index >= state.questions.length) return;
+    setState(prev => ({
+      ...prev,
+      currentQuestion: index,
+      feedback: null,
+    }));
+    // Restore selected option for the target question
+    const targetAnswer = state.userAnswers[index];
+    setSelectedOption(targetAnswer && targetAnswer.trim() !== "" ? targetAnswer : null);
+    setShowFeedback(!!targetAnswer && targetAnswer.trim() !== "");
+    setShowConfirmation(false);
+    setEssayDraft("");
+  }, [state.questions.length, state.userAnswers]);
+
+  /** Toggle flag for review on a question */
+  const handleToggleFlag = useCallback((index: number) => {
+    setFlaggedQuestions(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  }, []);
+
+  /** Handle answer selection from the OMR sheet */
+  const handleSelectAnswerFromSheet = useCallback((questionIndex: number, optionLabel: string) => {
+    const question = state.questions[questionIndex];
+    if (!question?.options) return;
+
+    // Convert option label to actual answer text
+    // Handle both A/B/C/D/E labels and T/F labels for true/false
+    let optionIndex: number;
+    if (optionLabel === 'T') {
+      optionIndex = 0; // True is first option
+    } else if (optionLabel === 'F') {
+      optionIndex = 1; // False is second option
+    } else {
+      optionIndex = optionLabel.charCodeAt(0) - 65; // A=0, B=1, etc.
+    }
+    
+    const selectedAnswer = question.options[optionIndex];
+    if (!selectedAnswer) return;
+
+    // In exam mode, check if answer is already locked OR if question already has an answer
+    // Double-check to prevent race conditions
+    if (examMode === "exam") {
+      if (lockedQuestions.has(questionIndex)) {
+        return;
+      }
+      // Also check if there's already an answer (even if not yet in lockedQuestions set)
+      const existingAnswer = state.userAnswers[questionIndex];
+      if (existingAnswer && existingAnswer.trim() !== '') {
+        return;
+      }
+    }
+
+    // Update the user's answer
+    setState(prev => {
+      const newAnswers = [...prev.userAnswers];
+      newAnswers[questionIndex] = selectedAnswer;
+      return {
+        ...prev,
+        userAnswers: newAnswers,
+      };
+    });
+
+    // If this is the current question, also update the selectedOption
+    if (questionIndex === state.currentQuestion) {
+      setSelectedOption(selectedAnswer);
+      setShowFeedback(true);
+    }
+
+    // In exam mode, auto-lock after answering
+    if (examMode === "exam") {
+      setLockedQuestions(prev => {
+        const next = new Set(prev);
+        next.add(questionIndex);
+        return next;
+      });
+    }
+  }, [state.questions, state.currentQuestion, state.userAnswers, examMode, lockedQuestions]);
+
+  /** Handle essay answer from the board exam modal */
+  const handleEssayAnswer = useCallback((questionIndex: number, essayText: string) => {
+    // In exam mode, check if answer is already locked OR has existing answer
+    if (examMode === "exam") {
+      if (lockedQuestions.has(questionIndex)) {
+        return;
+      }
+      const existingAnswer = state.userAnswers[questionIndex];
+      if (existingAnswer && existingAnswer.trim() !== '') {
+        return;
+      }
+    }
+
+    // Update the user's answer with the essay text
+    setState(prev => {
+      const newAnswers = [...prev.userAnswers];
+      newAnswers[questionIndex] = essayText;
+      return {
+        ...prev,
+        userAnswers: newAnswers,
+      };
+    });
+
+    // If this is the current question, also update the selectedOption
+    if (questionIndex === state.currentQuestion) {
+      setSelectedOption(essayText);
+      setShowFeedback(true);
+    }
+
+    // In exam mode, auto-lock after answering
+    if (examMode === "exam") {
+      setLockedQuestions(prev => {
+        const next = new Set(prev);
+        next.add(questionIndex);
+        return next;
+      });
+    }
+  }, [state.currentQuestion, state.userAnswers, examMode, lockedQuestions]);
+
+  /** Lock an answer (for exam mode) */
+  const handleLockAnswer = useCallback((questionIndex: number) => {
+    if (!state.userAnswers[questionIndex]) return; // Can't lock unanswered
+    setLockedQuestions(prev => {
+      const next = new Set(prev);
+      next.add(questionIndex);
+      return next;
+    });
+  }, [state.userAnswers]);
+
+  /** Handle exam mode change */
+  const handleExamModeChange = useCallback((mode: ExamMode) => {
+    setExamMode(mode);
+    if (mode === "practice") {
+      // Reset locked questions when switching to practice mode
+      setLockedQuestions(new Set());
+    } else if (mode === "exam") {
+      // Lock all already-answered questions when switching to exam mode
+      const alreadyAnswered = new Set<number>();
+      state.userAnswers.forEach((answer, index) => {
+        if (answer && answer.trim() !== '') {
+          alreadyAnswered.add(index);
+        }
+      });
+      setLockedQuestions(alreadyAnswered);
+    }
+  }, [state.userAnswers]);
+
+  /** Derive options array per question for the OMR sheet */
+  const questionsOptions = React.useMemo(
+    () => state.questions.map(q => q.options),
+    [state.questions]
+  );
+
+  /** Derive question types array for the answer sheet */
+  const questionTypes = React.useMemo(
+    () => state.questions.map(q => q.type),
+    [state.questions]
+  );
 
   // Add AbortController ref for API calls
   const abortControllerRef = React.useRef<AbortController>(new AbortController());
@@ -830,6 +1006,10 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       // Count answered questions for normal completion
       const answeredCount = state.userAnswers.filter(answer => answer && answer.trim() !== '').length;
 
+      // Update local stats for normal quiz completion
+      const timeSpentSeconds = Math.floor((Date.now() - state.startTime.getTime()) / 1000);
+      updateStatsAfterQuiz(answeredCount, state.score, timeSpentSeconds);
+
       setState({
         ...state,
         showResults: true,
@@ -902,10 +1082,89 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
     // Save session
     StorageManager.saveQuizSession(session);
 
+    // Update local stats (even for early end)
+    const correctCount = state.questions.slice(0, answered).filter(
+      (q, idx) => state.userAnswers[idx] === q.answer
+    ).length;
+    const timeSpentSeconds = Math.floor((Date.now() - state.startTime.getTime()) / 1000);
+    updateStatsAfterQuiz(answered, correctCount, timeSpentSeconds);
+
     setState({
       ...state,
       showResults: true,
       endedEarly: true,
+      totalAnswered: answered
+    });
+  };
+
+  /** Finish the quiz normally (for board exam mode submit button) */
+  const handleFinishQuiz = () => {
+    // Count how many questions have been answered
+    const answered = state.userAnswers.filter(answer => answer && answer.trim() !== '').length;
+    
+    // Calculate score based on answered questions
+    let finalScore = 0;
+    state.questions.forEach((question, idx) => {
+      if (state.userAnswers[idx] === question.answer) {
+        finalScore++;
+      }
+    });
+
+    // Create session data
+    const session: QuizSession = {
+      id: `session_${Date.now()}`,
+      startTime: state.startTime,
+      endTime: new Date(),
+      questions: state.questions,
+      userAnswers: state.questions
+        .map((question, index) => {
+          const answer = state.userAnswers[index];
+          if (!question || !question.id || answer === undefined || answer === "") {
+            return null;
+          }
+          return {
+            questionId: question.id,
+            answer,
+            isCorrect: answer === question.answer,
+            timeSpent: question.analytics?.averageRecallTime || 0,
+            confidence: 0,
+            attempts: 1,
+            hintsUsed: 0,
+            timestamp: new Date()
+          };
+        })
+        .filter((answerData): answerData is NonNullable<typeof answerData> => answerData !== null),
+      confidenceRatings: [],
+      totalScore: finalScore,
+      timeSpent: (Date.now() - state.startTime.getTime()) / 1000,
+      difficulty: calculateSessionDifficulty(state.questions),
+      tags: getSessionTags(state.questions),
+      interleaved: state.isInterleaved,
+      spacingInterval: calculateAverageSpacing(state.questions),
+      activeRecallSuccess: calculateActiveRecallSuccess(state.questions),
+      elaborationCount: countElaborations(state.questions),
+      retentionScore: calculateRetentionScore(state.questions),
+      strategiesUsed: {
+        activeRecall: true,
+        spacedRepetition: true,
+        interleaving: state.isInterleaved,
+        elaboration: hasElaborations(state.questions),
+        feynmanTechnique: hasFeynmanExplanations(state.questions)
+      }
+    };
+
+    // Save session
+    StorageManager.saveQuizSession(session);
+
+    // Update local stats
+    const timeSpentSeconds = Math.floor((Date.now() - state.startTime.getTime()) / 1000);
+    updateStatsAfterQuiz(answered, finalScore, timeSpentSeconds);
+
+    setState({
+      ...state,
+      score: finalScore,
+      showResults: true,
+      endedEarly: false,
       totalAnswered: answered
     });
   };
@@ -1224,101 +1483,235 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
         />
       ) : state.questions.length > 0 ? (
         <div className="space-y-6">
-          <div className="flex justify-between items-center">
+          {/* Quiz header with layout toggle */}
+          <div className="flex justify-between items-center flex-wrap gap-2">
             <h2 className="text-2xl font-bold">Quiz</h2>
-            <SoundControls />
+            <div className="flex items-center gap-3">
+              <QuizLayoutToggle mode={quizLayoutMode} onModeChange={setQuizLayoutMode} />
+              <SoundControls />
+            </div>
           </div>
 
-          <QuizCard
-            key={`${state.currentQuestion}-${state.questions[state.currentQuestion]?.analytics?.recallAttempts || 0}`}
-            question={state.questions[state.currentQuestion]}
-            questionNumber={state.currentQuestion + 1}
-            totalQuestions={state.questions.length}
-            onAnswer={handleAnswer}
-            showFeedback={showFeedback}
-            selectedOption={selectedOption}
-            isCorrect={selectedOption === state.questions[state.currentQuestion]?.answer}
-            onEssayChange={setEssayDraft}
-          />
+          {/* Quiz body — standard or board-exam split */}
+          <div
+            className={
+              quizLayoutMode === "board-exam"
+                ? "grid grid-cols-1 lg:grid-cols-[1fr_320px] xl:grid-cols-[1fr_360px] gap-4 items-start"
+                : ""
+            }
+          >
+            {/* BOARD EXAM MODE: Question Sheet (read-only) + Answer Sheet */}
+            {quizLayoutMode === "board-exam" ? (
+              <>
+                {/* Left side: Read-only Question Sheet */}
+                <div className="min-w-0 h-[calc(100vh-220px)] min-h-[500px]">
+                  <BoardExamQuestionSheet
+                    questions={state.questions}
+                    currentQuestion={state.currentQuestion}
+                    userAnswers={state.userAnswers}
+                    flaggedQuestions={flaggedQuestions}
+                    onJumpToQuestion={handleJumpToQuestion}
+                  />
+                </div>
 
-          {showActiveRecall && (
-            <ActiveRecallPrompt
-              prompts={activeRecallPrompts}
-              onSubmit={handleActiveRecallSubmit}
-            />
-          )}
+                {/* Right side: Answer Sheet (this is where you answer) */}
+                <div className="sticky top-4 hidden lg:block">
+                  <BoardExamAnswerSheet
+                    totalQuestions={state.questions.length}
+                    currentQuestion={state.currentQuestion}
+                    userAnswers={state.userAnswers}
+                    questionsOptions={questionsOptions}
+                    questionTypes={questionTypes}
+                    flaggedQuestions={flaggedQuestions}
+                    onJumpToQuestion={handleJumpToQuestion}
+                    onToggleFlag={handleToggleFlag}
+                    onSelectAnswer={handleSelectAnswerFromSheet}
+                    onEssayAnswer={handleEssayAnswer}
+                    examMode={examMode}
+                    onExamModeChange={handleExamModeChange}
+                    lockedQuestions={lockedQuestions}
+                    onLockAnswer={handleLockAnswer}
+                  />
+                  
+                  {/* Board Exam Navigation */}
+                  <div className="mt-4 flex flex-col gap-2">
+                    <Button
+                      onClick={handleEndTestEarly}
+                      variant="outline"
+                      className="w-full text-red-600 hover:text-red-700"
+                    >
+                      End Test Early
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        // Check if all questions are answered
+                        const unanswered = state.userAnswers.filter(a => !a || !a.trim()).length;
+                        if (unanswered > 0) {
+                          toast.warning(`You have ${unanswered} unanswered questions. Are you sure you want to finish?`, {
+                            action: {
+                              label: "Finish Anyway",
+                              onClick: () => handleFinishQuiz()
+                            }
+                          });
+                        } else {
+                          handleFinishQuiz();
+                        }
+                      }}
+                      variant="default"
+                      className="w-full"
+                    >
+                      Submit Exam 🎉
+                    </Button>
+                  </div>
+                </div>
 
-          {/* Show AI Explainer after answering */}
-          {selectedOption && state.questions[state.currentQuestion]?.isAnswerLocked && (
-            <AIExplainer
-              context={{
-                question: state.questions[state.currentQuestion]?.question || '',
-                userAnswer: selectedOption,
-                correctAnswer: state.questions[state.currentQuestion]?.answer || '',
-                isCorrect: selectedOption === state.questions[state.currentQuestion]?.answer,
-                questionType: state.questions[state.currentQuestion]?.type || 'multiple',
-                options: state.questions[state.currentQuestion]?.options
-              }}
-            />
-          )}
+                {/* Mobile: Answer Sheet at bottom */}
+                <div className="lg:hidden mt-4">
+                  <details className="group" open>
+                    <summary className="cursor-pointer text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1 py-2">
+                      <span className="group-open:rotate-90 transition-transform inline-block">▶</span>
+                      Answer Sheet ({state.userAnswers.filter(a => a && a.trim() !== "").length}/{state.questions.length} answered)
+                    </summary>
+                    <div className="mt-2">
+                      <BoardExamAnswerSheet
+                        totalQuestions={state.questions.length}
+                        currentQuestion={state.currentQuestion}
+                        userAnswers={state.userAnswers}
+                        questionsOptions={questionsOptions}
+                        questionTypes={questionTypes}
+                        flaggedQuestions={flaggedQuestions}
+                        onJumpToQuestion={handleJumpToQuestion}
+                        onToggleFlag={handleToggleFlag}
+                        onSelectAnswer={handleSelectAnswerFromSheet}
+                        onEssayAnswer={handleEssayAnswer}
+                        examMode={examMode}
+                        onExamModeChange={handleExamModeChange}
+                        lockedQuestions={lockedQuestions}
+                        onLockAnswer={handleLockAnswer}
+                        compact
+                      />
+                    </div>
+                  </details>
+                  <div className="mt-4 flex gap-2">
+                    <Button
+                      onClick={handleEndTestEarly}
+                      variant="outline"
+                      className="flex-1 text-red-600 hover:text-red-700"
+                    >
+                      End Test
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        const unanswered = state.userAnswers.filter(a => !a || !a.trim()).length;
+                        if (unanswered > 0) {
+                          toast.warning(`${unanswered} unanswered questions`);
+                        }
+                        handleFinishQuiz();
+                      }}
+                      variant="default"
+                      className="flex-1"
+                    >
+                      Submit 🎉
+                    </Button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* STANDARD MODE: Original QuizCard + feedback + navigation */
+              <div className="space-y-6 min-w-0">
+              <QuizCard
+                key={`${state.currentQuestion}-${state.questions[state.currentQuestion]?.analytics?.recallAttempts || 0}`}
+                question={state.questions[state.currentQuestion]}
+                questionNumber={state.currentQuestion + 1}
+                totalQuestions={state.questions.length}
+                onAnswer={handleAnswer}
+                showFeedback={showFeedback}
+                selectedOption={selectedOption}
+                isCorrect={selectedOption === state.questions[state.currentQuestion]?.answer}
+                onEssayChange={setEssayDraft}
+              />
 
-          {/* Always visible navigation */}
-          <div className="flex justify-between items-center pt-4 border-t gap-2">
-            <Button
-              onClick={handleBack}
-              variant="outline"
-              disabled={state.currentQuestion === 0}
-            >
-              Previous
-            </Button>
+              {showActiveRecall && (
+                <ActiveRecallPrompt
+                  prompts={activeRecallPrompts}
+                  onSubmit={handleActiveRecallSubmit}
+                />
+              )}
 
-            <div className="flex gap-2 flex-1 justify-center">
-              <Button
-                onClick={handleEndTestEarly}
-                variant="outline"
-                className="text-red-600 hover:text-red-700"
-              >
-                End Test Early
-              </Button>
-            </div>
+              {/* Show AI Explainer after answering */}
+              {selectedOption && state.questions[state.currentQuestion]?.isAnswerLocked && (
+                <AIExplainer
+                  context={{
+                    question: state.questions[state.currentQuestion]?.question || '',
+                    userAnswer: selectedOption,
+                    correctAnswer: state.questions[state.currentQuestion]?.answer || '',
+                    isCorrect: selectedOption === state.questions[state.currentQuestion]?.answer,
+                    questionType: state.questions[state.currentQuestion]?.type || 'multiple',
+                    options: state.questions[state.currentQuestion]?.options
+                  }}
+                />
+              )}
 
-            <div className="text-sm" style={{ color: 'var(--cerebrum-text-muted)' }}>
-              Question {state.currentQuestion + 1} of {state.questions.length}
-            </div>
+              {/* Always visible navigation */}
+              <div className="flex justify-between items-center pt-4 border-t gap-2">
+                <Button
+                  onClick={handleBack}
+                  variant="outline"
+                  disabled={state.currentQuestion === 0}
+                >
+                  Previous
+                </Button>
 
-            <Button
-              onClick={handleNextClick}
-              disabled={
-                !selectedOption && 
-                !state.questions[state.currentQuestion]?.isAnswerLocked &&
-                !(state.questions[state.currentQuestion]?.type === 'essay' && essayDraft.trim())
-              }
-              variant="default"
-            >
-              {state.currentQuestion < state.questions.length - 1 ? 'Next' : 'Finish Quiz 🎉'}
-            </Button>
+                <div className="flex gap-2 flex-1 justify-center">
+                  <Button
+                    onClick={handleEndTestEarly}
+                    variant="outline"
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    End Test Early
+                  </Button>
+                </div>
+
+                <div className="text-sm" style={{ color: 'var(--cerebrum-text-muted)' }}>
+                  Question {state.currentQuestion + 1} of {state.questions.length}
+                </div>
+
+                <Button
+                  onClick={handleNextClick}
+                  disabled={
+                    !selectedOption && 
+                    !state.questions[state.currentQuestion]?.isAnswerLocked &&
+                    !(state.questions[state.currentQuestion]?.type === 'essay' && essayDraft.trim())
+                  }
+                  variant="default"
+                >
+                  {state.currentQuestion < state.questions.length - 1 ? 'Next' : 'Finish Quiz 🎉'}
+                </Button>
+              </div>
+
+              {showConfirmation && (
+                <div className="flex justify-between">
+                  <Button onClick={handleBack} variant="outline">
+                    Previous
+                  </Button>
+                  <Button
+                    onClick={handleNextClick}
+                    variant="default"
+                  >
+                    {state.currentQuestion < state.questions.length - 1 ? 'Next' : 'Finish Quiz 🎉'}
+                  </Button>
+                </div>
+              )}
+
+              {isLoading && (
+                <div className="flex justify-center my-4" aria-busy="true" aria-live="polite">
+                  <Spinner />
+                  <span className="ml-2" style={{ color: 'var(--cerebrum-secondary)' }}>Waiting for AI...</span>
+                </div>
+              )}
+              </div>
+            )}
           </div>
-
-          {showConfirmation && (
-            <div className="flex justify-between">
-              <Button onClick={handleBack} variant="outline">
-                Previous
-              </Button>
-              <Button
-                onClick={handleNextClick}
-                variant="default"
-              >
-                {state.currentQuestion < state.questions.length - 1 ? 'Next' : 'Finish Quiz 🎉'}
-              </Button>
-            </div>
-          )}
-
-          {isLoading && (
-            <div className="flex justify-center my-4" aria-busy="true" aria-live="polite">
-              <Spinner />
-              <span className="ml-2" style={{ color: 'var(--cerebrum-secondary)' }}>Waiting for AI...</span>
-            </div>
-          )}
         </div>
       ) : (
         <div className="text-center">

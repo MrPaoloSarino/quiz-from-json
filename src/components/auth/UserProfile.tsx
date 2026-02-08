@@ -1,200 +1,219 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { GoogleDriveUserStorage, UserProfile as UserProfileType, UserData } from '@/utils/googleDriveStorage';
-import { toast } from 'sonner';
-import { LogOut, Settings, Trophy, BookOpen, Clock, Target, TrendingUp, Zap } from 'lucide-react';
-import StorageManager from '@/utils/storageManager';
+import { Button } from '@/components/ui/button';
+import { Target, CheckCircle, XCircle, Percent, Trophy, Clock, RotateCcw } from 'lucide-react';
 
-interface UserProfileProps {
-  onSignOut: () => void;
+interface LocalStats {
+  totalQuestions: number;
+  correctAnswers: number;
+  wrongAnswers: number;
+  accuracy: number;
+  streakDays: number;
+  longestStreak: number;
+  totalTime: number; // in seconds
+  quizzesCompleted: number;
 }
 
-const UserProfile: React.FC<UserProfileProps> = ({ onSignOut }) => {
-  const [user, setUser] = useState<UserProfileType | null>(null);
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState(true);
+const STATS_KEY = 'quizmaster_local_stats';
 
-  const loadUserData = useCallback(async () => {
-    try {
-      const currentUser = GoogleDriveUserStorage.getCurrentUser();
-      if (currentUser) {
-        setUser(currentUser);
-        const data = await GoogleDriveUserStorage.loadUserData();
-        setUserData(data);
-      }
-    } catch (error) {
-      console.error('Failed to load user data:', error);
-      toast.error('Failed to load user profile');
-    } finally {
-      setLoading(false);
+/** Get stats from localStorage */
+const getLocalStats = (): LocalStats => {
+  try {
+    const stored = localStorage.getItem(STATS_KEY);
+    if (stored) {
+      return JSON.parse(stored);
     }
-  }, []);
+  } catch (e) {
+    console.error('Failed to load stats:', e);
+  }
+  return {
+    totalQuestions: 0,
+    correctAnswers: 0,
+    wrongAnswers: 0,
+    accuracy: 0,
+    streakDays: 0,
+    longestStreak: 0,
+    totalTime: 0,
+    quizzesCompleted: 0,
+  };
+};
+
+/** Save stats to localStorage */
+export const saveLocalStats = (stats: LocalStats): void => {
+  try {
+    localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+  } catch (e) {
+    console.error('Failed to save stats:', e);
+  }
+};
+
+/** Update stats after a quiz session */
+export const updateStatsAfterQuiz = (
+  totalAnswered: number,
+  correctCount: number,
+  timeSpentSeconds: number
+): void => {
+  const current = getLocalStats();
+  const wrongCount = totalAnswered - correctCount;
+  
+  const newTotal = current.totalQuestions + totalAnswered;
+  const newCorrect = current.correctAnswers + correctCount;
+  const newWrong = current.wrongAnswers + wrongCount;
+  const newAccuracy = newTotal > 0 ? Math.round((newCorrect / newTotal) * 100) : 0;
+  
+  // Simple streak logic: check if last quiz was today or yesterday
+  const today = new Date().toDateString();
+  const lastQuizDate = localStorage.getItem('quizmaster_last_quiz_date');
+  let newStreak = current.streakDays;
+  
+  if (lastQuizDate !== today) {
+    const yesterday = new Date(Date.now() - 86400000).toDateString();
+    if (lastQuizDate === yesterday) {
+      newStreak = current.streakDays + 1;
+    } else if (lastQuizDate !== today) {
+      newStreak = 1; // Reset streak
+    }
+    localStorage.setItem('quizmaster_last_quiz_date', today);
+  }
+  
+  const newLongestStreak = Math.max(current.longestStreak, newStreak);
+  
+  saveLocalStats({
+    totalQuestions: newTotal,
+    correctAnswers: newCorrect,
+    wrongAnswers: newWrong,
+    accuracy: newAccuracy,
+    streakDays: newStreak,
+    longestStreak: newLongestStreak,
+    totalTime: current.totalTime + timeSpentSeconds,
+    quizzesCompleted: current.quizzesCompleted + 1,
+  });
+};
+
+interface UserProfileProps {
+  onSignOut?: () => void;
+}
+
+const UserProfile: React.FC<UserProfileProps> = () => {
+  const [stats, setStats] = useState<LocalStats>(getLocalStats);
 
   useEffect(() => {
-    loadUserData();
-  }, [loadUserData]);
+    // Refresh stats when component mounts or when storage changes
+    const handleStorageChange = () => {
+      setStats(getLocalStats());
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
-  const handleSignOut = async () => {
-    try {
-      await StorageManager.signOut();
-      onSignOut();
-      toast.success('Signed out successfully');
-    } catch (error) {
-      console.error('Sign out error:', error);
-      toast.error('Error signing out');
+  const handleReset = () => {
+    if (confirm('Reset all your stats? This cannot be undone.')) {
+      saveLocalStats({
+        totalQuestions: 0,
+        correctAnswers: 0,
+        wrongAnswers: 0,
+        accuracy: 0,
+        streakDays: 0,
+        longestStreak: 0,
+        totalTime: 0,
+        quizzesCompleted: 0,
+      });
+      localStorage.removeItem('quizmaster_last_quiz_date');
+      setStats(getLocalStats());
     }
   };
 
-  if (loading) {
-    return (
-      <Card className="w-full max-w-md">
-        <CardContent className="p-6">
-          <div className="animate-pulse space-y-4">
-            <div className="w-20 h-20 bg-gray-200 rounded-full mx-auto"></div>
-            <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto"></div>
-            <div className="h-3 bg-gray-200 rounded w-1/2 mx-auto"></div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!user || !userData) {
-    return (
-      <Card className="w-full max-w-md">
-        <CardContent className="p-6 text-center">
-          <p className="text-gray-500">Failed to load user profile</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const analytics = userData.settings.analytics;
-  const accuracyPercentage = analytics.averageAccuracy > 0 ? Math.round(analytics.averageAccuracy * 100) : 0;
+  const formatTime = (seconds: number): string => {
+    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${mins}m`;
+  };
 
   return (
     <Card className="w-full max-w-md shadow-lg">
       <CardHeader className="text-center pb-4">
-        <Avatar className="w-24 h-24 mx-auto mb-4 border-4 border-white shadow-lg">
-          <AvatarImage src={user.picture} alt={user.name} />
-          <AvatarFallback className="text-2xl font-bold bg-gradient-to-br from-blue-500 to-purple-600 text-white">
-            {user.name.charAt(0)}
-          </AvatarFallback>
-        </Avatar>
-        <CardTitle className="text-xl">{user.name}</CardTitle>
-        <p className="text-sm text-gray-500">{user.email}</p>
-        
-        {/* Level & XP */}
-        <div className="mt-4 p-3 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-purple-700">Level {userData.level}</span>
-            <div className="flex items-center gap-1">
-              <Zap className="w-4 h-4 text-yellow-500" />
-              <span className="text-sm font-medium text-blue-700">{userData.xp} XP</span>
-            </div>
-          </div>
-          <div className="mt-2 bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${(userData.xp % 1000) / 10}%` }}
-            ></div>
-          </div>
-        </div>
+        <CardTitle className="text-xl flex items-center justify-center gap-2">
+          <Target className="w-6 h-6 text-blue-600" />
+          Your Stats
+        </CardTitle>
+        <p className="text-sm text-gray-500">All data stored locally</p>
       </CardHeader>
       
       <CardContent className="space-y-6">
-        {/* Quick Stats */}
+        {/* Main Stats Grid */}
         <div className="grid grid-cols-2 gap-3">
           <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl">
-            <BookOpen className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-blue-900">{userData.quizzes.length}</div>
-            <div className="text-xs text-blue-600">Quizzes Created</div>
+            <Target className="w-6 h-6 text-blue-600 mx-auto mb-2" />
+            <div className="text-2xl font-bold text-blue-900">{stats.totalQuestions}</div>
+            <div className="text-xs text-blue-600">Questions Taken</div>
           </div>
           
           <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl">
-            <Target className="w-6 h-6 text-green-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-green-900">{analytics.totalQuestions}</div>
-            <div className="text-xs text-green-600">Questions Answered</div>
+            <CheckCircle className="w-6 h-6 text-green-600 mx-auto mb-2" />
+            <div className="text-2xl font-bold text-green-900">{stats.correctAnswers}</div>
+            <div className="text-xs text-green-600">Correct</div>
+          </div>
+          
+          <div className="text-center p-4 bg-gradient-to-br from-red-50 to-red-100 rounded-xl">
+            <XCircle className="w-6 h-6 text-red-600 mx-auto mb-2" />
+            <div className="text-2xl font-bold text-red-900">{stats.wrongAnswers}</div>
+            <div className="text-xs text-red-600">Wrong</div>
           </div>
           
           <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl">
-            <Trophy className="w-6 h-6 text-purple-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-purple-900">{analytics.streakDays}</div>
-            <div className="text-xs text-purple-600">Day Streak</div>
-          </div>
-          
-          <div className="text-center p-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl">
-            <Clock className="w-6 h-6 text-orange-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-orange-900">{Math.round(analytics.totalTime / 60)}</div>
-            <div className="text-xs text-orange-600">Minutes Studied</div>
+            <Percent className="w-6 h-6 text-purple-600 mx-auto mb-2" />
+            <div className="text-2xl font-bold text-purple-900">{stats.accuracy}%</div>
+            <div className="text-xs text-purple-600">Accuracy</div>
           </div>
         </div>
 
-        {/* Performance Metrics */}
-        <div className="space-y-3">
-          <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4" />
-            Performance
-          </h4>
+        {/* Secondary Stats */}
+        <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-600 flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-yellow-500" />
+              Current Streak
+            </span>
+            <span className="font-semibold text-yellow-700">{stats.streakDays} days</span>
+          </div>
           
-          <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Accuracy Rate</span>
-              <span className="font-semibold text-green-700">{accuracyPercentage}%</span>
-            </div>
-            
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Learning Velocity</span>
-              <span className="font-semibold text-blue-700">
-                {analytics.learningVelocity ? `${analytics.learningVelocity.toFixed(1)}/hr` : 'N/A'}
-              </span>
-            </div>
-            
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Best Streak</span>
-              <span className="font-semibold text-purple-700">{analytics.longestStreak} days</span>
-            </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-600 flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-orange-500" />
+              Best Streak
+            </span>
+            <span className="font-semibold text-orange-700">{stats.longestStreak} days</span>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-600 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-blue-500" />
+              Time Studied
+            </span>
+            <span className="font-semibold text-blue-700">{formatTime(stats.totalTime)}</span>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-600 flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              Quizzes Completed
+            </span>
+            <span className="font-semibold text-green-700">{stats.quizzesCompleted}</span>
           </div>
         </div>
 
-        {/* Mastered Topics */}
-        {analytics.masteredTopics.length > 0 && (
-          <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-gray-700">Mastered Topics</h4>
-            <div className="flex flex-wrap gap-2">
-              {analytics.masteredTopics.slice(0, 4).map((topic, index) => (
-                <span 
-                  key={index}
-                  className="px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full"
-                >
-                  {topic}
-                </span>
-              ))}
-              {analytics.masteredTopics.length > 4 && (
-                <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                  +{analytics.masteredTopics.length - 4} more
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="space-y-2 pt-4 border-t">
-          <Button variant="outline" className="w-full justify-start text-gray-700 hover:text-gray-900">
-            <Settings className="w-4 h-4 mr-2" />
-            Settings & Preferences
-          </Button>
-          
+        {/* Reset Button */}
+        <div className="pt-4 border-t">
           <Button 
             variant="outline" 
-            className="w-full justify-start text-black hover:text-black hover:bg-black/10"
-            onClick={handleSignOut}
+            className="w-full justify-center text-gray-500 hover:text-red-600 hover:border-red-300"
+            onClick={handleReset}
           >
-            <LogOut className="w-4 h-4 mr-2" />
-            Sign Out
+            <RotateCcw className="w-4 h-4 mr-2" />
+            Reset All Stats
           </Button>
         </div>
       </CardContent>

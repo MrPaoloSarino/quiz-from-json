@@ -3,6 +3,7 @@ import { phBoardExamReviewers } from './ph_reviewer';
 import { mnaUsHardExamItem } from './mna_us_hard';
 import { grandMockExam } from './grand_mock';
 import { psychAssessmentMarketplaceItem } from './psych_assessment';
+import { psychAssessment1MarketplaceItem } from './psych_assessment_1';
 import { theoriesMarketplaceItem } from './theories_of_personality';
 import { abnormalPsychMarketplaceItem } from './abnormal_psych';
 import { ioPsychMarketplaceItem } from './io_psych';
@@ -30,6 +31,7 @@ export const mockMarketplaceItems: MarketplaceItem[] = [
     cfaHardExamItem,
     pmpHardExamItem,
     psychAssessmentMarketplaceItem,
+    psychAssessment1MarketplaceItem,
     theoriesMarketplaceItem,
     abnormalPsychMarketplaceItem,
     ioPsychMarketplaceItem,
