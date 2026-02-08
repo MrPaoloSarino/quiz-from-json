@@ -1511,6 +1511,8 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
                     userAnswers={state.userAnswers}
                     flaggedQuestions={flaggedQuestions}
                     onJumpToQuestion={handleJumpToQuestion}
+                    examMode={examMode}
+                    lockedQuestions={lockedQuestions}
                   />
                 </div>
 

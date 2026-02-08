@@ -42,6 +42,8 @@ const BoardExamQuestionSheet: React.FC<BoardExamQuestionSheetProps> = ({
   userAnswers,
   flaggedQuestions,
   onJumpToQuestion,
+  examMode = 'practice',
+  lockedQuestions = new Set(),
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const questionRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -109,6 +111,8 @@ const BoardExamQuestionSheet: React.FC<BoardExamQuestionSheetProps> = ({
                   isAnswered={!!userAnswers[idx]}
                   selectedAnswer={userAnswers[idx]}
                   onClick={() => onJumpToQuestion(idx)}
+                  examMode={examMode}
+                  isLocked={lockedQuestions.has(idx)}
                 />
               );
             })}
@@ -130,6 +134,8 @@ const BoardExamQuestionSheet: React.FC<BoardExamQuestionSheetProps> = ({
                   isAnswered={!!userAnswers[idx]}
                   selectedAnswer={userAnswers[idx]}
                   onClick={() => onJumpToQuestion(idx)}
+                  examMode={examMode}
+                  isLocked={lockedQuestions.has(idx)}
                 />
               );
             })}
@@ -158,10 +164,12 @@ interface QuestionItemProps {
   isAnswered: boolean;
   selectedAnswer: string;
   onClick: () => void;
+  examMode?: 'practice' | 'exam';
+  isLocked?: boolean;
 }
 
 const QuestionItem = React.forwardRef<HTMLDivElement, QuestionItemProps>(
-  ({ question, index, totalQuestions, isCurrent, isFlagged, isAnswered, selectedAnswer, onClick }, ref) => {
+  ({ question, index, totalQuestions, isCurrent, isFlagged, isAnswered, selectedAnswer, onClick, examMode, isLocked }, ref) => {
     // Monospace padded number
     const displayNumber = String(index + 1).padStart(totalQuestions >= 100 ? 3 : 2, "0");
 
@@ -172,6 +180,10 @@ const QuestionItem = React.forwardRef<HTMLDivElement, QuestionItemProps>(
       return optionIdx >= 0 ? optionLetter(optionIdx) : null;
     }, [selectedAnswer, question.options]);
 
+    // Practice mode helpers
+    const showCorrectAnswer = examMode === 'practice' && isLocked;
+    const isCorrect = isAnswered && selectedAnswer === question.answer;
+
     return (
       <div
         ref={ref}
@@ -179,7 +191,9 @@ const QuestionItem = React.forwardRef<HTMLDivElement, QuestionItemProps>(
           "py-1 px-1 border-b border-gray-200 cursor-pointer transition-all duration-150",
           isCurrent && "bg-blue-50 border-l-4 border-l-blue-500 -ml-1 pl-2",
           !isCurrent && isFlagged && "bg-orange-50/50",
-          !isCurrent && !isFlagged && "hover:bg-yellow-50/30"
+          !isCurrent && !isFlagged && "hover:bg-yellow-50/30",
+          showCorrectAnswer && isCorrect && "bg-green-50/50",
+          showCorrectAnswer && !isCorrect && isAnswered && "bg-red-50/50"
         )}
         onClick={onClick}
         role="button"
@@ -206,7 +220,10 @@ const QuestionItem = React.forwardRef<HTMLDivElement, QuestionItemProps>(
               <Eye className="w-2.5 h-2.5 text-blue-500" aria-label="Current question" />
             )}
             {isAnswered && selectedLetter && (
-              <span className="text-[8px] font-bold text-green-600 bg-green-100 px-1 py-0.5 rounded">
+              <span className={cn(
+                "text-[8px] font-bold px-1 py-0.5 rounded",
+                showCorrectAnswer ? (isCorrect ? "text-green-600 bg-green-100" : "text-red-600 bg-red-100") : "text-gray-600 bg-gray-100"
+              )}>
                 {selectedLetter}
               </span>
             )}
@@ -224,13 +241,16 @@ const QuestionItem = React.forwardRef<HTMLDivElement, QuestionItemProps>(
             {question.options.map((option, optIdx) => {
               const letter = optionLetter(optIdx);
               const isSelected = selectedAnswer === option;
+              const isRightAnswer = option === question.answer;
 
               return (
                 <div
                   key={optIdx}
                   className={cn(
                     "flex items-start gap-0.5 text-[9px] leading-tight py-0 px-0.5 rounded",
-                    isSelected && "bg-blue-100 font-medium"
+                    isSelected && "bg-blue-100 font-medium",
+                    showCorrectAnswer && isRightAnswer && "text-green-700 font-bold underline decoration-dotted",
+                    showCorrectAnswer && isSelected && !isRightAnswer && "text-red-700"
                   )}
                 >
                   <span className="font-semibold text-gray-600 flex-shrink-0 w-3">
@@ -238,13 +258,23 @@ const QuestionItem = React.forwardRef<HTMLDivElement, QuestionItemProps>(
                   </span>
                   <span className={cn(
                     "text-gray-700",
-                    isSelected && "text-blue-800"
+                    isSelected && "text-blue-800",
+                    showCorrectAnswer && isRightAnswer && "text-green-800"
                   )}>
                     {option}
                   </span>
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Rationale for Practice Mode */}
+        {showCorrectAnswer && question.explanation && (
+          <div className="pl-4 mt-1 bg-yellow-100/30 p-1 border-l-2 border-yellow-300">
+            <p className="text-[8px] text-gray-700 italic leading-snug">
+              <span className="font-bold not-italic">Rationale:</span> {question.explanation}
+            </p>
           </div>
         )}
 
