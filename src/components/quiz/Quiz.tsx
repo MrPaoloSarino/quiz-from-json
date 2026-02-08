@@ -338,13 +338,21 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       }
     }
 
-    // Update the user's answer
+    // Update the user's answer and score
+    const isCorrect = selectedAnswer === question.answer;
     setState(prev => {
       const newAnswers = [...prev.userAnswers];
+      // If changing an existing answer (practice mode), adjust score accordingly
+      const hadPreviousAnswer = prev.userAnswers[questionIndex] && prev.userAnswers[questionIndex].trim() !== '';
+      const wasPreviousCorrect = hadPreviousAnswer && prev.userAnswers[questionIndex] === question.answer;
+      let scoreDelta = 0;
+      if (isCorrect && !wasPreviousCorrect) scoreDelta = 1;
+      else if (!isCorrect && wasPreviousCorrect) scoreDelta = -1;
       newAnswers[questionIndex] = selectedAnswer;
       return {
         ...prev,
         userAnswers: newAnswers,
+        score: prev.score + scoreDelta,
       };
     });
 
@@ -950,11 +958,19 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       setEssayDraft(''); // Reset essay draft when moving to next question
 
     } else {
+      // Recalculate score from actual answers to ensure accuracy (especially for board exam mode)
+      let finalScore = 0;
+      state.questions.forEach((question, idx) => {
+        if (state.userAnswers[idx] === question.answer) {
+          finalScore++;
+        }
+      });
+
       // Save session data before showing results
       console.log('🏁 [Quiz Complete] Creating session with:', {
         questionsCount: state.questions.length,
         userAnswersCount: state.userAnswers.length,
-        score: state.score,
+        score: finalScore,
         questionsWithAnalytics: state.questions.filter(q => q.analytics && q.analytics.recallAttempts > 0).length
       });
 
@@ -982,7 +998,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
           })
           .filter((answerData): answerData is NonNullable<typeof answerData> => answerData !== null),
         confidenceRatings: [],
-        totalScore: state.score,
+        totalScore: finalScore,
         timeSpent: (Date.now() - state.startTime.getTime()) / 1000,
         difficulty: calculateSessionDifficulty(state.questions),
         tags: getSessionTags(state.questions),
@@ -1008,10 +1024,11 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
 
       // Update local stats for normal quiz completion
       const timeSpentSeconds = Math.floor((Date.now() - state.startTime.getTime()) / 1000);
-      updateStatsAfterQuiz(answeredCount, state.score, timeSpentSeconds);
+      updateStatsAfterQuiz(answeredCount, finalScore, timeSpentSeconds);
 
       setState({
         ...state,
+        score: finalScore,
         showResults: true,
         endedEarly: false,
         totalAnswered: answeredCount
@@ -1036,6 +1053,14 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
     // Count how many questions have been answered
     const answered = state.userAnswers.filter(answer => answer && answer.trim() !== '').length;
     
+    // Recalculate score from actual answers (board exam mode may not have tracked score incrementally)
+    let recalculatedScore = 0;
+    state.questions.forEach((question, idx) => {
+      if (state.userAnswers[idx] === question.answer) {
+        recalculatedScore++;
+      }
+    });
+
     // Create session data for early exit
     const session: QuizSession = {
       id: `session_${Date.now()}`,
@@ -1061,7 +1086,7 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
         })
         .filter((answerData): answerData is NonNullable<typeof answerData> => answerData !== null),
       confidenceRatings: [],
-      totalScore: state.score,
+      totalScore: recalculatedScore,
       timeSpent: (Date.now() - state.startTime.getTime()) / 1000,
       difficulty: calculateSessionDifficulty(state.questions),
       tags: getSessionTags(state.questions),
@@ -1083,14 +1108,12 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
     StorageManager.saveQuizSession(session);
 
     // Update local stats (even for early end)
-    const correctCount = state.questions.slice(0, answered).filter(
-      (q, idx) => state.userAnswers[idx] === q.answer
-    ).length;
     const timeSpentSeconds = Math.floor((Date.now() - state.startTime.getTime()) / 1000);
-    updateStatsAfterQuiz(answered, correctCount, timeSpentSeconds);
+    updateStatsAfterQuiz(answered, recalculatedScore, timeSpentSeconds);
 
     setState({
       ...state,
+      score: recalculatedScore,
       showResults: true,
       endedEarly: true,
       totalAnswered: answered
