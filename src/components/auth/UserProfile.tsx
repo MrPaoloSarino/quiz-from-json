@@ -325,6 +325,112 @@ const UserProfile: React.FC<UserProfileProps> = () => {
         </div>
       </Card>
 
+      {/* RANKING LADDER CARD */}
+      <Card className="shadow-lg">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Award className="w-5 h-5 text-yellow-500" />
+            Ranking Ladder
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Accuracy-Based Ranks */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
+              <Percent className="w-4 h-4" /> Accuracy Ranks
+            </h3>
+            <div className="space-y-1">
+              {RANK_TIERS.map((tier) => {
+                const isCurrentTier = tier.name === rankTier.name;
+                const isAchieved = stats.accuracy >= tier.minAccuracy;
+                return (
+                  <div 
+                    key={tier.name}
+                    className={`flex items-center justify-between px-3 py-2 rounded-lg transition-all ${
+                      isCurrentTier 
+                        ? `bg-gradient-to-r ${tier.bgGradient} border-2 border-yellow-400 shadow-sm` 
+                        : isAchieved 
+                          ? 'bg-green-50 text-green-700' 
+                          : 'bg-gray-50 text-gray-400'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{tier.emoji}</span>
+                      <span className={`font-medium ${isCurrentTier ? tier.color : ''}`}>
+                        {tier.name}
+                      </span>
+                      {isCurrentTier && (
+                        <span className="text-xs bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full font-semibold">
+                          YOU
+                        </span>
+                      )}
+                    </div>
+                    <span className={`text-sm ${isCurrentTier ? 'font-bold' : ''}`}>
+                      {tier.minAccuracy}%+
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Level-Based Ranks */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
+              <Zap className="w-4 h-4 text-yellow-500" /> XP Levels
+            </h3>
+            <div className="grid grid-cols-2 gap-1">
+              {LEVELS.map((level) => {
+                const isCurrentLevel = level.level === levelInfo.current.level;
+                const isAchieved = xp >= level.xpRequired;
+                return (
+                  <div 
+                    key={level.level}
+                    className={`flex items-center justify-between px-2 py-1.5 rounded text-sm ${
+                      isCurrentLevel 
+                        ? 'bg-gradient-to-r from-yellow-100 to-orange-100 border border-yellow-400 font-semibold' 
+                        : isAchieved 
+                          ? 'bg-green-50 text-green-700' 
+                          : 'bg-gray-50 text-gray-400'
+                    }`}
+                  >
+                    <span className="flex items-center gap-1">
+                      <span className="text-xs text-gray-500">Lv.{level.level}</span>
+                      <span>{level.title}</span>
+                      {isCurrentLevel && <span className="text-yellow-600">★</span>}
+                    </span>
+                    <span className="text-xs">{level.xpRequired.toLocaleString()}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* XP Breakdown */}
+          <div className="bg-gray-50 rounded-lg p-3">
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">How to Earn XP</h3>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Correct Answer</span>
+                <span className="font-medium text-green-600">+10 XP</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Complete Quiz</span>
+                <span className="font-medium text-blue-600">+50 XP</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Best Streak Day</span>
+                <span className="font-medium text-orange-600">+25 XP</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Per Minute Studied</span>
+                <span className="font-medium text-purple-600">+2 XP</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* STATS CARD */}
       <Card className="shadow-lg">
         <CardHeader className="text-center pb-4">
