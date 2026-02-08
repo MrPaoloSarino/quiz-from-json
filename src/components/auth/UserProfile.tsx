@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Target, CheckCircle, XCircle, Percent, Trophy, Clock, RotateCcw } from 'lucide-react';
+import { Target, CheckCircle, XCircle, Percent, Trophy, Clock, RotateCcw, Zap, TrendingUp, Award } from 'lucide-react';
 
 interface LocalStats {
   totalQuestions: number;
@@ -13,6 +13,122 @@ interface LocalStats {
   totalTime: number; // in seconds
   quizzesCompleted: number;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RANKING SYSTEM
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface RankTier {
+  name: string;
+  emoji: string;
+  minAccuracy: number;
+  color: string;
+  bgGradient: string;
+}
+
+const RANK_TIERS: RankTier[] = [
+  { name: 'Topnotcher', emoji: '🏆', minAccuracy: 90, color: 'text-yellow-600', bgGradient: 'from-yellow-100 to-amber-200' },
+  { name: 'Distinguished', emoji: '🎖️', minAccuracy: 85, color: 'text-purple-600', bgGradient: 'from-purple-100 to-purple-200' },
+  { name: 'Board Passer', emoji: '🏅', minAccuracy: 75, color: 'text-green-600', bgGradient: 'from-green-100 to-emerald-200' },
+  { name: 'Competent', emoji: '🎯', minAccuracy: 70, color: 'text-blue-600', bgGradient: 'from-blue-100 to-blue-200' },
+  { name: 'Studious', emoji: '📖', minAccuracy: 60, color: 'text-cyan-600', bgGradient: 'from-cyan-100 to-cyan-200' },
+  { name: 'Reviewee', emoji: '📝', minAccuracy: 50, color: 'text-orange-600', bgGradient: 'from-orange-100 to-orange-200' },
+  { name: 'Seedling', emoji: '🌱', minAccuracy: 0, color: 'text-gray-600', bgGradient: 'from-gray-100 to-gray-200' },
+];
+
+interface LevelInfo {
+  level: number;
+  title: string;
+  xpRequired: number;
+}
+
+const LEVELS: LevelInfo[] = [
+  { level: 1, title: 'Enrollee', xpRequired: 0 },
+  { level: 2, title: 'Freshman', xpRequired: 100 },
+  { level: 3, title: 'Sophomore', xpRequired: 300 },
+  { level: 4, title: 'Junior', xpRequired: 600 },
+  { level: 5, title: 'Senior', xpRequired: 1000 },
+  { level: 6, title: 'Intern', xpRequired: 2000 },
+  { level: 7, title: 'Associate', xpRequired: 4000 },
+  { level: 8, title: 'Professional', xpRequired: 7000 },
+  { level: 9, title: 'Specialist', xpRequired: 11000 },
+  { level: 10, title: 'Diplomate', xpRequired: 16000 },
+];
+
+/** Get rank tier based on accuracy */
+const getRankTier = (accuracy: number): RankTier => {
+  for (const tier of RANK_TIERS) {
+    if (accuracy >= tier.minAccuracy) {
+      return tier;
+    }
+  }
+  return RANK_TIERS[RANK_TIERS.length - 1];
+};
+
+/** Get next rank tier (for "next goal" display) */
+const getNextRankTier = (accuracy: number): RankTier | null => {
+  for (let i = RANK_TIERS.length - 1; i >= 0; i--) {
+    if (accuracy < RANK_TIERS[i].minAccuracy) {
+      return RANK_TIERS[i];
+    }
+  }
+  return null; // Already at highest tier
+};
+
+/** Calculate total XP from stats */
+const calculateXP = (stats: LocalStats): number => {
+  return (
+    (stats.correctAnswers * 10) +
+    (stats.quizzesCompleted * 50) +
+    (stats.longestStreak * 25) +
+    (Math.floor(stats.totalTime / 60) * 2) // 2 XP per minute
+  );
+};
+
+/** Get current level info and progress */
+const getLevelInfo = (xp: number): { current: LevelInfo; next: LevelInfo | null; progress: number } => {
+  let current = LEVELS[0];
+  let next: LevelInfo | null = LEVELS[1];
+  
+  for (let i = LEVELS.length - 1; i >= 0; i--) {
+    if (xp >= LEVELS[i].xpRequired) {
+      current = LEVELS[i];
+      next = LEVELS[i + 1] || null;
+      break;
+    }
+  }
+  
+  // Calculate progress to next level (0-100%)
+  let progress = 100;
+  if (next) {
+    const xpInCurrentLevel = xp - current.xpRequired;
+    const xpNeededForNext = next.xpRequired - current.xpRequired;
+    progress = Math.round((xpInCurrentLevel / xpNeededForNext) * 100);
+  }
+  
+  return { current, next, progress };
+};
+
+/** Calculate composite Board Readiness Score (0-100) */
+const calculateBoardReadinessScore = (stats: LocalStats): number => {
+  // Normalize each component to 0-100 scale
+  const accuracyScore = stats.accuracy; // Already 0-100
+  const volumeScore = Math.min(stats.totalQuestions / 500, 1) * 100;
+  const streakScore = Math.min(stats.longestStreak / 30, 1) * 100;
+  const timeScore = Math.min(stats.totalTime / 36000, 1) * 100; // 10 hours max
+  const completionScore = Math.min(stats.quizzesCompleted / 20, 1) * 100;
+  
+  // Weighted composite
+  const score = (
+    (0.50 * accuracyScore) +
+    (0.15 * volumeScore) +
+    (0.15 * streakScore) +
+    (0.10 * timeScore) +
+    (0.10 * completionScore)
+  );
+  
+  return Math.round(score);
+};
 
 const STATS_KEY = 'quizmaster_local_stats';
 
@@ -132,17 +248,94 @@ const UserProfile: React.FC<UserProfileProps> = () => {
     return `${hours}h ${mins}m`;
   };
 
+  // Calculate ranking data
+  const xp = calculateXP(stats);
+  const levelInfo = getLevelInfo(xp);
+  const rankTier = getRankTier(stats.accuracy);
+  const nextRank = getNextRankTier(stats.accuracy);
+  const boardReadiness = calculateBoardReadinessScore(stats);
+
   return (
-    <Card className="w-full max-w-md shadow-lg">
-      <CardHeader className="text-center pb-4">
-        <CardTitle className="text-xl flex items-center justify-center gap-2">
-          <Target className="w-6 h-6 text-blue-600" />
-          Your Stats
-        </CardTitle>
-        <p className="text-sm text-gray-500">All data stored locally</p>
-      </CardHeader>
-      
-      <CardContent className="space-y-6">
+    <div className="w-full max-w-md space-y-4">
+      {/* RANK CARD - The main showcase */}
+      <Card className="shadow-lg overflow-hidden">
+        <div className={`bg-gradient-to-br ${rankTier.bgGradient} p-6`}>
+          {/* Rank Badge */}
+          <div className="text-center mb-4">
+            <div className="text-5xl mb-2">{rankTier.emoji}</div>
+            <h2 className={`text-2xl font-bold ${rankTier.color}`}>{rankTier.name}</h2>
+            <p className="text-sm text-gray-600 mt-1">Lv.{levelInfo.current.level} {levelInfo.current.title}</p>
+          </div>
+
+          {/* XP Progress Bar */}
+          <div className="mb-4">
+            <div className="flex justify-between text-xs text-gray-600 mb-1">
+              <span className="flex items-center gap-1">
+                <Zap className="w-3 h-3 text-yellow-500" />
+                {xp.toLocaleString()} XP
+              </span>
+              {levelInfo.next && (
+                <span>{levelInfo.next.xpRequired.toLocaleString()} XP</span>
+              )}
+            </div>
+            <div className="h-3 bg-white/60 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full transition-all duration-500"
+                style={{ width: `${levelInfo.progress}%` }}
+              />
+            </div>
+            {levelInfo.next && (
+              <p className="text-xs text-gray-500 mt-1 text-center">
+                {(levelInfo.next.xpRequired - xp).toLocaleString()} XP to {levelInfo.next.title}
+              </p>
+            )}
+          </div>
+
+          {/* Board Readiness Score */}
+          <div className="bg-white/50 rounded-xl p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-blue-600" />
+                <span className="text-sm font-medium text-gray-700">Board Readiness</span>
+              </div>
+              <div className="text-2xl font-bold text-blue-700">{boardReadiness}<span className="text-sm text-gray-500">/100</span></div>
+            </div>
+            <div className="h-2 bg-gray-200 rounded-full mt-2 overflow-hidden">
+              <div 
+                className={`h-full rounded-full transition-all duration-500 ${
+                  boardReadiness >= 75 ? 'bg-green-500' :
+                  boardReadiness >= 50 ? 'bg-yellow-500' :
+                  'bg-red-400'
+                }`}
+                style={{ width: `${boardReadiness}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Next Rank Goal */}
+          {nextRank && (
+            <div className="mt-4 text-center">
+              <p className="text-xs text-gray-600">
+                <Award className="w-3 h-3 inline mr-1" />
+                Next rank: <span className="font-semibold">{nextRank.emoji} {nextRank.name}</span>
+                <span className="text-gray-500"> ({nextRank.minAccuracy - stats.accuracy}% more accuracy needed)</span>
+              </p>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* STATS CARD */}
+      <Card className="shadow-lg">
+        <CardHeader className="text-center pb-4">
+          <CardTitle className="text-xl flex items-center justify-center gap-2">
+            <Target className="w-6 h-6 text-blue-600" />
+            Your Stats
+          </CardTitle>
+          <p className="text-sm text-gray-500">All data stored locally</p>
+        </CardHeader>
+        
+        <CardContent className="space-y-6">
         {/* Main Stats Grid */}
         <div className="grid grid-cols-2 gap-3">
           <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl">
@@ -217,7 +410,8 @@ const UserProfile: React.FC<UserProfileProps> = () => {
           </Button>
         </div>
       </CardContent>
-    </Card>
+      </Card>
+    </div>
   );
 };
 
