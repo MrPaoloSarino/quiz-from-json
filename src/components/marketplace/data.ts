@@ -8,6 +8,7 @@ import { theoriesMarketplaceItem } from './theories_of_personality';
 import { abnormalPsychMarketplaceItem } from './abnormal_psych';
 import { ioPsychMarketplaceItem } from './io_psych';
 import { ioPsych1MarketplaceItem } from './io_psych_1';
+import { devPsych1MarketplaceItem } from './dev_psych_1';
 import { grandMock2026Item } from './grand_mock_2026';
 import { cfaHardExamItem } from './cfa_hard';
 import { pmpHardExamItem } from './pmp_hard';
@@ -37,6 +38,7 @@ export const mockMarketplaceItems: MarketplaceItem[] = [
     abnormalPsychMarketplaceItem,
     ioPsychMarketplaceItem,
     ioPsych1MarketplaceItem,
+    devPsych1MarketplaceItem,
     mnaUsHardExamItem,
     ...phBoardExamReviewers,
     {
