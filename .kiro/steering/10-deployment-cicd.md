@@ -1,0 +1,81 @@
+---
+inclusion: always
+---
+
+# Deployment & CI/CD Rules
+
+## Build Optimization Rules
+- ALWAYS optimize bundle size for production
+- ALWAYS implement proper code splitting
+- ALWAYS use tree shaking for unused code elimination
+- ALWAYS implement proper asset optimization
+- ALWAYS use compression for production builds
+- ALWAYS implement proper source map handling
+- ALWAYS optimize images and media files
+
+## Environment Management Rules
+- ALWAYS use environment-specific configurations
+- ALWAYS implement proper environment variable handling
+- ALWAYS use secure secret management
+- ALWAYS implement proper environment validation
+- ALWAYS use consistent environment naming
+- ALWAYS implement proper environment isolation
+- ALWAYS use proper environment documentation
+
+## CI/CD Pipeline Rules
+- ALWAYS implement automated testing in CI/CD
+- ALWAYS use proper build caching
+- ALWAYS implement proper deployment strategies
+- ALWAYS use automated code quality checks
+- ALWAYS implement proper rollback procedures
+- ALWAYS use proper deployment monitoring
+- ALWAYS implement proper deployment notifications
+
+## Quality Gates Rules
+- ALWAYS implement code quality checks
+- ALWAYS use automated security scanning
+- ALWAYS implement proper test coverage requirements
+- ALWAYS use automated performance testing
+- ALWAYS implement proper accessibility checks
+- ALWAYS use automated dependency scanning
+- ALWAYS implement proper license compliance checks
+
+## Deployment Strategy Rules
+- ALWAYS use blue-green deployment strategy
+- ALWAYS implement proper health checks
+- ALWAYS use proper deployment monitoring
+- ALWAYS implement proper rollback procedures
+- ALWAYS use proper deployment notifications
+- ALWAYS implement proper deployment documentation
+- ALWAYS use proper deployment automation
+
+## Infrastructure Rules
+- ALWAYS use infrastructure as code
+- ALWAYS implement proper resource scaling
+- ALWAYS use proper load balancing
+- ALWAYS implement proper monitoring and alerting
+- ALWAYS use proper backup and recovery procedures
+- ALWAYS implement proper security configurations
+- ALWAYS use proper disaster recovery procedures
+
+## Performance Deployment Rules
+- ALWAYS implement proper performance monitoring
+- ALWAYS use proper caching strategies
+- ALWAYS implement proper CDN configuration
+- ALWAYS use proper database optimization
+- ALWAYS implement proper server optimization
+- ALWAYS use proper network optimization
+- ALWAYS implement proper application optimization
+
+## Security Deployment Rules
+- ALWAYS implement proper security scanning
+- ALWAYS use proper SSL/TLS configuration
+- ALWAYS implement proper firewall rules
+- ALWAYS use proper access control
+- ALWAYS implement proper vulnerability scanning
+- ALWAYS use proper security monitoring
+- ALWAYS implement proper incident response procedures
+description:
+globs:
+alwaysApply: false
+---

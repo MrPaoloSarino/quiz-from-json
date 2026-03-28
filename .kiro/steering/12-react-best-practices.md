@@ -1,0 +1,99 @@
+---
+inclusion: always
+---
+
+# React Best Practices Rules
+
+## Component Design Rules
+- ALWAYS use functional components with hooks
+- ALWAYS implement proper component composition
+- ALWAYS use single responsibility principle for components
+- ALWAYS implement proper prop drilling prevention
+- ALWAYS use proper component interfaces
+- ALWAYS implement proper component documentation
+- ALWAYS use consistent component patterns
+
+## Hook Usage Rules
+- ALWAYS use hooks at the top level of components
+- ALWAYS implement proper hook dependencies
+- ALWAYS create custom hooks for reusable logic
+- ALWAYS implement proper hook cleanup
+- ALWAYS use appropriate hook for the use case
+- ALWAYS implement proper hook error handling
+- ALWAYS use hook optimization techniques
+
+## State Management Rules
+- ALWAYS use appropriate state management patterns
+- ALWAYS implement proper state normalization
+- ALWAYS use immutable state updates
+- ALWAYS implement proper state persistence
+- ALWAYS handle state conflicts gracefully
+- ALWAYS implement proper state validation
+- ALWAYS use proper state synchronization
+
+## Performance Optimization Rules
+- ALWAYS use React.memo for expensive components
+- ALWAYS use useCallback for function props
+- ALWAYS use useMemo for expensive calculations
+- ALWAYS implement proper lazy loading
+- ALWAYS use React.startTransition for non-urgent updates
+- ALWAYS implement proper bundle splitting
+- ALWAYS optimize re-renders
+
+## Event Handling Rules
+- ALWAYS implement proper event handler typing
+- ALWAYS use proper event delegation
+- ALWAYS implement proper event cleanup
+- ALWAYS handle event errors gracefully
+- ALWAYS use proper event optimization
+- ALWAYS implement proper event accessibility
+- ALWAYS use consistent event patterns
+
+## Form Handling Rules
+- ALWAYS implement proper form validation
+- ALWAYS use controlled components for forms
+- ALWAYS implement proper form error handling
+- ALWAYS use proper form state management
+- ALWAYS implement proper form accessibility
+- ALWAYS use proper form optimization
+- ALWAYS implement proper form submission
+
+## Routing Rules
+- ALWAYS implement proper route protection
+- ALWAYS use proper route parameters
+- ALWAYS implement proper route error handling
+- ALWAYS use proper route optimization
+- ALWAYS implement proper route accessibility
+- ALWAYS use proper route documentation
+- ALWAYS implement proper route testing
+
+## Context Usage Rules
+- ALWAYS use context sparingly and appropriately
+- ALWAYS implement proper context providers
+- ALWAYS use proper context consumers
+- ALWAYS implement proper context optimization
+- ALWAYS use proper context error handling
+- ALWAYS implement proper context testing
+- ALWAYS use proper context documentation
+
+## Error Boundary Rules
+- ALWAYS implement error boundaries around major features
+- ALWAYS provide meaningful error messages
+- ALWAYS implement proper error recovery
+- ALWAYS use proper error boundary patterns
+- ALWAYS implement proper error logging
+- ALWAYS use proper error boundary testing
+- ALWAYS implement proper error boundary documentation
+
+## Accessibility Rules
+- ALWAYS implement proper ARIA attributes
+- ALWAYS use semantic HTML elements
+- ALWAYS implement proper keyboard navigation
+- ALWAYS use proper focus management
+- ALWAYS implement proper screen reader support
+- ALWAYS use proper color contrast
+- ALWAYS implement proper accessibility testing
+description:
+globs:
+alwaysApply: false
+---

@@ -1,0 +1,81 @@
+---
+inclusion: always
+---
+
+# Code Organization & Modularity Rules
+
+## File Structure Rules
+- ALWAYS organize code by feature, not by type
+- ALWAYS use consistent file naming conventions
+- ALWAYS group related files together
+- ALWAYS use proper directory hierarchy
+- ALWAYS implement barrel exports for clean imports
+- ALWAYS separate concerns properly
+- ALWAYS use meaningful file and folder names
+
+## Component Organization Rules
+- ALWAYS keep components small and focused
+- ALWAYS use single responsibility principle
+- ALWAYS organize components by feature
+- ALWAYS implement proper component composition
+- ALWAYS use consistent component patterns
+- ALWAYS separate presentational and container components
+- ALWAYS implement proper component interfaces
+
+## Code Modularity Rules
+- ALWAYS create reusable utility functions
+- ALWAYS implement proper abstraction layers
+- ALWAYS use dependency injection patterns
+- ALWAYS create modular business logic
+- ALWAYS implement proper separation of concerns
+- ALWAYS use consistent module patterns
+- ALWAYS implement proper module boundaries
+
+## Import/Export Rules
+- ALWAYS use absolute imports with @/ prefix
+- ALWAYS organize imports logically
+- ALWAYS use named exports for utilities
+- ALWAYS use default exports for components
+- ALWAYS implement proper circular dependency prevention
+- ALWAYS use consistent import patterns
+- ALWAYS implement proper import optimization
+
+## Quiz-Specific Organization Rules
+- ALWAYS organize quiz-related code together
+- ALWAYS separate quiz logic from UI components
+- ALWAYS implement proper quiz state management
+- ALWAYS organize quiz types and interfaces
+- ALWAYS separate quiz validation logic
+- ALWAYS implement proper quiz service organization
+- ALWAYS organize quiz utilities properly
+
+## State Management Organization Rules
+- ALWAYS organize state by feature
+- ALWAYS implement proper state normalization
+- ALWAYS separate local and global state
+- ALWAYS organize state selectors properly
+- ALWAYS implement proper state persistence
+- ALWAYS organize state actions consistently
+- ALWAYS implement proper state validation
+
+## API Organization Rules
+- ALWAYS organize API calls by feature
+- ALWAYS implement proper API service layers
+- ALWAYS organize API types and interfaces
+- ALWAYS implement proper API error handling
+- ALWAYS organize API utilities properly
+- ALWAYS implement proper API caching
+- ALWAYS organize API configuration properly
+
+## Testing Organization Rules
+- ALWAYS organize tests alongside source code
+- ALWAYS implement proper test file naming
+- ALWAYS organize test utilities properly
+- ALWAYS implement proper test data organization
+- ALWAYS organize test configurations properly
+- ALWAYS implement proper test coverage organization
+- ALWAYS organize test helpers and mocks properly
+description:
+globs:
+alwaysApply: false
+---

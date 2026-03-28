@@ -1,0 +1,99 @@
+---
+inclusion: always
+---
+
+# Mobile-First Development Rules
+
+## Responsive Design Rules
+- ALWAYS start with mobile-first design approach
+- ALWAYS use Tailwind's mobile-first breakpoints (sm:, md:, lg:, xl:)
+- ALWAYS test on actual mobile devices, not just browser dev tools
+- ALWAYS ensure touch targets are at least 44px × 44px
+- ALWAYS implement proper viewport meta tags
+- ALWAYS use relative units (rem, em, %) instead of fixed pixels
+- ALWAYS implement fluid typography with clamp() or responsive classes
+
+## Mobile Performance Rules
+- ALWAYS optimize images for mobile with proper formats (WebP, AVIF)
+- ALWAYS implement lazy loading for images and components
+- ALWAYS minimize JavaScript bundle size for mobile
+- ALWAYS use efficient CSS with minimal repaints and reflows
+- ALWAYS implement proper mobile caching strategies
+- ALWAYS optimize mobile network requests with compression
+- ALWAYS implement progressive web app (PWA) features
+
+## Mobile UX Rules
+- ALWAYS design for thumb-friendly navigation
+- ALWAYS implement proper mobile gesture support
+- ALWAYS ensure one-handed operation is possible
+- ALWAYS provide clear visual feedback for touch interactions
+- ALWAYS implement proper mobile keyboard handling
+- ALWAYS ensure mobile forms are easy to complete
+- ALWAYS implement proper mobile loading states
+
+## Mobile Accessibility Rules
+- ALWAYS ensure mobile screen reader compatibility
+- ALWAYS implement proper mobile focus management
+- ALWAYS provide adequate color contrast on mobile screens
+- ALWAYS ensure mobile text is readable without zooming
+- ALWAYS implement proper mobile ARIA labels
+- ALWAYS ensure mobile navigation is keyboard accessible
+- ALWAYS provide alternative input methods for mobile
+
+## Mobile Quiz Interface Rules
+- ALWAYS optimize quiz questions for mobile screen sizes
+- ALWAYS implement mobile-friendly answer selection
+- ALWAYS ensure quiz progress indicators work on mobile
+- ALWAYS implement mobile-optimized quiz navigation
+- ALWAYS ensure quiz timers are visible on mobile
+- ALWAYS implement mobile-friendly quiz results display
+- ALWAYS optimize quiz images and media for mobile
+
+## Mobile State Management Rules
+- ALWAYS handle mobile orientation changes gracefully
+- ALWAYS implement proper mobile state persistence
+- ALWAYS handle mobile app lifecycle events
+- ALWAYS implement mobile offline state management
+- ALWAYS handle mobile network connectivity changes
+- ALWAYS implement mobile background/foreground state handling
+- ALWAYS ensure mobile state doesn't interfere with system features
+
+## Mobile Testing Rules
+- ALWAYS test on multiple mobile devices and screen sizes
+- ALWAYS test mobile performance with slow network conditions
+- ALWAYS test mobile accessibility with screen readers
+- ALWAYS test mobile gesture interactions
+- ALWAYS test mobile keyboard and input methods
+- ALWAYS test mobile app lifecycle scenarios
+- ALWAYS test mobile offline functionality
+
+## Mobile Security Rules
+- ALWAYS implement secure mobile data storage
+- ALWAYS validate mobile input data thoroughly
+- ALWAYS implement mobile biometric authentication when available
+- ALWAYS secure mobile API communications
+- ALWAYS implement mobile app integrity checks
+- ALWAYS handle mobile security permissions properly
+- ALWAYS implement mobile data encryption
+
+## Mobile Analytics Rules
+- ALWAYS track mobile user engagement metrics
+- ALWAYS monitor mobile performance metrics
+- ALWAYS track mobile error rates and crashes
+- ALWAYS monitor mobile conversion rates
+- ALWAYS track mobile feature usage patterns
+- ALWAYS monitor mobile user session lengths
+- ALWAYS track mobile user retention rates
+
+## Mobile Deployment Rules
+- ALWAYS optimize mobile app bundle sizes
+- ALWAYS implement mobile app versioning
+- ALWAYS provide mobile app update mechanisms
+- ALWAYS implement mobile app rollback capabilities
+- ALWAYS monitor mobile app store metrics
+- ALWAYS implement mobile app crash reporting
+- ALWAYS provide mobile app support channels
+description:
+globs:
+alwaysApply: false
+---

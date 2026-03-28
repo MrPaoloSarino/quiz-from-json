@@ -1,0 +1,81 @@
+---
+inclusion: always
+---
+
+# Security & Validation Rules
+
+## Input Validation Rules
+- ALWAYS validate all user inputs
+- ALWAYS sanitize HTML content
+- ALWAYS validate data types and formats
+- ALWAYS implement proper length limits
+- ALWAYS validate file uploads
+- ALWAYS implement proper input encoding
+- ALWAYS handle malformed input gracefully
+
+## XSS Prevention Rules
+- ALWAYS escape user-generated content
+- ALWAYS use Content Security Policy
+- ALWAYS validate and sanitize HTML
+- ALWAYS use proper encoding for output
+- ALWAYS implement proper input filtering
+- ALWAYS use secure templating libraries
+- ALWAYS validate URLs and links
+
+## Data Protection Rules
+- ALWAYS encrypt sensitive data in transit
+- ALWAYS encrypt sensitive data at rest
+- ALWAYS implement proper key management
+- ALWAYS use secure communication protocols
+- ALWAYS implement proper data anonymization
+- ALWAYS handle data retention properly
+- ALWAYS implement proper access controls
+
+## Authentication Rules
+- ALWAYS implement secure authentication flows
+- ALWAYS use proper password hashing
+- ALWAYS implement proper session management
+- ALWAYS use secure token handling
+- ALWAYS implement proper logout procedures
+- ALWAYS handle authentication errors securely
+- ALWAYS implement proper account lockout
+
+## Authorization Rules
+- ALWAYS implement proper access controls
+- ALWAYS validate user permissions
+- ALWAYS implement proper role-based access
+- ALWAYS check authorization before actions
+- ALWAYS implement proper resource isolation
+- ALWAYS handle unauthorized access gracefully
+- ALWAYS implement proper audit logging
+
+## Quiz-Specific Security Rules
+- ALWAYS validate quiz data integrity
+- ALWAYS prevent quiz manipulation and cheating
+- ALWAYS secure quiz submission process
+- ALWAYS validate quiz scoring algorithms
+- ALWAYS protect quiz result data
+- ALWAYS implement proper quiz access controls
+- ALWAYS secure quiz session data
+
+## API Security Rules
+- ALWAYS implement proper API authentication
+- ALWAYS validate API requests
+- ALWAYS implement proper rate limiting
+- ALWAYS use secure API endpoints
+- ALWAYS implement proper error handling
+- ALWAYS validate API responses
+- ALWAYS implement proper API versioning
+
+## Client-Side Security Rules
+- ALWAYS validate client-side data
+- ALWAYS implement proper client-side encryption
+- ALWAYS use secure storage methods
+- ALWAYS implement proper client-side validation
+- ALWAYS handle client-side errors securely
+- ALWAYS implement proper client-side logging
+- ALWAYS use secure communication channels
+description:
+globs:
+alwaysApply: false
+---

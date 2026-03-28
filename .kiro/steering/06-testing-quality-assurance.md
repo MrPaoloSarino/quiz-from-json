@@ -1,0 +1,90 @@
+---
+inclusion: always
+---
+
+# Testing & Quality Assurance Rules
+
+## Unit Testing Rules
+- ALWAYS write unit tests for all business logic
+- ALWAYS test edge cases and error conditions
+- ALWAYS use descriptive test names
+- ALWAYS follow AAA pattern (Arrange, Act, Assert)
+- ALWAYS mock external dependencies
+- ALWAYS test both success and failure scenarios
+- ALWAYS maintain high test coverage
+
+## Component Testing Rules
+- ALWAYS test component rendering
+- ALWAYS test user interactions
+- ALWAYS test component state changes
+- ALWAYS test component props validation
+- ALWAYS test component error boundaries
+- ALWAYS test component accessibility
+- ALWAYS test component performance
+
+## Integration Testing Rules
+- ALWAYS test component interactions
+- ALWAYS test data flow between components
+- ALWAYS test API integrations
+- ALWAYS test state management flows
+- ALWAYS test routing and navigation
+- ALWAYS test form submissions
+- ALWAYS test error handling flows
+
+## Quiz-Specific Testing Rules
+- ALWAYS test quiz question rendering
+- ALWAYS test answer submission flows
+- ALWAYS test quiz scoring algorithms
+- ALWAYS test quiz session management
+- ALWAYS test quiz progress tracking
+- ALWAYS test quiz result calculations
+- ALWAYS test quiz data persistence
+
+## E2E Testing Rules
+- ALWAYS test complete user workflows
+- ALWAYS test critical user journeys
+- ALWAYS test cross-browser compatibility
+- ALWAYS test responsive design
+- ALWAYS test accessibility compliance
+- ALWAYS test performance under load
+- ALWAYS test error recovery scenarios
+
+## Test Quality Rules
+- ALWAYS write maintainable tests
+- ALWAYS use proper test data factories
+- ALWAYS implement proper test cleanup
+- ALWAYS use meaningful test assertions
+- ALWAYS avoid test interdependence
+- ALWAYS implement proper test isolation
+- ALWAYS use appropriate testing tools
+
+## Performance Testing Rules
+- ALWAYS test component rendering performance
+- ALWAYS test memory usage patterns
+- ALWAYS test bundle size impact
+- ALWAYS test API response times
+- ALWAYS test user interaction responsiveness
+- ALWAYS test loading state performance
+- ALWAYS test error handling performance
+
+## Accessibility Testing Rules
+- ALWAYS test keyboard navigation
+- ALWAYS test screen reader compatibility
+- ALWAYS test color contrast compliance
+- ALWAYS test focus management
+- ALWAYS test ARIA attribute correctness
+- ALWAYS test semantic HTML usage
+- ALWAYS test alternative text provision
+
+## Security Testing Rules
+- ALWAYS test input validation
+- ALWAYS test XSS prevention
+- ALWAYS test CSRF protection
+- ALWAYS test data sanitization
+- ALWAYS test authentication flows
+- ALWAYS test authorization checks
+- ALWAYS test secure data handling
+description:
+globs:
+alwaysApply: false
+---

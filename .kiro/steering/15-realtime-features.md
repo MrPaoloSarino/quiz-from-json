@@ -1,0 +1,99 @@
+---
+inclusion: always
+---
+
+# Real-time Features Rules
+
+## WebSocket Architecture Rules
+- ALWAYS implement proper WebSocket connection management
+- ALWAYS handle WebSocket connection lifecycle events
+- ALWAYS implement WebSocket reconnection logic with exponential backoff
+- ALWAYS use WebSocket heartbeat mechanisms for connection health
+- ALWAYS implement proper WebSocket error handling
+- ALWAYS use WebSocket message queuing for offline scenarios
+- ALWAYS implement WebSocket connection pooling for multiple features
+
+## Real-time Quiz Rules
+- ALWAYS implement live quiz session synchronization
+- ALWAYS handle real-time quiz participant management
+- ALWAYS implement live quiz progress tracking
+- ALWAYS handle real-time quiz answer submissions
+- ALWAYS implement live quiz timer synchronization
+- ALWAYS handle real-time quiz result calculations
+- ALWAYS implement live quiz chat functionality
+
+## Real-time State Management Rules
+- ALWAYS implement optimistic updates for real-time features
+- ALWAYS handle real-time state conflicts and resolution
+- ALWAYS implement real-time state synchronization
+- ALWAYS handle real-time state rollback mechanisms
+- ALWAYS implement real-time state versioning
+- ALWAYS handle real-time state persistence
+- ALWAYS implement real-time state conflict resolution
+
+## Real-time Performance Rules
+- ALWAYS implement WebSocket message compression
+- ALWAYS use efficient real-time data serialization
+- ALWAYS implement real-time message batching
+- ALWAYS handle real-time message throttling
+- ALWAYS implement real-time connection multiplexing
+- ALWAYS optimize real-time data transfer protocols
+- ALWAYS implement real-time connection load balancing
+
+## Real-time Security Rules
+- ALWAYS authenticate WebSocket connections
+- ALWAYS validate real-time message content
+- ALWAYS implement real-time rate limiting
+- ALWAYS secure real-time data transmission
+- ALWAYS implement real-time access control
+- ALWAYS audit real-time communication logs
+- ALWAYS implement real-time data encryption
+
+## Real-time Collaboration Rules
+- ALWAYS implement real-time user presence indicators
+- ALWAYS handle real-time collaborative editing
+- ALWAYS implement real-time cursor sharing
+- ALWAYS handle real-time comment systems
+- ALWAYS implement real-time notification systems
+- ALWAYS handle real-time user activity tracking
+- ALWAYS implement real-time collaborative features
+
+## Real-time Analytics Rules
+- ALWAYS track real-time user engagement metrics
+- ALWAYS monitor real-time performance metrics
+- ALWAYS track real-time error rates
+- ALWAYS monitor real-time connection quality
+- ALWAYS track real-time feature usage patterns
+- ALWAYS monitor real-time user behavior
+- ALWAYS track real-time system health metrics
+
+## Real-time Testing Rules
+- ALWAYS test WebSocket connection scenarios
+- ALWAYS test real-time message handling
+- ALWAYS test real-time error recovery
+- ALWAYS test real-time performance under load
+- ALWAYS test real-time security measures
+- ALWAYS test real-time collaboration features
+- ALWAYS test real-time offline/online scenarios
+
+## Real-time Monitoring Rules
+- ALWAYS implement real-time connection monitoring
+- ALWAYS monitor real-time message throughput
+- ALWAYS track real-time error rates and types
+- ALWAYS monitor real-time user activity patterns
+- ALWAYS implement real-time performance alerts
+- ALWAYS track real-time resource usage
+- ALWAYS monitor real-time security events
+
+## Real-time Scalability Rules
+- ALWAYS implement real-time horizontal scaling
+- ALWAYS handle real-time load balancing
+- ALWAYS implement real-time message routing
+- ALWAYS handle real-time connection distribution
+- ALWAYS implement real-time data partitioning
+- ALWAYS handle real-time cache management
+- ALWAYS implement real-time database optimization
+description:
+globs:
+alwaysApply: false
+---

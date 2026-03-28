@@ -1,0 +1,112 @@
+---
+inclusion: always
+---
+
+# TypeScript Excellence Rules
+
+## Strict TypeScript Configuration
+- ALWAYS use strict TypeScript mode with `strict: true`
+- NEVER use `any` type - use proper types or `unknown` when necessary
+- ALWAYS define explicit return types for functions
+- ALWAYS use proper typing for props, state, and event handlers
+- ALWAYS use interface over type for object shapes
+- ALWAYS use union types for finite sets of values
+- ALWAYS use const assertions for immutable data
+
+## Component Typing Rules
+- EVERY component MUST have a typed props interface
+- EVERY component MUST use React.FC<Props> or proper typing
+- EVERY event handler MUST be properly typed
+- EVERY state variable MUST have explicit typing
+- EVERY ref MUST be properly typed with useRef<T>
+
+## Type Safety Rules
+- ALWAYS validate external data with Zod schemas
+- ALWAYS use branded types for IDs and special strings
+- ALWAYS use discriminated unions for state management
+- ALWAYS use readonly arrays for immutable data
+- ALWAYS use const enums for performance-critical constants
+
+## Error Prevention Rules
+- ALWAYS use non-null assertion (!) sparingly and only when certain
+- ALWAYS use optional chaining (?.) for potentially undefined properties
+- ALWAYS use nullish coalescing (??) for default values
+- ALWAYS use type guards for runtime type checking
+- ALWAYS use exhaustive checking with switch statements
+
+## Code Quality Rules
+- ALWAYS use descriptive type names that explain purpose
+- ALWAYS use generic constraints when using generics
+- ALWAYS use mapped types for transforming existing types
+- ALWAYS use conditional types for complex type logic
+- ALWAYS use template literal types for string manipulation
+
+## Import/Export Rules
+- ALWAYS use named exports for utilities and types
+- ALWAYS use default exports for components
+- ALWAYS use barrel exports (index.ts) for clean imports
+- ALWAYS use absolute imports with @/ prefix
+- ALWAYS organize imports: React, external, internal, relative
+
+## Quiz-Specific Typing Rules
+- ALWAYS type quiz questions with proper interfaces
+- ALWAYS type user answers with validation schemas
+- ALWAYS type quiz sessions with proper state management
+- ALWAYS type AI responses with proper error handling
+- ALWAYS type storage operations with proper fallbacks
+
+## Quiz Type Examples
+```typescript
+// Quiz Question Interface
+interface QuizQuestion {
+  id: string;
+  type: 'multiple-choice' | 'true-false' | 'essay' | 'matching';
+  question: string;
+  options?: string[];
+  correctAnswer: string | string[];
+  explanation?: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  tags: string[];
+  timeLimit?: number;
+}
+
+// Quiz Session Interface
+interface QuizSession {
+  id: string;
+  userId: string;
+  quizId: string;
+  status: 'pending' | 'active' | 'completed' | 'paused';
+  currentQuestionIndex: number;
+  answers: Record<string, string | string[]>;
+  startTime: Date;
+  endTime?: Date;
+  score?: number;
+  timeSpent: number;
+}
+
+// AI Response Interface
+interface AIResponse {
+  success: boolean;
+  data?: {
+    question?: QuizQuestion;
+    explanation?: string;
+    feedback?: string;
+    grade?: number;
+  };
+  error?: {
+    code: string;
+    message: string;
+    retryable: boolean;
+  };
+  metadata: {
+    model: string;
+    tokens: number;
+    latency: number;
+    cost: number;
+  };
+}
+```
+description:
+globs:
+alwaysApply: false
+---

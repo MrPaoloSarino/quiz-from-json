@@ -1,0 +1,81 @@
+---
+inclusion: always
+---
+
+# Data Management & Storage Rules
+
+## State Management Rules
+- ALWAYS use appropriate state management patterns
+- ALWAYS normalize complex data structures
+- ALWAYS implement proper state persistence
+- ALWAYS use immutable state updates
+- ALWAYS implement proper state synchronization
+- ALWAYS handle state conflicts gracefully
+- ALWAYS implement proper state validation
+
+## Caching Rules
+- ALWAYS implement intelligent caching strategies
+- ALWAYS use appropriate cache invalidation
+- ALWAYS implement proper cache size limits
+- ALWAYS handle cache misses gracefully
+- ALWAYS implement proper cache warming
+- ALWAYS use appropriate cache storage types
+- ALWAYS implement proper cache monitoring
+
+## Storage Rules
+- ALWAYS implement proper data persistence
+- ALWAYS handle storage failures gracefully
+- ALWAYS implement proper data migration
+- ALWAYS use appropriate storage types
+- ALWAYS implement proper data backup
+- ALWAYS handle storage quota limits
+- ALWAYS implement proper data cleanup
+
+## Quiz-Specific Data Rules
+- ALWAYS cache quiz questions and answers
+- ALWAYS implement proper quiz session persistence
+- ALWAYS handle quiz progress tracking
+- ALWAYS implement proper quiz result storage
+- ALWAYS handle quiz data synchronization
+- ALWAYS implement proper quiz data validation
+- ALWAYS handle quiz data versioning
+
+## API Data Rules
+- ALWAYS implement proper API error handling
+- ALWAYS use appropriate data fetching patterns
+- ALWAYS implement proper request caching
+- ALWAYS handle API rate limiting
+- ALWAYS implement proper retry logic
+- ALWAYS handle network failures gracefully
+- ALWAYS implement proper data transformation
+
+## Data Validation Rules
+- ALWAYS validate data at boundaries
+- ALWAYS use proper validation schemas
+- ALWAYS implement proper error handling for invalid data
+- ALWAYS sanitize user input
+- ALWAYS implement proper data type checking
+- ALWAYS handle data format conversions
+- ALWAYS implement proper data integrity checks
+
+## Performance Data Rules
+- ALWAYS implement efficient data structures
+- ALWAYS use appropriate data compression
+- ALWAYS implement proper data pagination
+- ALWAYS handle large datasets efficiently
+- ALWAYS implement proper data indexing
+- ALWAYS use appropriate data serialization
+- ALWAYS implement proper data streaming
+
+## Security Data Rules
+- ALWAYS encrypt sensitive data
+- ALWAYS implement proper data access controls
+- ALWAYS handle data privacy requirements
+- ALWAYS implement proper data anonymization
+- ALWAYS handle data retention policies
+- ALWAYS implement proper data audit trails
+- ALWAYS handle data compliance requirements
+description:
+globs:
+alwaysApply: false
+---

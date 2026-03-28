@@ -1,0 +1,99 @@
+---
+inclusion: always
+---
+
+# AI Integration Rules
+
+## AI Service Architecture Rules
+- ALWAYS implement proper AI service abstraction layers
+- ALWAYS use dependency injection for AI services
+- ALWAYS implement AI service health checks
+- ALWAYS provide AI service fallback mechanisms
+- ALWAYS implement AI service circuit breakers
+- ALWAYS use proper AI service error handling
+- ALWAYS implement AI service retry logic with exponential backoff
+
+## AI Response Validation Rules
+- ALWAYS validate AI-generated content before display
+- ALWAYS implement content filtering for AI responses
+- ALWAYS sanitize AI-generated HTML/markdown
+- ALWAYS validate AI response structure with Zod schemas
+- ALWAYS implement AI response timeout handling
+- ALWAYS provide fallback content for AI failures
+- ALWAYS log AI response quality metrics
+
+## AI Performance Rules
+- ALWAYS implement AI response caching strategies
+- ALWAYS use streaming responses for long AI operations
+- ALWAYS implement AI request debouncing
+- ALWAYS optimize AI prompt engineering
+- ALWAYS implement AI response compression
+- ALWAYS use efficient AI data serialization
+- ALWAYS implement AI request queuing for high load
+
+## AI Security Rules
+- ALWAYS validate AI input data before sending to services
+- ALWAYS implement AI API key rotation
+- ALWAYS encrypt sensitive data sent to AI services
+- ALWAYS implement AI rate limiting
+- ALWAYS validate AI service responses for malicious content
+- ALWAYS implement AI access control and permissions
+- ALWAYS audit AI service usage and costs
+
+## AI Quiz Generation Rules
+- ALWAYS validate AI-generated quiz questions for accuracy
+- ALWAYS implement AI question difficulty assessment
+- ALWAYS validate AI-generated answer options
+- ALWAYS implement AI question variety algorithms
+- ALWAYS validate AI-generated explanations
+- ALWAYS implement AI question quality scoring
+- ALWAYS provide human review for AI-generated content
+
+## AI Learning Analytics Rules
+- ALWAYS track AI learning pattern recognition
+- ALWAYS implement AI adaptive difficulty algorithms
+- ALWAYS track AI personalization effectiveness
+- ALWAYS implement AI learning path optimization
+- ALWAYS track AI recommendation accuracy
+- ALWAYS implement AI performance prediction models
+- ALWAYS track AI user engagement patterns
+
+## AI Error Recovery Rules
+- ALWAYS implement graceful AI service degradation
+- ALWAYS provide offline AI functionality where possible
+- ALWAYS implement AI service failover mechanisms
+- ALWAYS cache AI responses for offline use
+- ALWAYS implement AI service recovery procedures
+- ALWAYS provide user feedback for AI service issues
+- ALWAYS implement AI service monitoring and alerting
+
+## AI Cost Management Rules
+- ALWAYS implement AI usage cost tracking
+- ALWAYS optimize AI prompt efficiency
+- ALWAYS implement AI usage quotas and limits
+- ALWAYS cache expensive AI operations
+- ALWAYS implement AI cost alerts and notifications
+- ALWAYS optimize AI model selection for cost
+- ALWAYS implement AI usage analytics and reporting
+
+## AI Ethics and Compliance Rules
+- ALWAYS implement AI bias detection and mitigation
+- ALWAYS ensure AI content meets educational standards
+- ALWAYS implement AI privacy protection measures
+- ALWAYS provide AI transparency and explainability
+- ALWAYS implement AI content moderation
+- ALWAYS ensure AI compliance with educational regulations
+- ALWAYS implement AI ethical review processes
+
+## AI Testing Rules
+- ALWAYS test AI service integration thoroughly
+- ALWAYS test AI response validation logic
+- ALWAYS test AI error handling scenarios
+- ALWAYS test AI performance under load
+- ALWAYS test AI security measures
+- ALWAYS test AI cost optimization strategies
+- ALWAYS test AI compliance and ethics measures
+description:
+globs:
+alwaysApply: false
+---
