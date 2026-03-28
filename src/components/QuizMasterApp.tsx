@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { aiService } from '@/utils/aiService';
 import { AIProvider } from '@/utils/aiConfig';
-import { User, Settings, ShoppingBag, PlayCircle } from 'lucide-react';
+import { User, Settings, ShoppingBag, PlayCircle, FolderKanban } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import SettingsPage from '@/pages/Settings';
@@ -19,8 +19,12 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/comp
 import Flashcards from '@/pages/Flashcards';
 import Marketplace from './marketplace/Marketplace';
 import { MarketplaceItem } from './marketplace/data';
+import ProjectsList from '@/pages/ProjectsList';
+import ProjectOverview from '@/pages/ProjectOverview';
+import CreateProject from '@/pages/CreateProject';
+import { initDemoProject } from '@/utils/initDemoProject';
 
-type AppView = 'dashboard' | 'quiz' | 'create' | 'profile' | 'settings' | 'flashcards' | 'marketplace';
+type AppView = 'dashboard' | 'quiz' | 'create' | 'profile' | 'settings' | 'flashcards' | 'marketplace' | 'projects' | 'project-overview' | 'create-project';
 
 const providerModels = {
   openrouter: [
@@ -139,6 +143,7 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
   const handleViewFlashcards = useCallback(() => setCurrentView('flashcards'), [setCurrentView]);
   const handleViewProfile = useCallback(() => setCurrentView('profile'), [setCurrentView]);
   const handleViewMarketplace = useCallback(() => setCurrentView('marketplace'), [setCurrentView]);
+  const handleViewProjects = useCallback(() => setCurrentView('projects'), [setCurrentView]);
 
   const userFirstName = user.name?.split(' ')[0] ?? 'User';
 
@@ -157,6 +162,14 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
               className="ml-2"
             >
               Quizzes
+            </Button>
+            <Button
+              variant={currentView === 'projects' || currentView === 'project-overview' || currentView === 'create-project' ? 'default' : 'ghost'}
+              onClick={handleViewProjects}
+              className="ml-2 flex items-center gap-1"
+            >
+              <FolderKanban className="w-4 h-4" />
+              Projects
             </Button>
             {currentQuiz && currentView !== 'quiz' && (
               <Button
@@ -266,6 +279,37 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
         return <div className="container mx-auto p-4 flex justify-center"><UserProfileComponent onSignOut={handleSignOut} /></div>;
       case 'settings':
         return <SettingsPage />;
+      case 'projects':
+        return (
+          <ProjectsList
+            onCreateProject={() => setCurrentView('create-project')}
+            onViewProject={(projectId) => {
+              setCurrentView('project-overview');
+              // Store selected project ID for ProjectOverview
+              sessionStorage.setItem('selected_project_id', projectId);
+            }}
+          />
+        );
+      case 'create-project':
+        return (
+          <CreateProject
+            onProjectCreated={(projectId) => {
+              setCurrentView('project-overview');
+              sessionStorage.setItem('selected_project_id', projectId);
+            }}
+            onCancel={() => setCurrentView('projects')}
+          />
+        );
+      case 'project-overview':
+        return (
+          <ProjectOverview
+            projectId={sessionStorage.getItem('selected_project_id') || undefined}
+            onStartQuiz={(subjectId) => {
+              // TODO: Start quiz for specific subject
+              console.log('Start quiz for subject:', subjectId);
+            }}
+          />
+        );
       case 'quiz':
       case 'flashcards':
       case 'marketplace':
@@ -286,7 +330,7 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
   // Track whether persistent views have been visited at least once
   const [mountedViews, setMountedViews] = React.useState<Set<string>>(new Set());
   useEffect(() => {
-    if (['quiz', 'flashcards', 'marketplace'].includes(currentView)) {
+    if (['quiz', 'flashcards', 'marketplace', 'projects', 'project-overview', 'create-project'].includes(currentView)) {
       setMountedViews(prev => {
         if (prev.has(currentView)) return prev;
         const next = new Set(prev);
@@ -352,6 +396,15 @@ const CerebrumApp: React.FC = () => {
         const currentUser = await StorageManager.getCurrentUser();
         if (currentUser) {
           setUser(currentUser);
+          
+          // Initialize demo project if none exist (only in development)
+          if (import.meta.env.DEV) {
+            try {
+              initDemoProject();
+            } catch (error) {
+              console.error('Failed to initialize demo project:', error);
+            }
+          }
         }
       }
 
