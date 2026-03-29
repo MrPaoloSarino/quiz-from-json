@@ -6,6 +6,8 @@ export interface QuizQuestion {
   answer?: string;
   type?: 'multiple' | 'essay' | 'fill-blank' | 'drag-drop' | 'sequence' | 'matching';
   explanation?: string;
+  tags?: string[]; // For categorizing questions by topic/subject
+  id?: string; // Unique identifier for the question
 }
 
 export interface QuizState {

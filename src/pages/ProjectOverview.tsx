@@ -24,7 +24,7 @@ import {
 
 interface ProjectOverviewProps {
   projectId?: string;
-  onStartQuiz?: (subjectId: string) => void;
+  onStartQuiz?: (subjectId: string, subjectName: string) => void;
 }
 
 const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId, onStartQuiz }) => {
@@ -282,7 +282,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId, onStartQui
                 <div className="flex gap-2">
                   <Button 
                     size="sm" 
-                    onClick={() => onStartQuiz?.(subject.id)}
+                    onClick={() => onStartQuiz?.(subject.id, subject.name)}
                   >
                     <Play className="w-4 h-4 mr-1" />
                     Practice

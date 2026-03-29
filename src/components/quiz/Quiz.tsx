@@ -10,6 +10,7 @@ import BoardExamQuestionSheet from "./BoardExamQuestionSheet";
 import QuizLayoutToggle, { type QuizLayoutMode } from "./QuizLayoutToggle";
 import { QuizQuestion, QuizState, GeminiResponse } from "@/types/quiz";
 import { Button } from "@/components/ui/button";
+import { recordQuizToProject, inferQuizTopic } from "@/utils/projectQuizIntegration";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Eye, EyeOff, Brain } from "lucide-react";
@@ -1026,6 +1027,15 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
       const timeSpentSeconds = Math.floor((Date.now() - state.startTime.getTime()) / 1000);
       updateStatsAfterQuiz(answeredCount, finalScore, timeSpentSeconds);
 
+      // Record to active project
+      recordQuizToProject({
+        questions: state.questions,
+        score: finalScore,
+        totalQuestions: state.questions.length,
+        timeSpentSeconds,
+        topic: inferQuizTopic(state.questions),
+      });
+
       setState({
         ...state,
         score: finalScore,
@@ -1110,6 +1120,15 @@ const Quiz: React.FC<{ questions?: QuizQuestion[] }> = ({ questions: externalQue
     // Update local stats (even for early end)
     const timeSpentSeconds = Math.floor((Date.now() - state.startTime.getTime()) / 1000);
     updateStatsAfterQuiz(answered, recalculatedScore, timeSpentSeconds);
+
+    // Record to active project (even for early finish)
+    recordQuizToProject({
+      questions: state.questions,
+      score: recalculatedScore,
+      totalQuestions: answered, // Only count answered questions
+      timeSpentSeconds,
+      topic: inferQuizTopic(state.questions),
+    });
 
     setState({
       ...state,

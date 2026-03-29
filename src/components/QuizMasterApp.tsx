@@ -23,6 +23,7 @@ import ProjectsList from '@/pages/ProjectsList';
 import ProjectOverview from '@/pages/ProjectOverview';
 import CreateProject from '@/pages/CreateProject';
 import { initDemoProject } from '@/utils/initDemoProject';
+import ActiveProjectSelector from '@/components/project/ActiveProjectSelector';
 
 type AppView = 'dashboard' | 'quiz' | 'create' | 'profile' | 'settings' | 'flashcards' | 'marketplace' | 'projects' | 'project-overview' | 'create-project';
 
@@ -188,6 +189,10 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
             </Button>
           </div>
           <div className="flex items-center gap-3">
+            <ActiveProjectSelector
+              onCreateProject={() => setCurrentView('create-project')}
+              onViewProjects={handleViewProjects}
+            />
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -304,9 +309,18 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
         return (
           <ProjectOverview
             projectId={sessionStorage.getItem('selected_project_id') || undefined}
-            onStartQuiz={(subjectId) => {
-              // TODO: Start quiz for specific subject
-              console.log('Start quiz for subject:', subjectId);
+            onStartQuiz={(subjectId, subjectName) => {
+              // Store subject info for quiz context
+              sessionStorage.setItem('quiz_subject_id', subjectId);
+              sessionStorage.setItem('quiz_subject_name', subjectName);
+              
+              // TODO: Filter quizzes by subject or generate quiz for subject
+              // For now, show message
+              toast.info(`Starting practice for: ${subjectName}`, {
+                description: 'Select a quiz from the dashboard or create one',
+                duration: 4000,
+              });
+              setCurrentView('dashboard');
             }}
           />
         );
